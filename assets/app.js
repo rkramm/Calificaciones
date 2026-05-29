@@ -3,7 +3,7 @@
  * Usa text/plain para evitar preflight CORS
  */
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyF02I-jGPHs50iv2FcrJPxNrILZEyAll2A4qkAmnjnr-6tRPcN5GZ6smL4JhThPXin/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzKReEE7gZ5Y4D6Jrrukxf4Us3qj3bv6R93pLaA2zg0PSK9tRxaBrDwJl0EKmI7p6q9/exec';
 
 // ============================================
 // CACHE
@@ -364,9 +364,18 @@ function renderEvaluationTable(items, notasGuardadas) {
           <tbody id="evalTbody">
   `;
 
+  // Función robusta para encontrar la llave sin importar mayúsculas/minúsculas
+  const getProp = (obj, validKeys) => {
+    const lowerKeys = validKeys.map(k => k.toLowerCase());
+    for (const key in obj) {
+      if (lowerKeys.includes(key.toLowerCase()) && obj[key] !== '') return obj[key];
+    }
+    return null;
+  };
+
   items.forEach(item => {
-    const itemNum = item.item_num || item.num || item.numero || item.id || '-';
-    const itemNombre = item.item_nombre || item.Item_nombre || item.factor || item.descripcion || item.nombre || 'Sin descripción';
+    const itemNum = getProp(item, ['item_num', 'num', 'numero', 'id']) || '-';
+    const itemNombre = getProp(item, ['item_nombre', 'factor', 'descripcion', 'nombre']) || 'Sin descripción';
     const val = notasGuardadas[itemNum] !== undefined ? notasGuardadas[itemNum] : '';
 
     tableHTML += `
@@ -492,8 +501,18 @@ $('formCalificacion').addEventListener('submit', async function(e) {
   if (!etapaInfo) return;
 
   const notas = {};
+  
+  // Función robusta para encontrar la llave al guardar
+  const getProp = (obj, validKeys) => {
+    const lowerKeys = validKeys.map(k => k.toLowerCase());
+    for (const key in obj) {
+      if (lowerKeys.includes(key.toLowerCase()) && obj[key] !== '') return obj[key];
+    }
+    return null;
+  };
+
   for (const item of etapaInfo.items) {
-    const itemNum = item.item_num || item.num || item.numero || item.id || '-';
+    const itemNum = getProp(item, ['item_num', 'num', 'numero', 'id']) || '-';
     const input = $('item_' + itemNum);
     if (!input) continue;
     const valor = parseInt(input.value);

@@ -573,6 +573,73 @@ function handleCargaMasiva(params) {
 }
 
 // =====================================================
+// LECTURA DINÁMICA DE ETAPAS E ÍTEMS DESDE SHEET CONFIG
+// =====================================================
+function getEtapasFromConfig() {
+  var sheet = getSheet(SHEET_NAMES.CONFIG);
+  var data = sheet.getDataRange().getValues();
+  
+  // Si la hoja está vacía, devuelve los datos de respaldo
+  if (data.length < 2) return getEtapasHardcodedFallback();
+  
+  var headers = data[0].map(function(h) { return h.toString().toLowerCase().trim(); });
+  var idxEtapaNum = headers.indexOf('etapa_num');
+  var idxEtapaNombre = headers.indexOf('etapa_nombre');
+  var idxItemNum = headers.indexOf('item_num');
+  var idxItemNombre = headers.indexOf('item_nombre');
+  
+  // Si no encuentra las columnas, usa la versión por defecto para no romper la app
+  if (idxEtapaNum === -1 || idxItemNum === -1) {
+    return getEtapasHardcodedFallback();
+  }
+  
+  var etapasMap = {};
+  for (var i = 1; i < data.length; i++) {
+    var eNum = data[i][idxEtapaNum];
+    if (!eNum || eNum === '') continue; // Saltar filas vacías
+    
+    if (!etapasMap[eNum]) {
+      etapasMap[eNum] = {
+        num: eNum,
+        etapa_nombre: idxEtapaNombre !== -1 ? data[i][idxEtapaNombre] : 'Etapa ' + eNum,
+        items: []
+      };
+    }
+    
+    var iNum = data[i][idxItemNum];
+    var iNom = idxItemNombre !== -1 ? data[i][idxItemNombre] : '';
+    
+    if (iNum !== '') {
+      etapasMap[eNum].items.push({
+        item_num: iNum,
+        item_nombre: iNom
+      });
+    }
+  }
+  
+  var result = Object.keys(etapasMap).map(function(k) { return etapasMap[k]; });
+  result.sort(function(a, b) { return a.num - b.num; }); // Ordenar por número de etapa
+  
+  if (result.length === 0) return getEtapasHardcodedFallback();
+  return result;
+}
+
+function getEtapasHardcodedFallback() {
+  return [
+    { num: 1, nombre: 'Postulacion', items: [
+      { item_num: 1, item_nombre: 'Calidad de la postulacion' },
+      { item_num: 2, item_nombre: 'Documentacion completa' },
+      { item_num: 3, item_nombre: 'Antecedentes tecnicos' }
+    ]},
+    { num: 2, nombre: 'Evaluacion Tecnica', items: [
+      { item_num: 1, item_nombre: 'Capacidad tecnica' },
+      { item_num: 2, item_nombre: 'Experiencia previa' },
+      { item_num: 3, item_nombre: 'Recursos humanos' }
+    ]}
+  ];
+}
+
+// =====================================================
 // INICIALIZACION
 // =====================================================
 function inicializarSistema() {
