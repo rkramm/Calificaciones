@@ -493,15 +493,15 @@ $('formCalificacion').addEventListener('submit', async function(e) {
 
   const notas = {};
   for (const item of etapaInfo.items) {
-        const itemNum = item.num || item.numero || item.item_num || item.id || '-';
-        const input = $('item_' + itemNum);
-        if (!input) continue;
+    const itemNum = item.num || item.numero || item.item_num || item.id || '-';
+    const input = $('item_' + itemNum);
+    if (!input) continue;
     const valor = parseInt(input.value);
     if (isNaN(valor) || valor < 1 || valor > 100) {
-          showMessage('califMessage', `La nota del item ${itemNum} debe ser entre 1 y 100`, 'error');
+      showMessage('califMessage', `La nota del item ${itemNum} debe ser entre 1 y 100`, 'error');
       return;
     }
-        notas[itemNum] = valor;
+    notas[itemNum] = valor;
   }
 
   const payload = {
