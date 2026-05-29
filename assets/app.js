@@ -321,25 +321,29 @@ function renderEvaluationTable(items, notasGuardadas) {
   const container = $('itemsCalifContainer');
   const etapaNum = $('selectEtapa').value;
   
-  // Limpiar el contenedor de items tipo lista por si acaso
+  // Limpiar contenedores superiores de herencia visual si es necesario
   const itemsContainer = $('itemsContainer');
   if (itemsContainer && itemsContainer.children.length > 1) {
-    // Mantener solo el selector de etapa y limpiar lo demás
     while (itemsContainer.childNodes.length > 2) {
       itemsContainer.removeChild(itemsContainer.lastChild);
     }
   }
   
-  // Buscamos el nombre largo de la etapa en la configuración
+  // Extraer dinámicamente los textos de la hoja Config mediante el Cache
   const etapaInfo = Cache.config?.etapas?.find(e => e.num == etapaNum);
-  const etapaNombreLargo = etapaInfo?.etapa_nombre || "ETAPA " + etapaNum;
+  const etapaNombreLargo = etapaInfo?.etapa_nombre || "ORGANIZACIÓN DE LA DEMANDA / DIAGNÓSTICO TÉCNICO Y/O SOCIAL";
+  
+  // Si en tu hoja Config guardas la descripción larga del cuadro, se mapeará aquí. 
+  // Si no se encuentra, usará el texto oficial de respaldo.
+  const etapaDescripcion = etapaInfo?.descripcion || "Comprende: diagnóstico del estado de la situación de las familias y/o su necesidad habitacional, reforzamiento de la organización de las familias para el proceso de postulación, aprobación participativa del proyecto habitacional, acompañamiento durante la gestación de (los) proyecto(s) y/o tramitación para la presentación de antecedentes técnicos y sociales a SERVIU, según corresponda.";
 
   let tableHTML = `
     <div class="contenedor-matriz">
+      <!-- Encabezado Dinámico Estilo Matriz SERVIU (image_bbc8da.png) -->
       <div class="header-etapa">
         <div class="titulo-etapa">
           <strong>ETAPA ${etapaNum}. ${escHtml(etapaNombreLargo)}</strong>
-          <p>Comprende: diagnóstico del estado de la situación de las familias y/o su necesidad habitacional, reforzamiento de la organización de las familias para el proceso de postulación, aprobación participativa del proyecto habitacional, acompañamiento durante la gestación de (los) proyecto(s) y/o tramitación para la presentación de antecedentes técnicos y sociales a SERVIU, según corresponda.</p>
+          <p>${escHtml(etapaDescripcion)}</p>
         </div>
         <div class="rango-calificaciones">
           <div class="rango-item"><strong>MALO</strong><br>(0-50)</div>
@@ -352,7 +356,7 @@ function renderEvaluationTable(items, notasGuardadas) {
         <table class="tabla-evaluacion" id="evalTable">
           <thead>
             <tr>
-              <th class="text-center" style="width: 90px; text-align: center;">Ítem N°</th>
+              <th class="text-center" style="width: 80px; text-align: center;">Ítem N°</th>
               <th>Factor / Descripción</th>
               <th class="text-center" style="width: 120px; text-align: center;">Nota (1-100)</th>
             </tr>
@@ -367,9 +371,9 @@ function renderEvaluationTable(items, notasGuardadas) {
 
     tableHTML += `
       <tr data-item="${itemNum}">
-        <td class="text-center" style="text-align: center;"><strong>${itemNum}</strong></td>
+        <td class="text-center" style="text-align: center; width: 80px;"><strong>${itemNum}</strong></td>
         <td>${escHtml(itemNombre)}</td>
-        <td class="text-center" style="position: relative; text-align: center;">
+        <td class="text-center" style="position: relative; text-align: center; width: 120px;">
           <div class="input-wrapper">
             <input type="number" class="nota-input" id="item_${itemNum}" data-num="${itemNum}" min="1" max="100" value="${escHtml(val)}" required>
             <span class="error-msg" id="error_${itemNum}"></span>
@@ -399,13 +403,13 @@ function renderEvaluationTable(items, notasGuardadas) {
 
   container.innerHTML = tableHTML;
 
-  // Añadir eventos a cada input para el cálculo dinámico en tiempo real
+  // Añadir eventos a los inputs para el cálculo
   const inputs = container.querySelectorAll('.nota-input');
   inputs.forEach(input => {
     input.addEventListener('input', calcularTotalesTabla);
   });
   
-  // Ejecutar cálculo inicial por si ya existen notas guardadas (modo edición)
+  // Ejecutar cálculo por si hay notas persistidas de revisiones previas
   calcularTotalesTabla();
 }
 
