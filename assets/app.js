@@ -365,8 +365,8 @@ function renderEvaluationTable(items, notasGuardadas) {
   `;
 
   items.forEach(item => {
-    const itemNum = item.item_num || item.num;
-    const itemNombre = item.Item_nombre || item.nombre;
+        const itemNum = item.num || item.numero || item.item_num || item.id || '-';
+        const itemNombre = item.factor || item.descripcion || item.nombre || item.Item_nombre || 'Sin descripción';
     const val = notasGuardadas[itemNum] !== undefined ? notasGuardadas[itemNum] : '';
 
     tableHTML += `
@@ -446,33 +446,6 @@ function calcularTotalesTabla() {
   const badgeRango = $('badgeRango');
 
   if (promedioCell && badgeRango) {
-    if (count > 0 && count === inputs.length && !tieneErrores) {
-      const promedio = Math.round(sum / inputs.length);
-      promedioCell.textContent = promedio;
-
-      badgeRango.className = "badge-rango-dinamico"; // Reset
-      if (promedio >= 80) {
-        badgeRango.textContent = "BUENO";
-        badgeRango.classList.add("Bueno");
-      } else if (promedio >= 51) {
-        badgeRango.textContent = "ACEPTABLE";
-        badgeRango.classList.add("Aceptable");
-      } else {
-        badgeRango.textContent = "MALO";
-        badgeRango.classList.add("Malo");
-      }
-    } else {
-      promedioCell.textContent = count > 0 ? Math.round(sum / count) : "-";
-      badgeRango.textContent = "-";
-      badgeRango.className = "badge-rango-dinamico";
-    }
-  }
-}
-
-  const promedioCell = $('promedioFinal');
-  const badgeRango = $('badgeRango');
-
-  if (promedioCell && badgeRango) {
     // Si todas las notas están ingresadas y no hay errores de rango
     if (count > 0 && count === inputs.length && !tieneErrores) {
       const promedio = Math.round(sum / inputs.length);
@@ -520,13 +493,15 @@ $('formCalificacion').addEventListener('submit', async function(e) {
 
   const notas = {};
   for (const item of etapaInfo.items) {
-    const input = $('item_' + item.num);
+        const itemNum = item.num || item.numero || item.item_num || item.id || '-';
+        const input = $('item_' + itemNum);
+        if (!input) continue;
     const valor = parseInt(input.value);
     if (isNaN(valor) || valor < 1 || valor > 100) {
-      showMessage('califMessage', `La nota del item ${item.num} debe ser entre 1 y 100`, 'error');
+          showMessage('califMessage', `La nota del item ${itemNum} debe ser entre 1 y 100`, 'error');
       return;
     }
-    notas[item.num] = valor;
+        notas[itemNum] = valor;
   }
 
   const payload = {
