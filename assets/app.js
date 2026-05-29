@@ -321,6 +321,15 @@ function renderEvaluationTable(items, notasGuardadas) {
   const container = $('itemsCalifContainer');
   const etapaNum = $('selectEtapa').value;
   
+  // Limpiar el contenedor de items tipo lista por si acaso
+  const itemsContainer = $('itemsContainer');
+  if (itemsContainer && itemsContainer.children.length > 1) {
+    // Mantener solo el selector de etapa y limpiar lo demás
+    while (itemsContainer.childNodes.length > 2) {
+      itemsContainer.removeChild(itemsContainer.lastChild);
+    }
+  }
+  
   // Buscamos el nombre largo de la etapa en la configuración
   const etapaInfo = Cache.config?.etapas?.find(e => e.num == etapaNum);
   const etapaNombreLargo = etapaInfo?.etapa_nombre || "ETAPA " + etapaNum;
@@ -333,9 +342,9 @@ function renderEvaluationTable(items, notasGuardadas) {
           <p>Comprende: diagnóstico del estado de la situación de las familias y/o su necesidad habitacional, reforzamiento de la organización de las familias para el proceso de postulación, aprobación participativa del proyecto habitacional, acompañamiento durante la gestación de (los) proyecto(s) y/o tramitación para la presentación de antecedentes técnicos y sociales a SERVIU, según corresponda.</p>
         </div>
         <div class="rango-calificaciones">
-          <div class="rango-item"><strong>MALO</strong>(0-50)</div>
-          <div class="rango-item"><strong>ACEPTABLE</strong>(51-79)</div>
-          <div class="rango-item"><strong>BUENO</strong>(80-100)</div>
+          <div class="rango-item"><strong>MALO</strong><br>(0-50)</div>
+          <div class="rango-item"><strong>ACEPTABLE</strong><br>(51-79)</div>
+          <div class="rango-item"><strong>BUENO</strong><br>(80-100)</div>
         </div>
       </div>
 
@@ -343,9 +352,9 @@ function renderEvaluationTable(items, notasGuardadas) {
         <table class="tabla-evaluacion" id="evalTable">
           <thead>
             <tr>
-              <th class="text-center" style="width: 80px;">Ítem N°</th>
+              <th class="text-center" style="width: 90px; text-align: center;">Ítem N°</th>
               <th>Factor / Descripción</th>
-              <th class="text-center" style="width: 100px;">Nota (1-100)</th>
+              <th class="text-center" style="width: 120px; text-align: center;">Nota (1-100)</th>
             </tr>
           </thead>
           <tbody id="evalTbody">
@@ -358,9 +367,9 @@ function renderEvaluationTable(items, notasGuardadas) {
 
     tableHTML += `
       <tr data-item="${itemNum}">
-        <td class="text-center"><strong>${itemNum}</strong></td>
+        <td class="text-center" style="text-align: center;"><strong>${itemNum}</strong></td>
         <td>${escHtml(itemNombre)}</td>
-        <td class="text-center" style="position: relative;">
+        <td class="text-center" style="position: relative; text-align: center;">
           <div class="input-wrapper">
             <input type="number" class="nota-input" id="item_${itemNum}" data-num="${itemNum}" min="1" max="100" value="${escHtml(val)}" required>
             <span class="error-msg" id="error_${itemNum}"></span>
@@ -374,7 +383,7 @@ function renderEvaluationTable(items, notasGuardadas) {
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="3">
+              <td colspan="3" style="padding: 0 !important; border: none !important;">
                 <div class="celda-total-matriz">
                   <div class="texto-precalif"><strong>PRECALIFICACIÓN ETAPA ${etapaNum}.</strong></div>
                   <div id="badgeRango" class="badge-rango-dinamico">-</div>
@@ -428,6 +437,33 @@ function calcularTotalesTabla() {
       count++;
     }
   });
+
+  const promedioCell = $('promedioFinal');
+  const badgeRango = $('badgeRango');
+
+  if (promedioCell && badgeRango) {
+    if (count > 0 && count === inputs.length && !tieneErrores) {
+      const promedio = Math.round(sum / inputs.length);
+      promedioCell.textContent = promedio;
+
+      badgeRango.className = "badge-rango-dinamico"; // Reset
+      if (promedio >= 80) {
+        badgeRango.textContent = "BUENO";
+        badgeRango.classList.add("Bueno");
+      } else if (promedio >= 51) {
+        badgeRango.textContent = "ACEPTABLE";
+        badgeRango.classList.add("Aceptable");
+      } else {
+        badgeRango.textContent = "MALO";
+        badgeRango.classList.add("Malo");
+      }
+    } else {
+      promedioCell.textContent = count > 0 ? Math.round(sum / count) : "-";
+      badgeRango.textContent = "-";
+      badgeRango.className = "badge-rango-dinamico";
+    }
+  }
+}
 
   const promedioCell = $('promedioFinal');
   const badgeRango = $('badgeRango');
