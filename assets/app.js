@@ -3,7 +3,7 @@
  * Usa text/plain para evitar preflight CORS
  */
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyekZaoy-tQd1Mpkpk-9OPTCeYNBsB1y93gP4oqEEoC6Esia_jjoSzcq9RNHC9auUI/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyF02I-jGPHs50iv2FcrJPxNrILZEyAll2A4qkAmnjnr-6tRPcN5GZ6smL4JhThPXin/exec';
 
 // ============================================
 // CACHE
