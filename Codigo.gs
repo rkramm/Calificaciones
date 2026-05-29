@@ -48,28 +48,7 @@ function doGet(e) {
 
     if (action == 'config') {
       return createJsonResponse({
-        etapas: [
-          { num: 1, nombre: 'Postulacion', items: [
-            { num: 1, nombre: 'Calidad de la postulacion' },
-            { num: 2, nombre: 'Documentacion completa' },
-            { num: 3, nombre: 'Antecedentes tecnicos' }
-          ]},
-          { num: 2, nombre: 'Evaluacion Tecnica', items: [
-            { num: 1, nombre: 'Capacidad tecnica' },
-            { num: 2, nombre: 'Experiencia previa' },
-            { num: 3, nombre: 'Recursos humanos' }
-          ]},
-          { num: 3, nombre: 'Visita Terreno', items: [
-            { num: 1, nombre: 'Infraestructura' },
-            { num: 2, nombre: 'Ubicacion' },
-            { num: 3, nombre: 'Accesibilidad' }
-          ]},
-          { num: 4, nombre: 'Evaluacion Economica', items: [
-            { num: 1, nombre: 'Presupuesto' },
-            { num: 2, nombre: 'Sostenibilidad' },
-            { num: 3, nombre: 'Costo-beneficio' }
-          ]}
-        ],
+        etapas: getEtapasFromConfig(),
         ver_notas_otros: getConfigValue('ver_notas_otros') == 'SI'
       });
     }
@@ -570,73 +549,6 @@ function handleCargaMasiva(params) {
   }
 
   return createJsonResponse({ success: true, procesados: procesados });
-}
-
-// =====================================================
-// LECTURA DINÁMICA DE ETAPAS E ÍTEMS DESDE SHEET CONFIG
-// =====================================================
-function getEtapasFromConfig() {
-  var sheet = getSheet(SHEET_NAMES.CONFIG);
-  var data = sheet.getDataRange().getValues();
-  
-  // Si la hoja está vacía, devuelve los datos de respaldo
-  if (data.length < 2) return getEtapasHardcodedFallback();
-  
-  var headers = data[0].map(function(h) { return h.toString().toLowerCase().trim(); });
-  var idxEtapaNum = headers.indexOf('etapa_num');
-  var idxEtapaNombre = headers.indexOf('etapa_nombre');
-  var idxItemNum = headers.indexOf('item_num');
-  var idxItemNombre = headers.indexOf('item_nombre');
-  
-  // Si no encuentra las columnas, usa la versión por defecto para no romper la app
-  if (idxEtapaNum === -1 || idxItemNum === -1) {
-    return getEtapasHardcodedFallback();
-  }
-  
-  var etapasMap = {};
-  for (var i = 1; i < data.length; i++) {
-    var eNum = data[i][idxEtapaNum];
-    if (!eNum || eNum === '') continue; // Saltar filas vacías
-    
-    if (!etapasMap[eNum]) {
-      etapasMap[eNum] = {
-        num: eNum,
-        etapa_nombre: idxEtapaNombre !== -1 ? data[i][idxEtapaNombre] : 'Etapa ' + eNum,
-        items: []
-      };
-    }
-    
-    var iNum = data[i][idxItemNum];
-    var iNom = idxItemNombre !== -1 ? data[i][idxItemNombre] : '';
-    
-    if (iNum !== '') {
-      etapasMap[eNum].items.push({
-        item_num: iNum,
-        item_nombre: iNom
-      });
-    }
-  }
-  
-  var result = Object.keys(etapasMap).map(function(k) { return etapasMap[k]; });
-  result.sort(function(a, b) { return a.num - b.num; }); // Ordenar por número de etapa
-  
-  if (result.length === 0) return getEtapasHardcodedFallback();
-  return result;
-}
-
-function getEtapasHardcodedFallback() {
-  return [
-    { num: 1, nombre: 'Postulacion', items: [
-      { item_num: 1, item_nombre: 'Calidad de la postulacion' },
-      { item_num: 2, item_nombre: 'Documentacion completa' },
-      { item_num: 3, item_nombre: 'Antecedentes tecnicos' }
-    ]},
-    { num: 2, nombre: 'Evaluacion Tecnica', items: [
-      { item_num: 1, item_nombre: 'Capacidad tecnica' },
-      { item_num: 2, item_nombre: 'Experiencia previa' },
-      { item_num: 3, item_nombre: 'Recursos humanos' }
-    ]}
-  ];
 }
 
 // =====================================================
