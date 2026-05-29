@@ -1070,16 +1070,66 @@ input[type="file"]:hover {
 }
 
 /* ============================================
- TABLA DE EVALUACIÓN DINÁMICA
+ TABLA DE EVALUACIÓN DINÁMICA - FORMATO MATRIZ SERVIU
  ============================================ */
+.contenedor-matriz {
+  width: 100%;
+  border: 2px solid #000;
+  margin-top: 15px;
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+}
+
+/* Encabezado superior de la Etapa */
+.header-etapa {
+  display: flex;
+  border-bottom: 2px solid #000;
+  background: #fff;
+}
+.titulo-etapa {
+  flex: 3;
+  padding: 10px;
+  border-right: 2px solid #000;
+  text-align: left;
+}
+.titulo-etapa strong {
+  font-size: 14px;
+  text-transform: uppercase;
+  display: block;
+  line-height: 1.3;
+}
+.titulo-etapa p {
+  margin: 5px 0 0 0;
+  font-size: 11px;
+  color: #000;
+  line-height: 1.3;
+}
+.rango-calificaciones {
+  flex: 1;
+  display: flex;
+  font-size: 11px;
+  text-align: center;
+}
+.rango-item {
+  flex: 1;
+  padding: 5px 2px;
+  border-right: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.rango-item:last-child { 
+  border-right: none; 
+}
+
+/* Ajustes de la Tabla Estilo Excel */
 .tabla-evaluacion-container {
   overflow-x: auto;
-  margin-top: 1rem;
+  margin-top: 0;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  border: 1px solid #e0e7ef;
-  -webkit-overflow-scrolling: touch; /* Suavidad en móviles */
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
 }
 
 .tabla-evaluacion {
@@ -1089,76 +1139,117 @@ input[type="file"]:hover {
 }
 
 .tabla-evaluacion th {
-  background-color: #f0f4f8; /* Tono gris azulado */
-  color: #1a5490;
-  font-weight: 600;
+  background-color: #f2f2f2 !important;
+  color: #000 !important;
+  font-weight: bold;
   text-align: left;
-  padding: 0.8rem 1rem;
-  border-bottom: 2px solid #e0e7ef;
+  padding: 6px 10px;
+  border-bottom: 2px solid #000 !important;
+  border-right: 1px solid #000;
+  font-size: 12px;
 }
+.tabla-evaluacion th:last-child { border-right: none; }
 
 .tabla-evaluacion td {
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid #e0e7ef;
-  vertical-align: middle;
+  padding: 6px 10px !important;
+  border-bottom: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+  color: #000;
+  font-size: 13px;
 }
+.tabla-evaluacion td:last-child { border-right: none !important; }
 
 .tabla-evaluacion tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: #f9f9f9;
 }
 
-.tabla-evaluacion tfoot td {
-  background-color: #f0f4f8;
-  font-size: 1.1rem;
-  padding: 1rem;
-}
-
-.tabla-evaluacion .text-center { text-align: center; }
-.tabla-evaluacion .text-right { text-align: right; }
-
+/* Inputs incrustados limpios sin recuadros de formulario */
 .input-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: block;
+  position: relative;
 }
 
 .nota-input {
-  width: 75px !important;
+  width: 100% !important;
+  border: none !important;
+  background: transparent !important;
   text-align: center !important;
-  padding: 0.4rem !important;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #333;
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
-}
-
-.nota-input:focus {
-  border-color: #1a5490;
-  box-shadow: 0 0 0 3px rgba(26, 84, 144, 0.1);
+  font-size: 14px !important;
+  font-weight: bold !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
   outline: none;
 }
-
+.nota-input:focus {
+  background-color: #e6f7ff !important;
+}
 .nota-input.invalid {
-  border-color: #dc3545;
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
-  background-color: #fff8f8;
+  background-color: #ffcccc !important;
+  color: #cc0000;
 }
 
+/* Alerta sutil flotante para no romper la altura de la celda */
 .error-msg {
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
   color: #dc3545;
-  font-size: 0.75rem;
-  min-height: 1.2em; /* Evita que la fila salte al aparecer el texto */
-  margin-top: 0.2rem;
-  font-weight: 500;
+  font-size: 9px;
+  font-weight: bold;
+  white-space: nowrap;
+  min-height: auto;
 }
 
-.puntos-cell {
-  font-weight: bold;
-  color: #1a5490;
-  font-size: 1.2rem;
+/* Fila de Totales Inferior de la Matriz */
+.tabla-evaluacion tfoot td {
+  background-color: #f2f2f2 !important;
+  padding: 0 !important;
+  border-top: 2px solid #000 !important;
 }
+
+.celda-total-matriz {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+}
+
+.texto-precalif {
+  flex: 1;
+  text-align: right;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.badge-rango-dinamico {
+  width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  border-left: 2px solid #000;
+  border-right: 2px solid #000;
+  text-transform: uppercase;
+  background-color: #fff; /* Por defecto */
+}
+
+.valor-promedio-final {
+  width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Colores de Rangos Oficiales SERVIU */
+.badge-rango-dinamico.Bueno { background-color: #92d050 !important; color: #000; }
+.badge-rango-dinamico.Aceptable { background-color: #ffc000 !important; color: #000; }
+.badge-rango-dinamico.Malo { background-color: #ff0000 !important; color: #fff; }
 
 /* ============================================
  REDUCED MOTION (accesibilidad)

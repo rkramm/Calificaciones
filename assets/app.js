@@ -319,23 +319,39 @@ async function cargarItemsCalificacion() {
 
 function renderEvaluationTable(items, notasGuardadas) {
   const container = $('itemsCalifContainer');
+  const etapaNum = $('selectEtapa').value;
+  
+  // Buscamos el nombre largo de la etapa en la configuración
+  const etapaInfo = Cache.config?.etapas?.find(e => e.num == etapaNum);
+  const etapaNombreLargo = etapaInfo?.etapa_nombre || "ETAPA " + etapaNum;
 
   let tableHTML = `
-    <div class="tabla-evaluacion-container">
-      <table class="tabla-evaluacion" id="evalTable">
-        <thead>
-          <tr>
-            <th class="text-center" style="width: 80px;">Ítem N°</th>
-            <th>Factor / Descripción</th>
-            <th class="text-center" style="width: 120px;">Nota (1-100)</th>
-            <th class="text-center" style="width: 100px;">Puntos</th>
-          </tr>
-        </thead>
-        <tbody id="evalTbody">
+    <div class="contenedor-matriz">
+      <div class="header-etapa">
+        <div class="titulo-etapa">
+          <strong>ETAPA ${etapaNum}. ${escHtml(etapaNombreLargo)}</strong>
+          <p>Comprende: diagnóstico del estado de la situación de las familias y/o su necesidad habitacional, reforzamiento de la organización de las familias para el proceso de postulación, aprobación participativa del proyecto habitacional, acompañamiento durante la gestación de (los) proyecto(s) y/o tramitación para la presentación de antecedentes técnicos y sociales a SERVIU, según corresponda.</p>
+        </div>
+        <div class="rango-calificaciones">
+          <div class="rango-item"><strong>MALO</strong>(0-50)</div>
+          <div class="rango-item"><strong>ACEPTABLE</strong>(51-79)</div>
+          <div class="rango-item"><strong>BUENO</strong>(80-100)</div>
+        </div>
+      </div>
+
+      <div class="tabla-evaluacion-container">
+        <table class="tabla-evaluacion" id="evalTable">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 80px;">Ítem N°</th>
+              <th>Factor / Descripción</th>
+              <th class="text-center" style="width: 100px;">Nota (1-100)</th>
+            </tr>
+          </thead>
+          <tbody id="evalTbody">
   `;
 
   items.forEach(item => {
-    // Adaptado para aceptar item_num o num, segun como venga del JSON
     const itemNum = item.item_num || item.num;
     const itemNombre = item.Item_nombre || item.nombre;
     const val = notasGuardadas[itemNum] !== undefined ? notasGuardadas[itemNum] : '';
@@ -344,27 +360,31 @@ function renderEvaluationTable(items, notasGuardadas) {
       <tr data-item="${itemNum}">
         <td class="text-center"><strong>${itemNum}</strong></td>
         <td>${escHtml(itemNombre)}</td>
-        <td class="text-center">
+        <td class="text-center" style="position: relative;">
           <div class="input-wrapper">
-            <!-- El ID se mantiene compatible con tu función de guardar_calificacion -->
             <input type="number" class="nota-input" id="item_${itemNum}" data-num="${itemNum}" min="1" max="100" value="${escHtml(val)}" required>
             <span class="error-msg" id="error_${itemNum}"></span>
           </div>
         </td>
-        <td class="text-center puntos-cell" id="puntos_${itemNum}">-</td>
       </tr>
     `;
   });
 
   tableHTML += `
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="3" class="text-right"><strong>Promedio Final:</strong></td>
-            <td class="text-center"><strong id="promedioFinal" class="promedio-grande">-</strong></td>
-          </tr>
-        </tfoot>
-      </table>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3">
+                <div class="celda-total-matriz">
+                  <div class="texto-precalif"><strong>PRECALIFICACIÓN ETAPA ${etapaNum}.</strong></div>
+                  <div id="badgeRango" class="badge-rango-dinamico">-</div>
+                  <div id="promedioFinal" class="valor-promedio-final">-</div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   `;
 
@@ -384,44 +404,57 @@ function calcularTotalesTabla() {
   const inputs = document.querySelectorAll('.nota-input');
   let sum = 0;
   let count = 0;
+  let tieneErrores = false;
 
   inputs.forEach(input => {
     const val = parseInt(input.value);
     const itemNum = input.dataset.num;
     const errorSpan = $('error_' + itemNum);
-    const puntosCell = $('puntos_' + itemNum);
 
-    // Si está vacío, limpiamos errores
     if (input.value === '') {
       input.classList.remove('invalid');
-      if(errorSpan) errorSpan.textContent = '';
-      if(puntosCell) puntosCell.textContent = '-';
+      if (errorSpan) errorSpan.textContent = '';
       return;
     }
 
-    // Validar rango estricto de 1 a 100
     if (isNaN(val) || val < 1 || val > 100) {
       input.classList.add('invalid');
-      if(errorSpan) errorSpan.textContent = 'Rango: 1-100';
-      if(puntosCell) puntosCell.textContent = '-';
+      if (errorSpan) errorSpan.textContent = '¡1-100!';
+      tieneErrores = true;
     } else {
       input.classList.remove('invalid');
-      if(errorSpan) errorSpan.textContent = '';
-      if(puntosCell) puntosCell.textContent = val; // Aquí puedes multiplicar por un factor si lo necesitas en el futuro
+      if (errorSpan) errorSpan.textContent = '';
       sum += val;
       count++;
     }
   });
 
-  // Calcular y actualizar el promedio/totales
   const promedioCell = $('promedioFinal');
-  if (promedioCell) {
-    if (count > 0 && count === inputs.length) {
-      promedioCell.textContent = (sum / inputs.length).toFixed(1);
-    } else if (count > 0) {
-      promedioCell.textContent = (sum / count).toFixed(1) + ' (parcial)';
+  const badgeRango = $('badgeRango');
+
+  if (promedioCell && badgeRango) {
+    // Si todas las notas están ingresadas y no hay errores de rango
+    if (count > 0 && count === inputs.length && !tieneErrores) {
+      const promedio = Math.round(sum / inputs.length);
+      promedioCell.textContent = promedio;
+
+      // Definición de Rangos según límites SERVIU (Imagen 1)
+      badgeRango.className = "badge-rango-dinamico"; // Reset
+      if (promedio >= 80) {
+        badgeRango.textContent = "BUENO";
+        badgeRango.classList.add("Bueno");
+      } else if (promedio >= 51) {
+        badgeRango.textContent = "ACEPTABLE";
+        badgeRango.classList.add("Aceptable");
+      } else {
+        badgeRango.textContent = "MALO";
+        badgeRango.classList.add("Malo");
+      }
     } else {
-      promedioCell.textContent = '-';
+      // Estado inicial o cálculo parcial
+      promedioCell.textContent = count > 0 ? Math.round(sum / count) + "..." : "-";
+      badgeRango.textContent = "-";
+      badgeRango.className = "badge-rango-dinamico";
     }
   }
 }
