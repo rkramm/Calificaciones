@@ -3,7 +3,7 @@
  * Usa text/plain para evitar preflight CORS
  */
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbw8UcAklgCDyg0bdqUkl5JjSuLIashZwRJuoMOv-5fakDrLEmjjypiQo7UjkODytIEL/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyekZaoy-tQd1Mpkpk-9OPTCeYNBsB1y93gP4oqEEoC6Esia_jjoSzcq9RNHC9auUI/exec';
 
 // ============================================
 // CACHE
@@ -114,7 +114,7 @@ async function apiFetch(url, options = {}, retries = 2) {
 async function apiPost(payload) {
   return apiFetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(payload)
   });
 }
