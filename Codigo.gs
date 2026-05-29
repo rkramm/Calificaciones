@@ -32,6 +32,53 @@ function createErrorResponse(message) {
 }
 
 // =====================================================
+// ETAPAS DESDE SHEET CONFIG
+// =====================================================
+function getEtapasFromConfig() {
+  var sheet = getSheet(SHEET_NAMES.CONFIG);
+  var data = sheet.getDataRange().getValues();
+  
+  if (data.length < 2) return []; // No hay datos aún
+  
+  // Leer los nombres de columna de la primera fila
+  var headers = data[0].map(function(h) { return h.toString().toLowerCase().trim(); });
+  var idxEtapaNum = headers.indexOf('etapa_num');
+  var idxEtapaNom = headers.indexOf('etapa_nombre');
+  var idxEtapaDesc = headers.indexOf('etapa_descripcion');
+  var idxItemNum = headers.indexOf('item_num');
+  
+  if (idxEtapaNum === -1) return [];
+  
+  var etapasMap = {};
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var eNum = row[idxEtapaNum];
+    if (!eNum || eNum === '') continue;
+    
+    if (!etapasMap[eNum]) {
+      etapasMap[eNum] = {
+        num: eNum,
+        etapa_nombre: idxEtapaNom !== -1 ? row[idxEtapaNom] : 'Etapa ' + eNum,
+        descripcion: idxEtapaDesc !== -1 ? row[idxEtapaDesc] : '',
+        items: []
+      };
+    }
+    
+    var iNum = idxItemNum !== -1 ? row[idxItemNum] : i;
+    if (iNum !== undefined && iNum !== '') {
+      etapasMap[eNum].items.push({
+        item_num: iNum,
+        item_nombre: iNum // Se reutiliza item_num para evitar pedir otra columna
+      });
+    }
+  }
+  
+  var result = Object.keys(etapasMap).map(function(k) { return etapasMap[k]; });
+  result.sort(function(a, b) { return a.num - b.num; }); // Ordenar etapas 1, 2, 3...
+  return result;
+}
+
+// =====================================================
 // doGet
 // =====================================================
 function doGet(e) {
