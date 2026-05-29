@@ -365,8 +365,8 @@ function renderEvaluationTable(items, notasGuardadas) {
   `;
 
   items.forEach(item => {
-        const itemNum = item.num || item.numero || item.item_num || item.id || '-';
-        const itemNombre = item.factor || item.descripcion || item.nombre || item.Item_nombre || 'Sin descripción';
+    const itemNum = item.item_num || item.num || item.numero || item.id || '-';
+    const itemNombre = item.item_nombre || item.Item_nombre || item.factor || item.descripcion || item.nombre || 'Sin descripción';
     const val = notasGuardadas[itemNum] !== undefined ? notasGuardadas[itemNum] : '';
 
     tableHTML += `
@@ -493,7 +493,7 @@ $('formCalificacion').addEventListener('submit', async function(e) {
 
   const notas = {};
   for (const item of etapaInfo.items) {
-    const itemNum = item.num || item.numero || item.item_num || item.id || '-';
+    const itemNum = item.item_num || item.num || item.numero || item.id || '-';
     const input = $('item_' + itemNum);
     if (!input) continue;
     const valor = parseInt(input.value);
