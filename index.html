@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- Security headers via meta (lo que se puede hacer en static hosting) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://script.google.com; img-src 'self' data:;">
+  <title>Sistema de Calificaciones SERVIU - Región de Los Lagos</title>
+  <link rel="stylesheet" href="assets/styles.css?v=3">
+</head>
+<body>
+
+<!-- ============================================
+     BARRA DE PROGRESO
+     ============================================ -->
+<div id="progressOverlay" style="display:none;">
+  <div class="progress-box">
+    <div class="progress-spinner"></div>
+    <div id="progressText">Cargando...</div>
+  </div>
+</div>
+
+<!-- ============================================
+     LOGIN
+     ============================================ -->
+<div id="loginScreen" class="screen active">
+  <div class="login-box">
+    <h1>🏠 SERVIU Los Lagos</h1>
+    <h2>Sistema de Calificaciones</h2>
+    <p class="subtitle">Entidades de Asistencia Técnica</p>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label for="loginRut">RUT o ADMIN</label>
+        <input type="text" id="loginRut" placeholder="12.345.678-9 o ADMIN" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Contraseña</label>
+        <input type="password" id="loginPassword" placeholder="••••••" required autocomplete="off" minlength="8">
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;">Ingresar</button>
+    </form>
+
+    <div id="loginError" class="message error" style="display:none;"></div>
+
+    <!-- Boton de demo ELIMINADO por seguridad -->
+    <!-- Si se necesita demo, debe requerir autenticacion previa -->
+  </div>
+</div>
+
+<!-- ============================================
+     PANEL EVALUADOR
+     ============================================ -->
+<div id="mainScreen" class="screen">
+  <header>
+    <h1>📋 Mis Asignaciones</h1>
+    <div>
+      <span id="userName" class="user-badge"></span>
+      <button id="btnLogout" class="btn-secondary">Salir</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="panelAsignaciones">
+      <div class="card">
+        <h2>Entidades Asignadas</h2>
+        <div id="listaAsignaciones" class="asignaciones-list">
+          <p style="text-align:center;color:#888;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="panelCalificacion" style="display:none;">
+      <div class="card">
+        <div class="calif-header">
+          <h2>Calificación</h2>
+          <div>
+            <button id="btnVolver" class="btn-secondary">← Volver</button>
+            <button id="btnCancelar" class="btn-secondary">Cancelar</button>
+          </div>
+        </div>
+
+        <div class="entidad-info">
+          <p><strong>Entidad:</strong> <span id="califEntidad"></span></p>
+          <p><strong>Programa:</strong> <span id="califPrograma"></span></p>
+          <p><strong>Provincia:</strong> <span id="califProvincia"></span></p>
+        </div>
+
+        <div id="itemsContainer"></div>
+        <div id="itemsCalifContainer"></div>
+
+        <form id="formCalificacion" style="margin-top:1rem;">
+          <div id="califMessage" class="message" style="display:none;"></div>
+          <button type="submit" class="btn-primary">💾 Guardar Calificación</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================
+     PANEL ADMIN
+     ============================================ -->
+<div id="adminScreen" class="screen">
+  <header>
+    <h1>⚙️ Panel de Administración</h1>
+    <div>
+      <span class="user-badge admin">ADMIN</span>
+      <button id="btnAdminLogout" class="btn-secondary">Salir</button>
+    </div>
+  </header>
+
+  <div class="admin-container">
+    <nav class="admin-nav">
+      <button class="nav-btn active" data-tab="tabEvaluadores">👤 Evaluadores</button>
+      <button class="nav-btn" data-tab="tabEntidades">🏢 Entidades</button>
+      <button class="nav-btn" data-tab="tabAsignaciones">📝 Asignaciones</button>
+      <button class="nav-btn" data-tab="tabReportes">📊 Reportes</button>
+      <button class="nav-btn" data-tab="tabPlantillas">📥 Plantillas</button>
+      <button class="nav-btn" data-tab="tabCarga">📤 Carga Masiva</button>
+      <button class="nav-btn" data-tab="tabConfig">⚙️ Config</button>
+    </nav>
+
+    <div class="tab-content active" id="tabEvaluadores">
+      <div class="card">
+        <h2>Crear Evaluador</h2>
+        <form id="formEvaluador" autocomplete="off">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombre Completo</label>
+              <input type="text" id="evalNombre" required autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>RUT</label>
+              <input type="text" id="evalRut" required autocomplete="off">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Contraseña (mín. 8 caracteres)</label>
+            <input type="text" id="evalPassword" required minlength="8" autocomplete="off">
+          </div>
+          <button type="submit" class="btn-primary">➕ Crear Evaluador</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Listado de Evaluadores</h2>
+        <div id="listaEvaluadoresAdmin" class="tabla-responsive">
+          <p style="text-align:center;color:#888;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabEntidades">
+      <div class="card">
+        <h2>Crear Entidad</h2>
+        <form id="formEntidad" autocomplete="off">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombre Entidad</label>
+              <input type="text" id="entNombre" required autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>RUT</label>
+              <input type="text" id="entRut" required autocomplete="off">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Provincia</label>
+              <input type="text" id="entProvincia" required autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Programa</label>
+              <input type="text" id="entPrograma" required autocomplete="off">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Proyectos (JSON)</label>
+            <textarea id="entProyectos" rows="3" placeholder='[{"codigo":"PRJ001","nombre":"Proyecto 1","comuna":"Osorno","modalidad":"CNT","familias":100}]' autocomplete="off"></textarea>
+          </div>
+          <button type="submit" class="btn-primary">➕ Crear Entidad</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Listado de Entidades</h2>
+        <div id="listaEntidadesAdmin" class="tabla-responsive">
+          <p style="text-align:center;color:#888;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabAsignaciones">
+      <div class="card">
+        <h2>📝 Asignaciones Masivas</h2>
+        <p class="hint">Seleccione evaluador(es) y marque las entidades/etapas que desea asignar</p>
+
+        <div class="form-group">
+          <label>Filtrar por Provincia</label>
+          <select id="filtroProvincia">
+            <option value="">Todas las provincias</option>
+          </select>
+        </div>
+
+        <div class="dos-columnas">
+          <div class="columna-evaluadores">
+            <h3>👥 Seleccione Evaluador(es)</h3>
+            <label style="font-size:0.8rem;margin-bottom:0.5rem;display:block;">
+              <input type="checkbox" id="checkAllEval"> Todos
+            </label>
+            <div id="listaEvaluadoresCheck" class="check-list"></div>
+          </div>
+
+          <div class="columna-entidades">
+            <h3>🏢 Seleccione Entidades y Etapas</h3>
+            <label style="font-size:0.8rem;margin-bottom:0.5rem;display:block;">
+              <input type="checkbox" id="checkAllEntidades"> Todas
+            </label>
+            <div class="tabla-check-container">
+              <table class="tabla-check" id="tablaAsignacionesCheck">
+                <thead>
+                  <tr>
+                    <th><input type="checkbox" id="checkAllEntidadesHeader"></th>
+                    <th>Entidad</th>
+                    <th>Prov.</th>
+                    <th>Prog.</th>
+                    <th>Proy.</th>
+                    <th>Etapas</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaAsignacionesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btnGuardarAsignaciones" class="btn-primary">💾 Guardar Asignaciones</button>
+          <button id="btnLimpiarAsignaciones" class="btn-secondary">🧹 Limpiar</button>
+        </div>
+        <div id="asignMessage" class="message" style="display:none;"></div>
+      </div>
+
+      <div class="card">
+        <h2>Asignaciones Existentes</h2>
+        <div id="listaAsignacionesAdmin" class="tabla-responsive">
+          <p style="text-align:center;color:#888;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabReportes">
+      <div class="card">
+        <h2>📊 Resumen de Calificaciones</h2>
+        <button id="btnGenerarResumen" class="btn-primary">🔄 Generar</button>
+        <div id="tablaResumen" class="tabla-responsive" style="margin-top:1rem;">
+          <p style="text-align:center;color:#888;">Presione "Generar" para ver resultados</p>
+        </div>
+      </div>
+      <div id="panelReporteDetalle" class="card" style="display:none;">
+        <div class="reporte-header">
+          <h3>Reporte Detallado</h3>
+          <div class="reporte-actions">
+            <button id="btnVerPantalla" class="btn-secondary">👁️ Ver</button>
+            <button id="btnDescargarXLSX" class="btn-secondary">📥 CSV</button>
+            <button id="btnCerrarReporte" class="btn-secondary">✕</button>
+          </div>
+        </div>
+        <div id="contenidoReporteDetalle"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabPlantillas">
+      <div class="card">
+        <h2>📥 Descargar Plantillas</h2>
+        <p class="hint">Descargue las plantillas, complételas y luego súbalas en la sección de Carga Masiva</p>
+        <div class="plantillas-grid">
+          <div class="plantilla-item">
+            <h3>👥 Evaluadores</h3>
+            <p>Columnas: nombre_completo, rut, password</p>
+            <button onclick="descargarPlantilla('evaluadores')" class="btn-secondary">📥 Descargar</button>
+          </div>
+          <div class="plantilla-item">
+            <h3>🏢 Entidades</h3>
+            <p>Columnas: nombre_entidad, rut, provincia, programa</p>
+            <button onclick="descargarPlantilla('entidades')" class="btn-secondary">📥 Descargar</button>
+          </div>
+          <div class="plantilla-item">
+            <h3>📋 Proyectos</h3>
+            <p>Columnas: entidad_nombre, codigo, nombre_proyecto, comuna, modalidad, familias, año</p>
+            <button onclick="descargarPlantilla('proyectos')" class="btn-secondary">📥 Descargar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabCarga">
+      <div class="card">
+        <h2>📤 Carga Masiva</h2>
+        <p class="hint">Seleccione el tipo de datos y suba el archivo CSV</p>
+        <div class="form-group">
+          <label>Tipo de Carga</label>
+          <select id="tipoCargaMasiva">
+            <option value="evaluadores">Evaluadores</option>
+            <option value="entidades">Entidades</option>
+            <option value="proyectos">Proyectos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Archivo CSV</label>
+          <input type="file" id="fileCargaMasiva" accept=".csv">
+        </div>
+        <button id="btnProcesarCarga" class="btn-primary">📤 Procesar Carga</button>
+        <div id="cargaMessage" class="message" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabConfig">
+      <div class="card">
+        <h2>⚙️ Configuración del Sistema</h2>
+        <div class="config-item">
+          <label>
+            <input type="checkbox" id="chkVerNotas">
+            Permitir a evaluadores ver notas de otros evaluadores
+          </label>
+        </div>
+        <button id="btnGuardarConfig" class="btn-primary">💾 Guardar Configuración</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/app.js?v=3"></script>
+</body>
+</html>
