@@ -1070,6 +1070,97 @@ input[type="file"]:hover {
 }
 
 /* ============================================
+ TABLA DE EVALUACIÓN DINÁMICA
+ ============================================ */
+.tabla-evaluacion-container {
+  overflow-x: auto;
+  margin-top: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border: 1px solid #e0e7ef;
+  -webkit-overflow-scrolling: touch; /* Suavidad en móviles */
+}
+
+.tabla-evaluacion {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 500px;
+}
+
+.tabla-evaluacion th {
+  background-color: #f0f4f8; /* Tono gris azulado */
+  color: #1a5490;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.8rem 1rem;
+  border-bottom: 2px solid #e0e7ef;
+}
+
+.tabla-evaluacion td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #e0e7ef;
+  vertical-align: middle;
+}
+
+.tabla-evaluacion tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.tabla-evaluacion tfoot td {
+  background-color: #f0f4f8;
+  font-size: 1.1rem;
+  padding: 1rem;
+}
+
+.tabla-evaluacion .text-center { text-align: center; }
+.tabla-evaluacion .text-right { text-align: right; }
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nota-input {
+  width: 75px !important;
+  text-align: center !important;
+  padding: 0.4rem !important;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #333;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.nota-input:focus {
+  border-color: #1a5490;
+  box-shadow: 0 0 0 3px rgba(26, 84, 144, 0.1);
+  outline: none;
+}
+
+.nota-input.invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+  background-color: #fff8f8;
+}
+
+.error-msg {
+  color: #dc3545;
+  font-size: 0.75rem;
+  min-height: 1.2em; /* Evita que la fila salte al aparecer el texto */
+  margin-top: 0.2rem;
+  font-weight: 500;
+}
+
+.puntos-cell {
+  font-weight: bold;
+  color: #1a5490;
+  font-size: 1.2rem;
+}
+
+/* ============================================
  REDUCED MOTION (accesibilidad)
  ============================================ */
 @media (prefers-reduced-motion: reduce) {

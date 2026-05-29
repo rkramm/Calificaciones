@@ -313,24 +313,117 @@ async function cargarItemsCalificacion() {
   const califExistente = await buscarCalificacionExistente(currentUser.entidadSeleccionada.id, etapaNum);
   Progress.hide();
 
-  const frag = document.createDocumentFragment();
-  etapaInfo.items.forEach(item => {
-    const notaGuardada = califExistente?.notas?.[item.num] || '';
-    const div = document.createElement('div');
-    div.className = 'item-calificacion';
-    div.innerHTML = `
-      <label><span class="item-numero">${item.num}</span><span class="item-descripcion">${escHtml(item.nombre)}</span></label>
-      <div class="item-input">
-        <input type="number" id="item_${item.num}" min="1" max="100" value="${escHtml(notaGuardada)}" required>
-        <span class="escala">Nota 1-100 (solo enteros)</span>
-      </div>
+  // Llamamos a la nueva funcion para renderizar la tabla dinámica
+  renderEvaluationTable(etapaInfo.items, califExistente?.notas || {});
+}
+
+function renderEvaluationTable(items, notasGuardadas) {
+  const container = $('itemsCalifContainer');
+
+  let tableHTML = `
+    <div class="tabla-evaluacion-container">
+      <table class="tabla-evaluacion" id="evalTable">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 80px;">Ítem N°</th>
+            <th>Factor / Descripción</th>
+            <th class="text-center" style="width: 120px;">Nota (1-100)</th>
+            <th class="text-center" style="width: 100px;">Puntos</th>
+          </tr>
+        </thead>
+        <tbody id="evalTbody">
+  `;
+
+  items.forEach(item => {
+    // Adaptado para aceptar item_num o num, segun como venga del JSON
+    const itemNum = item.item_num || item.num;
+    const itemNombre = item.Item_nombre || item.nombre;
+    const val = notasGuardadas[itemNum] !== undefined ? notasGuardadas[itemNum] : '';
+
+    tableHTML += `
+      <tr data-item="${itemNum}">
+        <td class="text-center"><strong>${itemNum}</strong></td>
+        <td>${escHtml(itemNombre)}</td>
+        <td class="text-center">
+          <div class="input-wrapper">
+            <!-- El ID se mantiene compatible con tu función de guardar_calificacion -->
+            <input type="number" class="nota-input" id="item_${itemNum}" data-num="${itemNum}" min="1" max="100" value="${escHtml(val)}" required>
+            <span class="error-msg" id="error_${itemNum}"></span>
+          </div>
+        </td>
+        <td class="text-center puntos-cell" id="puntos_${itemNum}">-</td>
+      </tr>
     `;
-    frag.appendChild(div);
   });
 
-  const container = $('itemsCalifContainer');
-  container.innerHTML = '';
-  container.appendChild(frag);
+  tableHTML += `
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="text-right"><strong>Promedio Final:</strong></td>
+            <td class="text-center"><strong id="promedioFinal" class="promedio-grande">-</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = tableHTML;
+
+  // Añadir eventos a cada input para el cálculo dinámico en tiempo real
+  const inputs = container.querySelectorAll('.nota-input');
+  inputs.forEach(input => {
+    input.addEventListener('input', calcularTotalesTabla);
+  });
+  
+  // Ejecutar cálculo inicial por si ya existen notas guardadas (modo edición)
+  calcularTotalesTabla();
+}
+
+function calcularTotalesTabla() {
+  const inputs = document.querySelectorAll('.nota-input');
+  let sum = 0;
+  let count = 0;
+
+  inputs.forEach(input => {
+    const val = parseInt(input.value);
+    const itemNum = input.dataset.num;
+    const errorSpan = $('error_' + itemNum);
+    const puntosCell = $('puntos_' + itemNum);
+
+    // Si está vacío, limpiamos errores
+    if (input.value === '') {
+      input.classList.remove('invalid');
+      if(errorSpan) errorSpan.textContent = '';
+      if(puntosCell) puntosCell.textContent = '-';
+      return;
+    }
+
+    // Validar rango estricto de 1 a 100
+    if (isNaN(val) || val < 1 || val > 100) {
+      input.classList.add('invalid');
+      if(errorSpan) errorSpan.textContent = 'Rango: 1-100';
+      if(puntosCell) puntosCell.textContent = '-';
+    } else {
+      input.classList.remove('invalid');
+      if(errorSpan) errorSpan.textContent = '';
+      if(puntosCell) puntosCell.textContent = val; // Aquí puedes multiplicar por un factor si lo necesitas en el futuro
+      sum += val;
+      count++;
+    }
+  });
+
+  // Calcular y actualizar el promedio/totales
+  const promedioCell = $('promedioFinal');
+  if (promedioCell) {
+    if (count > 0 && count === inputs.length) {
+      promedioCell.textContent = (sum / inputs.length).toFixed(1);
+    } else if (count > 0) {
+      promedioCell.textContent = (sum / count).toFixed(1) + ' (parcial)';
+    } else {
+      promedioCell.textContent = '-';
+    }
+  }
 }
 
 async function buscarCalificacionExistente(entidadId, etapaNum) {
