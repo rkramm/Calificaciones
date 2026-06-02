@@ -122,7 +122,7 @@ function clearFormInputs(ids) {
 
 function dbGetAll(storeName, callback) {
     if (CLOUD_MODE_ENABLED) {
-        showProgressBar(`Conectando con Google: ${storeName}...`);
+        showProgressBar(`Conectando al servidor: ${storeName}...`);
         cloudGet(storeName).then(data => {
             hideProgressBar();
             callback(data);
@@ -132,13 +132,35 @@ function dbGetAll(storeName, callback) {
     }
 }
 
+function getMultipleStores(storeNames, callback) {
+    if (CLOUD_MODE_ENABLED) {
+        showProgressBar(`Sincronizando base de datos...`);
+        Promise.all(storeNames.map(store => cloudGet(store)))
+            .then(results => {
+                hideProgressBar();
+                callback(results);
+            });
+    } else {
+        const tx = dbInstance.transaction(storeNames, 'readonly');
+        const results = new Array(storeNames.length);
+        let completed = 0;
+        storeNames.forEach((store, i) => {
+            tx.objectStore(store).getAll().onsuccess = (e) => {
+                results[i] = e.target.result;
+                completed++;
+                if (completed === storeNames.length) callback(results);
+            };
+        });
+    }
+}
+
 /* ================= MOTOR DE NUBE (GOOGLE APPS SCRIPT) ================= */
 async function cloudGet(table) {
     try {
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}`);
         return await response.json();
     } catch (error) {
-        console.error(`Error leyendo tabla ${table} desde Google:`, error);
+        console.error(`Error leyendo tabla ${table} desde el servidor:`, error);
         return [];
     }
 }
@@ -444,32 +466,43 @@ function initIndexedDB(callback) {
 }
 
 function loadCoreData(callback) {
-    const tx = dbInstance.transaction(['items', 'configuracion'], 'readonly');
-    const itemReq = tx.objectStore('items').getAll();
-    const cfgReq = tx.objectStore('configuracion').get('fecha_limite');
-
-    tx.oncomplete = () => {
-        if (itemReq.result.length < DEFAULT_ITEMS.length) {
-            const writeTx = dbInstance.transaction(['items'], 'readwrite');
-            DEFAULT_ITEMS.forEach(i => writeTx.objectStore('items').put(i));
+    getMultipleStores(['items', 'configuracion'], ([items, config]) => {
+        const cfgReq = config.find(c => c.clave === 'fecha_limite');
+        
+        if (items.length < DEFAULT_ITEMS.length) {
             dbItems = DEFAULT_ITEMS;
+            if (!CLOUD_MODE_ENABLED) {
+                const writeTx = dbInstance.transaction(['items'], 'readwrite');
+                DEFAULT_ITEMS.forEach(i => writeTx.objectStore('items').put(i));
+            }
         } else {
-            dbItems = itemReq.result;
+            dbItems = items;
         }
-        if (cfgReq.result) {
-            document.getElementById('cfg-deadline').value = cfgReq.result.valor;
-            savedDeadlineISO = cfgReq.result.valor;
+        
+        if (cfgReq) {
+            document.getElementById('cfg-deadline').value = cfgReq.valor;
+            savedDeadlineISO = cfgReq.valor;
         }
+        
+        // Enciende el semáforo visual si se logró cargar la base de datos
+        const dot = document.getElementById('conn-dot');
+        const txt = document.getElementById('conn-text');
+        if (dot && txt) {
+            dot.style.backgroundColor = '#92D050'; // Forzamos el color hexadecimal
+            txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Desconectado';
+            txt.style.color = '#25306B';
+            txt.style.fontWeight = 'bold';
+        }
+
         if (callback) callback();
-    };
+    });
 }
 
 function checkDeadlineStatus() {
-    const tx = dbInstance.transaction(['configuracion'], 'readonly');
-    const req = tx.objectStore('configuracion').get('fecha_limite');
-    tx.oncomplete = () => {
-        if (req.result && req.result.valor) {
-            savedDeadlineISO = req.result.valor;
+    dbGetAll('configuracion', (config) => {
+        const req = config.find(c => c.clave === 'fecha_limite');
+        if (req && req.valor) {
+            savedDeadlineISO = req.valor;
             const targetDate = parseSafeDate(savedDeadlineISO);
             deadlineExpired = targetDate ? (new Date() > targetDate) : false;
         } else {
@@ -483,7 +516,7 @@ function checkDeadlineStatus() {
             toggleElement('deadline-alert', false);
             if (saveBtn) saveBtn.disabled = false;
         }
-    };
+    });
 }
 
 function startCountdownClock() {
@@ -573,6 +606,15 @@ function renderAdminProgramsColumn() {
     const savedPrograms = adminTemporaryLogisticaMap[adminSelectedProvincia] || [];
     col.innerHTML = `<div style="font-size:0.75rem; font-weight:bold; color:var(--primary-blue); margin-bottom:5px; text-transform:uppercase;">Programas en ${adminSelectedProvincia}:</div>` + 
         [...PROGRAMAS_BASE].sort().map(prog => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-programa-dinamico-chk" value="${prog}" ${savedPrograms.includes(prog) ? 'checked' : ''}> ${prog}</label></div>`).join('');
+        
+    document.querySelectorAll('.asig-programa-dinamico-chk').forEach(chk => {
+        chk.addEventListener('change', () => {
+            captureCurrentAdminProgramsState();
+            renderAdminEntidadesColumn();
+        });
+    });
+    
+    renderAdminEntidadesColumn();
 }
 
 function renderAdminEntidadesColumn() {
@@ -591,8 +633,9 @@ function handleLogin() {
     const userInput = document.getElementById('username').value.trim();
     const passInput = document.getElementById('password').value.trim();
     if (userInput.toLowerCase() === 'admin') {
+        dbGetAll('configuracion', (config) => {
             const cfgClave = config.find(c => c.clave === 'clave_admin');
-            const validAdminPass = cfgClave ? cfgClave.valor : 'admin123'; // Clave de rescate por defecto
+            const validAdminPass = cfgClave ? cfgClave.valor : 'admin123'; 
             
             if (passInput !== validAdminPass) {
                 alert('Contraseña de administrador incorrecta.');
@@ -604,23 +647,18 @@ function handleLogin() {
             showPanel('Panel de Administración General');
         });
     } else {
-        const tx = dbInstance.transaction(['evaluadores', 'asignaciones', 'scores'], 'readonly');
-        const evReq = tx.objectStore('evaluadores').get(userInput);
-        const scoresReq = tx.objectStore('scores').getAll();
-        const allAsignacionesReq = tx.objectStore('asignaciones').getAll();
-
-        tx.oncomplete = () => {
-            if (!evReq.result) { alert('RUT de evaluador no registrado.'); return; }
+        getMultipleStores(['evaluadores', 'asignaciones', 'scores'], ([evaluadores, asignaciones, scores]) => {
+            const evResult = evaluadores.find(e => e.rut === userInput);
+            if (!evResult) { alert('RUT de evaluador no registrado.'); return; }
             
-            const validPass = evReq.result.clave || '123456';
+            const validPass = evResult.clave || '123456';
             if (validPass !== passInput) { alert('Contraseña incorrecta.'); return; }
             
-            currentUser = evReq.result;
+            currentUser = evResult;
             currentRole = 'evaluador';
+
+            const userAsignaciones = asignaciones.filter(a => a.rut === currentUser.rut);
             
-            const userAsignaciones = allAsignacionesReq.result.filter(a => a.rut === currentUser.rut);
-            
-            /* Solución al bloqueo: Si no hay asignación previa, levantar un perfil base de contingencia */
             if(userAsignaciones.length === 0) {
                 allAsignacionesMapped = [{ cobertura: "DS10 - CHILOÉ", etapas: [1] }];
             } else {
@@ -630,14 +668,14 @@ function handleLogin() {
                 })).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
             }
 
-            allMemoryScores = scoresReq.result.filter(r => r.rutEvaluador === currentUser.rut);
+            allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
             currentCoverage = allAsignacionesMapped[0].cobertura;
             const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
             currentStage = matchingConfig ? matchingConfig.etapas[0] : 1;
             
             showPanel('Sistema de Precalificación Técnica');
             startCountdownClock();
-        };
+        });
     }
 }
 
@@ -831,33 +869,29 @@ function executeCommitAsignacion() {
 }
 
 function renderMonitoringTable() {
-    dbGetAll('asignaciones', (asignaciones) => {
-        dbGetAll('evaluadores', (evaluadores) => {
-            dbGetAll('scores', (scores) => {
-                const tbody = document.getElementById('admin-monitoring-rows');
-                if (asignaciones.length === 0) { 
-                    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center">No hay registros.</td></tr>`; 
-                    return; 
-                }
+    getMultipleStores(['asignaciones', 'evaluadores', 'scores'], ([asignaciones, evaluadores, scores]) => {
+        const tbody = document.getElementById('admin-monitoring-rows');
+        if (asignaciones.length === 0) { 
+            if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center">No hay registros.</td></tr>`; 
+            return; 
+        }
 
-                const evMap = {}; evaluadores.forEach(e => evMap[e.rut] = e.nombre);
-                const scoresMap = {}; scores.forEach(s => { const k = `${s.rutEvaluador}_${s.cobertura}_${s.stage}`; if (!scoresMap[k]) scoresMap[k] = []; scoresMap[k].push(s); });
+        const evMap = {}; evaluadores.forEach(e => evMap[e.rut] = e.nombre);
+        const scoresMap = {}; scores.forEach(s => { const k = `${s.rutEvaluador}_${s.cobertura}_${s.stage}`; if (!scoresMap[k]) scoresMap[k] = []; scoresMap[k].push(s); });
 
-                monitoringData = [];
+        monitoringData = [];
 
-                asignaciones.forEach(asig => {
-                    const nom = evMap[asig.rut] || asig.rut;
-                    const cobLabel = buildCoberturaLabel(asig.programa, asig.provincia, asig.entidadNombre);
-                    asig.etapas.forEach(stg => {
-                        const currentScores = scoresMap[`${asig.rut}_${cobLabel}_${stg}`] || [];
-                        let sum = 0, count = 0; currentScores.forEach(s => { sum += s.score; count++; });
-                        const avg = count > 0 ? Math.round(sum / count) : 0;
-                        monitoringData.push({ idAsig: asig.idAsig, rut: asig.rut, nombre: nom, evaluadorLabel: `${nom} (${asig.rut})`, programa: asig.programa, provincia: asig.provincia, entidadNombre: asig.entidadNombre, coberturaLabel: cobLabel, stageNum: stg, haEvaluado: (count > 0), average: avg });
-                    });
-                });
-                setupMonitoringHeaders(); drawMonitoringTable(); renderMonitoringCharts(); renderReportes();
+        asignaciones.forEach(asig => {
+            const nom = evMap[asig.rut] || asig.rut;
+            const cobLabel = buildCoberturaLabel(asig.programa, asig.provincia, asig.entidadNombre);
+            asig.etapas.forEach(stg => {
+                const currentScores = scoresMap[`${asig.rut}_${cobLabel}_${stg}`] || [];
+                let sum = 0, count = 0; currentScores.forEach(s => { sum += s.score; count++; });
+                const avg = count > 0 ? Math.round(sum / count) : 0;
+                monitoringData.push({ idAsig: asig.idAsig, rut: asig.rut, nombre: nom, evaluadorLabel: `${nom} (${asig.rut})`, programa: asig.programa, provincia: asig.provincia, entidadNombre: asig.entidadNombre, coberturaLabel: cobLabel, stageNum: stg, haEvaluado: (count > 0), average: avg });
             });
         });
+        setupMonitoringHeaders(); drawMonitoringTable(); renderMonitoringCharts(); renderReportes();
     });
 }
 
@@ -1294,20 +1328,17 @@ function openAuditModal(rut, nombre, cobertura, stageNum) {
 
 function populateAdminMatrix() {
     pendingAsignacionesStaging = []; adminTemporaryEntidades = [];
-    dbGetAll('evaluadores', (evaluadores) => {
+    getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
         document.getElementById('col-evaluadores').innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
         
         renderEvaluadoresTable(evaluadores);
-        dbGetAll('entidades', (entidades) => {
-            adminTemporaryEntidades = entidades;
-            renderEntidadesAgregadas();
-            document.getElementById('chk-toggle-all-stages').checked = false;
-            document.querySelectorAll('.asig-etapa-chk').forEach(c => c.checked = false);
-            adminSelectedProvincia = ""; adminTemporaryLogisticaMap = {};
-            const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
-            renderAdminProgramsColumn(); 
-            renderAdminEntidadesColumn();
-        });
+        adminTemporaryEntidades = entidades;
+        renderEntidadesAgregadas();
+        document.getElementById('chk-toggle-all-stages').checked = false;
+        document.querySelectorAll('.asig-etapa-chk').forEach(c => c.checked = false);
+        adminSelectedProvincia = ""; adminTemporaryLogisticaMap = {};
+        const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
+        renderAdminProgramsColumn(); 
     });
 }
 
