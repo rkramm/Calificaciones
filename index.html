@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Precalificación e Inspección</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Librería SheetJS para importar masivamente desde Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -139,8 +137,6 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px;">
                         <h3 style="color:var(--primary-dark); font-size:1.1rem; margin:0; width: 100%; max-width: 200px;">Directorio de Entidades</h3>
                         <div style="display: flex; gap: 5px;">
-                            <button id="btn-import-entidades" class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem; background-color:#217346; border-color:#217346;" title="Formato: RUT | Nombre | Comuna | Programa | Convenio | Fecha">📥 Importar Excel</button>
-                            <input type="file" id="file-import-entidades" accept=".xlsx, .xls" class="hidden">
                             <button id="btn-open-entidad-modal" class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;">+ Nueva Entidad</button>
                         </div>
                     </div>
@@ -168,12 +164,8 @@
             <!-- SUBPANEL: EVALUADORES -->
             <div id="panel-evaluadores" class="admin-subpanel hidden">
                 <div class="card compact-card" style="margin-bottom: 15px;">
-                    <h3 style="margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px; color:var(--primary-dark); display:flex; justify-content:space-between; align-items:center;">
-                        <span>Registrar Evaluador</span>
-                        <div style="display: flex; gap: 5px;">
-                            <button id="btn-import-evaluadores" class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem; background-color:#217346; border-color:#217346;" title="Formato: RUT | Nombre | Área | Clave">📥 Importar Excel</button>
-                            <input type="file" id="file-import-evaluadores" accept=".xlsx, .xls" class="hidden">
-                        </div>
+                    <h3 style="margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px; color:var(--primary-dark);">
+                        Registrar Evaluador
                     </h3>
                     <div class="grid-2" style="gap:10px; margin-bottom:5px;">
                         <input type="text" id="ev-nombre" placeholder="Nombre Completo">
