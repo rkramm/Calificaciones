@@ -591,9 +591,18 @@ function handleLogin() {
     const userInput = document.getElementById('username').value.trim();
     const passInput = document.getElementById('password').value.trim();
     if (userInput.toLowerCase() === 'admin') {
-        currentUser = { nombre: "Administrador", rut: "admin" };
-        currentRole = 'admin';
-        showPanel('Panel de Administración General');
+            const cfgClave = config.find(c => c.clave === 'clave_admin');
+            const validAdminPass = cfgClave ? cfgClave.valor : 'admin123'; // Clave de rescate por defecto
+            
+            if (passInput !== validAdminPass) {
+                alert('Contraseña de administrador incorrecta.');
+                return;
+            }
+            
+            currentUser = { nombre: "Administrador", rut: "admin" };
+            currentRole = 'admin';
+            showPanel('Panel de Administración General');
+        });
     } else {
         const tx = dbInstance.transaction(['evaluadores', 'asignaciones', 'scores'], 'readonly');
         const evReq = tx.objectStore('evaluadores').get(userInput);
