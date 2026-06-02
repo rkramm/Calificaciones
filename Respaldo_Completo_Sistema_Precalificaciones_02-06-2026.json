@@ -1,0 +1,1275 @@
+{
+  "items": [
+    {
+      "id": "1.1",
+      "stage": 1,
+      "text": "Calidad en la gestión y desarrollo del(los) servicio (s) de asistencia técnica"
+    },
+    {
+      "id": "1.2",
+      "stage": 1,
+      "text": "Preparación y desarrollo de diagnósticos técnicos y sociales pertinentes."
+    },
+    {
+      "id": "1.3",
+      "stage": 1,
+      "text": "Entrega oportuna de información del proyecto a las familias."
+    },
+    {
+      "id": "1.4",
+      "stage": 1,
+      "text": "Participación activa de las familias en la aprobación del proyecto."
+    },
+    {
+      "id": "1.5",
+      "stage": 1,
+      "text": "Calidad y disponibilidad de información y/o antecedentes solicitados por el organismo de revisión."
+    },
+    {
+      "id": "1.6",
+      "stage": 1,
+      "text": "Organización adecuada del trabajo en terreno."
+    },
+    {
+      "id": "1.7",
+      "stage": 1,
+      "text": "Disposición para atender a las familias en dependencias adecuadas y bien equipadas."
+    },
+    {
+      "id": "1.8",
+      "stage": 1,
+      "text": "Efectiva coordinación con la contraparte técnica de revisión."
+    },
+    {
+      "id": "2.1",
+      "stage": 2,
+      "text": "Adecuada evaluación técnica y/o legal de bienes inmuebles"
+    },
+    {
+      "id": "2.2",
+      "stage": 2,
+      "text": "Calidad del (los) proyecto (s) presentado (s)"
+    },
+    {
+      "id": "2.3",
+      "stage": 2,
+      "text": "Resolución oportuna de observaciones al (los) proyecto (s) formuladas."
+    },
+    {
+      "id": "2.4",
+      "stage": 2,
+      "text": "Calidad de la gestión externa con empresas de servicios constructores y otras entidades públicas y privadas relacionadas con la formulación del proyecto."
+    },
+    {
+      "id": "2.5",
+      "stage": 2,
+      "text": "Evaluación técnica y/o legal adecuada de terrenos y otros bienes inmuebles."
+    },
+    {
+      "id": "2.6",
+      "stage": 2,
+      "text": "Adecuado desarrollo del proceso de elección y selección de la Empresa Constructora."
+    },
+    {
+      "id": "2.7",
+      "stage": 2,
+      "text": "Calidad y disponibilidad de información y/o antecedentes solicitados."
+    },
+    {
+      "id": "2.8",
+      "stage": 2,
+      "text": "Disposición y organización adecuada del trabajo de terreno."
+    },
+    {
+      "id": "2.9",
+      "stage": 2,
+      "text": "Efectiva coordinación con la contraparte técnica."
+    },
+    {
+      "id": "3.1",
+      "stage": 3,
+      "text": "Calidad en la gestión y desarrollo del (los) servicio (s) de asistencia técnica"
+    },
+    {
+      "id": "3.2",
+      "stage": 3,
+      "text": "Coordinación con actores externos CBR, DOM y otras entidades públicas y privadas vinculadas al desarrollo del proyecto."
+    },
+    {
+      "id": "3.3",
+      "stage": 3,
+      "text": "Gestión legal and administrativa adecuada para la compra o el traspaso y/o compra de otros bienes inmuebles."
+    },
+    {
+      "id": "3.4",
+      "stage": 3,
+      "text": "Cumplimiento de plazos asociados a este servicio (traspasos recepciones, inscripciones.. etc.)"
+    },
+    {
+      "id": "3.5",
+      "stage": 3,
+      "text": "Calidad de la atención legal a usuarios/beneficiarios"
+    },
+    {
+      "id": "3.6",
+      "stage": 3,
+      "text": "Calidad y disponibilidad de información y/o antecedentes solicitados por otros organismos públicos y privados"
+    },
+    {
+      "id": "3.7",
+      "stage": 3,
+      "text": "Efectiva coordinación técnica general."
+    },
+    {
+      "id": "4.1",
+      "stage": 4,
+      "text": "Calidad en la gestión y desarrollo del (los) servicio (s) de asistencia técnica"
+    },
+    {
+      "id": "4.10",
+      "stage": 4,
+      "text": "Efectiva coordinación institucional."
+    },
+    {
+      "id": "4.2",
+      "stage": 4,
+      "text": "Calidad de la atención a usuarios/beneficiarios"
+    },
+    {
+      "id": "4.3",
+      "stage": 4,
+      "text": "Adecuada relación y coordinación con proveedores y otras entidades públicas y privadas relacionadas con el desarrollo material del proyecto."
+    },
+    {
+      "id": "4.4",
+      "stage": 4,
+      "text": "Resolución oportuna de observaciones al (los) proyecto (s) y a problemas técnicos, financieros ,sociales o administrativos durante su ejecución."
+    },
+    {
+      "id": "4.5",
+      "stage": 4,
+      "text": "Verificación oportuna del cumplimiento de las obligaciones contractuales y laborales de la empresa Constructora."
+    },
+    {
+      "id": "4.6",
+      "stage": 4,
+      "text": "Realización oportuna de las modificaciones del proyecto cuando corresponda."
+    },
+    {
+      "id": "4.7",
+      "stage": 4,
+      "text": "Calidad y disponibilidad de información y/o antecedentes del proyecto solicitados oportunamente."
+    },
+    {
+      "id": "4.8",
+      "stage": 4,
+      "text": "Coordinación adecuada con otros organismos para verificar el término del proyecto y con la empresa constructora para aprobar el proceso de post venta."
+    },
+    {
+      "id": "4.9",
+      "stage": 4,
+      "text": "Gestión técnica y administrativa oportuna respecto de temas relacionados con subsidios (prórrogas, reemplazos, etc)"
+    },
+    {
+      "id": "5.1",
+      "stage": 5,
+      "text": "Calidad en la gestión y desarrollo del (los) servicio (s) de asistencia técnica"
+    },
+    {
+      "id": "5.2",
+      "stage": 5,
+      "text": "Calidad del acompañamiento social a usuarios/beneficiarios"
+    },
+    {
+      "id": "5.3",
+      "stage": 5,
+      "text": "Desarrollo adecuado y oportuno de talleres y/o jornadas de capacitación a las familias sobre temas vinculados a derechos y deberes como propietarios."
+    },
+    {
+      "id": "5.4",
+      "stage": 5,
+      "text": "Entrega oportuna sobre información del avance del proyecto a las familias y/o modificaciones a éste durante su desarrollo."
+    },
+    {
+      "id": "5.5",
+      "stage": 5,
+      "text": "Capacidad de resolver conflictos entre las familias y/o entre las familias y la Empresa Construcción."
+    },
+    {
+      "id": "5.6",
+      "stage": 5,
+      "text": "Presencia activa de profesionales del área social en las actividades en terreno."
+    },
+    {
+      "id": "5.7",
+      "stage": 5,
+      "text": "Efectiva coordinación técnica del área social."
+    },
+    {
+      "id": "6.1",
+      "stage": 6,
+      "text": "Calidad en la gestión y desarrollo del (los) servicio (s) de asistencia técnica"
+    },
+    {
+      "id": "6.2",
+      "stage": 6,
+      "text": "Calidad de la atención a usuarios/beneficiarios durante el proceso de instalación de las familias en sus viviendas y barrios cuando corresponda."
+    },
+    {
+      "id": "6.3",
+      "stage": 6,
+      "text": "Cumplimiento de plazos en el desarrollo de los servicios asociados a la post entrega."
+    },
+    {
+      "id": "6.4",
+      "stage": 6,
+      "text": "Desarrollo oportuno de talleres y/o capacitaciones sobre el uso y cuidado de la vivienda a las familias."
+    },
+    {
+      "id": "6.5",
+      "stage": 6,
+      "text": "Entrega de información pertinente y oportuna a las familias sobre la existencia y funcionamiento de servicios y organismos locales."
+    },
+    {
+      "id": "6.6",
+      "stage": 6,
+      "text": "Entrega de información confiable sobre ocupación de las viviendas."
+    },
+    {
+      "id": "6.7",
+      "stage": 6,
+      "text": "Calidad y disponibilidad de información y/o antecedentes solicitados."
+    },
+    {
+      "id": "6.8",
+      "stage": 6,
+      "text": "Desarrollo oportuno de talleres de capacitación a las familias acerca del proceso de vida en comunidad y ley de copropiedad inmobiliaria cuando corresponda"
+    },
+    {
+      "id": "6.9",
+      "stage": 6,
+      "text": "Efectiva coordinación de cierre final."
+    }
+  ],
+  "scores": [
+    {
+      "idTx": "00-0_DS49OSORNOCASAACTIVA_1.1",
+      "timestampId": "1780404660092",
+      "rutEvaluador": "00-0",
+      "itemId": "1.1",
+      "stage": 1,
+      "score": 80,
+      "cobertura": "DS49 - OSORNO - CASA ACTIVA"
+    },
+    {
+      "idTx": "00-0_DS49OSORNOCASAACTIVA_2.1",
+      "timestampId": "1780404660092",
+      "rutEvaluador": "00-0",
+      "itemId": "2.1",
+      "stage": 2,
+      "score": 51,
+      "cobertura": "DS49 - OSORNO - CASA ACTIVA"
+    },
+    {
+      "idTx": "00-0_DS49OSORNOCASAACTIVA_3.1",
+      "timestampId": "1780404660092",
+      "rutEvaluador": "00-0",
+      "itemId": "3.1",
+      "stage": 3,
+      "score": 80,
+      "cobertura": "DS49 - OSORNO - CASA ACTIVA"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_1.1",
+      "timestampId": "1780417292343",
+      "rutEvaluador": "00-1",
+      "itemId": "1.1",
+      "stage": 1,
+      "score": 100,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_2.1",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "2.1",
+      "stage": 2,
+      "score": 50,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_2.2",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "2.2",
+      "stage": 2,
+      "score": 60,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_4.1",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "4.1",
+      "stage": 4,
+      "score": 60,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_4.10",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "4.10",
+      "stage": 4,
+      "score": 60,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_4.2",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "4.2",
+      "stage": 4,
+      "score": 60,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_5.1",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "5.1",
+      "stage": 5,
+      "score": 100,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_5.2",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "5.2",
+      "stage": 5,
+      "score": 100,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_6.1",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "6.1",
+      "stage": 6,
+      "score": 20,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_6.2",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "6.2",
+      "stage": 6,
+      "score": 20,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_6.3",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "6.3",
+      "stage": 6,
+      "score": 30,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_6.4",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "6.4",
+      "stage": 6,
+      "score": 60,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-1_DS10OSORNOBEDECARRATZ_6.5",
+      "timestampId": "1780417292344",
+      "rutEvaluador": "00-1",
+      "itemId": "6.5",
+      "stage": 6,
+      "score": 80,
+      "cobertura": "DS10 - OSORNO - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-9_DS49LLANQUIHUEBEDECARRATZ_4.1",
+      "timestampId": "1780411827591",
+      "rutEvaluador": "00-9",
+      "itemId": "4.1",
+      "stage": 4,
+      "score": 100,
+      "cobertura": "DS49 - LLANQUIHUE - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-9_DS49LLANQUIHUEBEDECARRATZ_5.2",
+      "timestampId": "1780411827591",
+      "rutEvaluador": "00-9",
+      "itemId": "5.2",
+      "stage": 5,
+      "score": 60,
+      "cobertura": "DS49 - LLANQUIHUE - BEDECARRATZ"
+    },
+    {
+      "idTx": "00-9_DS49LLANQUIHUEBEDECARRATZ_6.1",
+      "timestampId": "1780411827591",
+      "rutEvaluador": "00-9",
+      "itemId": "6.1",
+      "stage": 6,
+      "score": 60,
+      "cobertura": "DS49 - LLANQUIHUE - BEDECARRATZ"
+    },
+    {
+      "idTx": "1780344010617_00-0_DS49OSORNO_1.1",
+      "timestampId": "1780344010617",
+      "rutEvaluador": "00-0",
+      "itemId": "1.1",
+      "stage": 1,
+      "score": 100,
+      "cobertura": "DS49 - OSORNO"
+    }
+  ],
+  "evaluadores": [
+    {
+      "rut": "00-0",
+      "nombre": "EVALUADOR",
+      "area": ""
+    },
+    {
+      "rut": "00-1",
+      "nombre": "Evaluador 3",
+      "area": ""
+    },
+    {
+      "rut": "00-2",
+      "nombre": "Evaluador 4",
+      "area": ""
+    },
+    {
+      "rut": "00-9",
+      "nombre": "Evaluador 2",
+      "area": ""
+    },
+    {
+      "rut": "ANDREA HUENUPAN",
+      "nombre": "16271873-8",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "ANGELA GON",
+      "nombre": "17891527-4",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "CARMEN BARRIA",
+      "nombre": "12714366-8",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "CAROLINA GAJARDO",
+      "nombre": "13822926-2",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "CECILIA FONSECA",
+      "nombre": "10398717-2",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "CLAUDIA ALVAREZ",
+      "nombre": "17990195-1",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "CRISTIAN NEGRON",
+      "nombre": "17659495-0",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "CYNTHIA PEREIRA",
+      "nombre": "15868499 3",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "EVELYN ARTEAGA",
+      "nombre": "10042042 2",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "FERNADO SOTO",
+      "nombre": "8913252-5",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "FERNANDO ALARCON",
+      "nombre": "9270738-5",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "JESSICA HERNANDEZ",
+      "nombre": "11414025-2",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "JOSELIN SALDAÑA",
+      "nombre": "16238037-0",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "JUAN F BOJANIC",
+      "nombre": "12712960-6",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "JULIAN MEDRANO",
+      "nombre": "15990343-5",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "MARCELO AROS",
+      "nombre": "15847299-6",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "MARIA JOSE FLORES",
+      "nombre": "15289492-9",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "MARIO MUÑOZ",
+      "nombre": "10310826-8",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "MARITZA CERDA",
+      "nombre": "8291804-3",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "MAURICIO SERRANO",
+      "nombre": "12934977-8",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "PAOLA REHBEIN",
+      "nombre": "13120566-K",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "PATRICIO SEPULVEDA",
+      "nombre": "13323126-9",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "PEDRO MIRANDA",
+      "nombre": "13322594-3",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "PRICILA KLEIN",
+      "nombre": "13967159-7",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "RODRIGO OJEDA",
+      "nombre": "18820245-4",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "RODRIGO ROSAS",
+      "nombre": "13639350-2",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "ROSE MARY ARRIAGADA",
+      "nombre": "17658336 3",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "ROXANA BARRIENTOS",
+      "nombre": "19146483-4",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "SARA BURBOA",
+      "nombre": "15548647-3",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "Sandra santa ordenes",
+      "nombre": "9236561-1",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "VALENTINA CERON",
+      "nombre": "17741805-6",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "VERONICA VERGARA",
+      "nombre": "8598787-9",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "VICTOR MANQUI",
+      "nombre": "15797614-1",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "XIMENA HERNANDEZ",
+      "nombre": "13738490-6",
+      "area": "",
+      "clave": "123456"
+    },
+    {
+      "rut": "YESSENIA SANTIBAÑES",
+      "nombre": "15688347-6",
+      "area": "",
+      "clave": "123456"
+    }
+  ],
+  "asignaciones": [
+    {
+      "idAsig": "00-0_DS49_Osorno_ent_1780403502942_742",
+      "rut": "00-0",
+      "programa": "DS49",
+      "provincia": "Osorno",
+      "entidadId": "ent_1780403502942_742",
+      "entidadNombre": "CASA ACTIVA",
+      "etapas": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "idAsig": "00-1_DS10_Osorno_ent_1780403589240_857",
+      "rut": "00-1",
+      "programa": "DS10",
+      "provincia": "Osorno",
+      "entidadId": "ent_1780403589240_857",
+      "entidadNombre": "BEDECARRATZ",
+      "etapas": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "idAsig": "00-9_DS10_Llanquihue_ent_1780403502942_742",
+      "rut": "00-9",
+      "programa": "DS10",
+      "provincia": "Llanquihue",
+      "entidadId": "ent_1780403502942_742",
+      "entidadNombre": "CASA ACTIVA",
+      "etapas": [
+        1,
+        2
+      ]
+    },
+    {
+      "idAsig": "00-9_DS10_Llanquihue_ent_1780403602394_93",
+      "rut": "00-9",
+      "programa": "DS10",
+      "provincia": "Llanquihue",
+      "entidadId": "ent_1780403602394_93",
+      "entidadNombre": "BEDECARRATZ",
+      "etapas": [
+        1,
+        2
+      ]
+    },
+    {
+      "idAsig": "00-9_DS49_Llanquihue_ent_1780403589240_857",
+      "rut": "00-9",
+      "programa": "DS49",
+      "provincia": "Llanquihue",
+      "entidadId": "ent_1780403589240_857",
+      "entidadNombre": "BEDECARRATZ",
+      "etapas": [
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "configuracion": [
+    {
+      "clave": "fecha_limite",
+      "valor": "2026-06-02T15:00"
+    }
+  ],
+  "entidades": [
+    {
+      "idEntidad": "ent_1780403485094_921",
+      "rut": "123-4",
+      "nombre": "CASA ACTIVA",
+      "comuna": "PUERTO MONTT",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780403502942_742",
+      "rut": "123-4",
+      "nombre": "CASA ACTIVA",
+      "comuna": "LOS MUERMOS",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780403589240_857",
+      "rut": "123-5",
+      "nombre": "BEDECARRATZ",
+      "comuna": "OSORNO",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780403602394_93",
+      "rut": "123-5",
+      "nombre": "BEDECARRATZ",
+      "comuna": "PUYEHUE",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229313_8391",
+      "rut": "76236777-7",
+      "nombre": "ARARAT SPA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_13618",
+      "rut": "76072328-2",
+      "nombre": "EGIS E INMOBILIARIA SAN JOSÉ LIMITADA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_1845",
+      "rut": "76393099-8",
+      "nombre": "ASESORIAS LOS AMANCAYES LTDA.",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_2416",
+      "rut": "76044695-5",
+      "nombre": "CONSULTORA VIVE ECO LIMITADA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_29911",
+      "rut": "76380872-6",
+      "nombre": "CONSULTORA EDIFIKA SPA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_3063",
+      "rut": "76393099-8",
+      "nombre": "ASESORIAS LOS AMANCAYES LTDA.",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_37113",
+      "rut": "76468237-0",
+      "nombre": "CONSULTORA PSICOACTIVA SPA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_3768",
+      "rut": "77341863-2",
+      "nombre": "CASAS DEL SUR",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_4047",
+      "rut": "76125807-9",
+      "nombre": "BEDECARRATZ",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_42617",
+      "rut": "77060207-6",
+      "nombre": "CONSULTORA WE LIWEN SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_5256",
+      "rut": "76266917-K",
+      "nombre": "AVIFEL GESTION INMOBILIARIA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_53112",
+      "rut": "76842995-2",
+      "nombre": "CONSULTORA FORJANDO DIGNIDAD LIMITADA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_592",
+      "rut": "77929701-2",
+      "nombre": "ASESORIAS HABITACIONALES TU CASA LTDA.",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_60515",
+      "rut": "76646623-0",
+      "nombre": "CONSULTORA SUNELTO SPA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_6464",
+      "rut": "76393099-8",
+      "nombre": "ASESORIAS LOS AMANCAYES LTDA.",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_7959",
+      "rut": "76009313-0",
+      "nombre": "CONSULTORA AUSTRAL",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_96310",
+      "rut": "76380872-6",
+      "nombre": "CONSULTORA EDIFIKA SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229314_98314",
+      "rut": "76646623-0",
+      "nombre": "CONSULTORA SUNELTO SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_14126",
+      "rut": "69220800-5",
+      "nombre": "I. MUNICIPALIDAD DE LOS MUERMOS",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_1537",
+      "rut": "77098160-3",
+      "nombre": "INMOBILIARIA FELMER LTDA.",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_16921",
+      "rut": "76580281-4",
+      "nombre": "GESTION INMOBILIARIA LOS LAGOS SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_23536",
+      "rut": "76055515-1",
+      "nombre": "INMOBILIARIA D & M SPA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_25927",
+      "rut": "69231300-3",
+      "nombre": "I. MUNICIPALIDAD DE PALENA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_28444",
+      "rut": "77458583-4",
+      "nombre": "MAWIDA CONSULTORES SPA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_31424",
+      "rut": "69230500-0",
+      "nombre": "I. MUNICIPALIDAD DE CHONCHI",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_37132",
+      "rut": "69251800-4",
+      "nombre": "I. MUNICIPALIDAD DE SAN JUAN DE LA COSTA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_43345",
+      "rut": "77243655-6",
+      "nombre": "MOVA SPA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_45142",
+      "rut": "76961330-7",
+      "nombre": "INSOC LTDA.",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_46541",
+      "rut": "77541967-9",
+      "nombre": "INMOBILIARIA MAGNUS SPA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_56519",
+      "rut": "76072328-2",
+      "nombre": "EGIS E INMOBILIARIA SAN JOSÉ LIMITADA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_60133",
+      "rut": "76146397-7",
+      "nombre": "INMOBILIARIA CASA ACTIVA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_61730",
+      "rut": "69210500-1",
+      "nombre": "I. MUNICIPALIDAD DE PURRANQUE",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_66139",
+      "rut": "78871170-0",
+      "nombre": "INMOBILIARIA LA CAMPIÑA LTDA.",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_6635",
+      "rut": "76055515-0",
+      "nombre": "INMOBILIARIA D & M SPA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_67538",
+      "rut": "77853970-5",
+      "nombre": "INMOBILIARIA JOMAR LTDA.",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_67943",
+      "rut": "76836182-7",
+      "nombre": "LEVIANTE Y EMHART ASOCIADOS SOCIEDAD POR ACCIONES",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_70931",
+      "rut": "69230900-6",
+      "nombre": "I. MUNICIPALIDAD DE QUINCHAO",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_72640",
+      "rut": "78871170-1",
+      "nombre": "INMOBILIARIA LA CAMPIÑA LTDA.",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_76020",
+      "rut": "76072328-2",
+      "nombre": "EGIS E INMOBILIARIA SAN JOSÉ LIMITADA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_84223",
+      "rut": "76359036-4",
+      "nombre": "GESTIÓN INMOBILIARIA WALDO ALEX PEREZ SEPULVEDA E.I.R.L.",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_87922",
+      "rut": "76338773-9",
+      "nombre": "GESTIÓN INMOBILIARIA PROYECTOS ARQUITECTURA E INGENIERIA LIMITADA - EL MELI",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_90934",
+      "rut": "76146397-7",
+      "nombre": "INMOBILIARIA CASA ACTIVA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_91328",
+      "rut": "69220100-0",
+      "nombre": "I. MUNICIPALIDAD DE PUERTO MONTT",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_92229",
+      "rut": "69230800-K",
+      "nombre": "I. MUNICIPALIDAD DE PUQUELDÓN",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229315_96325",
+      "rut": "69220700-9",
+      "nombre": "I. MUNICIPALIDAD DE FRUTILLAR",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_13949",
+      "rut": "76043838-3",
+      "nombre": "SOCIEDAD GESTIÓN INMOBILIARIA SOCIAL ELISABETH SALDIVIA LIMITADA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_27746",
+      "rut": "76210847-K",
+      "nombre": "SERVICIOS DE ASISTENCIA HABITACIONAL YESENIA MORALES REYES EIRL",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_38555",
+      "rut": "78879980-2",
+      "nombre": "VIGO LTDA",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_40851",
+      "rut": "77782557-4",
+      "nombre": "SUBSIDIOS RURALES SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_46150",
+      "rut": "77207704-1",
+      "nombre": "SOUTH WINDS SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_53553",
+      "rut": "76042675-K",
+      "nombre": "ULMO CONSULTORES",
+      "comuna": "",
+      "programa": "DS49",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_79052",
+      "rut": "76042675-K",
+      "nombre": "ULMO CONSULTORES",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_8447",
+      "rut": "76009313-0",
+      "nombre": "SOCIEDAD CONSULTORA AUSTRAL LIMITADA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_9154",
+      "rut": "76594009-5",
+      "nombre": "VIARCO SPA",
+      "comuna": "",
+      "programa": "DS10",
+      "convenio": "",
+      "fecha": ""
+    },
+    {
+      "idEntidad": "ent_1780420229316_93348",
+      "rut": "76009313-1",
+      "nombre": "SOCIEDAD CONSULTORA AUSTRAL LIMITADA",
+      "comuna": "",
+      "programa": "DS27",
+      "convenio": "",
+      "fecha": ""
+    }
+  ]
+}
