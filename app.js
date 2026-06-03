@@ -215,6 +215,38 @@ async function cloudSave(table, dataArray) {
     }
 }
 
+function syncSingleStoreToCloud(storeName, callback) {
+    if (!CLOUD_MODE_ENABLED) {
+        if (callback) callback(true);
+        return;
+    }
+
+    showProgressBar(`Sincronizando ${storeName} con la Nube...`);
+
+    const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
+    req.onsuccess = (e) => {
+        cloudSave(storeName, e.target.result).then(res => {
+            hideProgressBar();
+            if (res && res.success) {
+                if (callback) callback(true);
+            } else {
+                alert(`Error al sincronizar con la Nube: ${res ? res.error : 'Respuesta inválida del servidor.'}`);
+                if (callback) callback(false);
+            }
+        }).catch(err => {
+            console.error(`Error de red al sincronizar ${storeName}:`, err);
+            hideProgressBar();
+            alert('Error de red al sincronizar. Verifique su conexión a internet.');
+            if (callback) callback(false);
+        });
+    };
+    req.onerror = (e) => {
+        hideProgressBar();
+        alert('Error al leer datos locales para sincronizar.');
+        if (callback) callback(false);
+    }
+}
+
 /* NUEVA FUNCIÓN DE SINCRONIZACIÓN MASIVA MANUAL */
 function syncAllToCloud() {
     if (!CLOUD_MODE_ENABLED) {
@@ -629,16 +661,11 @@ function startCountdownClock() {
             return;
         }
 
-        const totalHours = Math.floor(diff / (1000 * 60 * 60));
-        const days = Math.floor(totalHours / 24);
-        const remainderHours = totalHours % 24;
-        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        if (days > 0) {
-            clock.textContent = `${days} DÍAS ${remainderHours} HORAS`;
-        } else {
-            clock.textContent = `${totalHours.toString().padStart(2, '0')}:${mins}`;
-        }
+        clock.textContent = `${days}D ${hours}H ${mins}M`;
     }, 1000);
 }
 
@@ -792,12 +819,14 @@ function showPanel(titleText) {
     if (currentRole === 'admin') {
         toggleElement('admin-view', true);
         toggleElement('evaluador-view', false);
+        toggleElement('btn-sync-cloud', true);
         if (countdownInterval) clearInterval(countdownInterval);
         populateAdminMatrix();
         window.changeStage(1);
     } else {
         toggleElement('admin-view', false);
         toggleElement('evaluador-view', true);
+        toggleElement('btn-sync-cloud', false);
         checkDeadlineStatus();
         renderCoverageTabs();
     }
@@ -1325,11 +1354,15 @@ function saveAdminItems() {
 }
 
 function saveEvaluatorScores() {
-    if (deadlineExpired) return;
+    if (deadlineExpired) {
+        alert('El plazo para evaluar ha expirado. No se pueden guardar cambios.');
+        return;
+    }
     
     dbGetAll('scores', (allDbScores) => {
         const tx = dbInstance.transaction(['scores'], 'readwrite');
         const store = tx.objectStore('scores');
+        const horaEnvio = formatDateTime(new Date());
 
         // 1. Borramos todas las calificaciones anteriores de ESTA cobertura para el evaluador actual
         const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut && r.cobertura === currentCoverage);
@@ -1347,29 +1380,38 @@ function saveEvaluatorScores() {
                 itemId: memScore.itemId,
                 stage: memScore.stage,
                 score: memScore.score,
-                cobertura: currentCoverage
+                cobertura: currentCoverage,
+                hora: horaEnvio
             });
         });
 
         tx.oncomplete = () => {
-            dbGetAll('scores', (scores) => {
-                allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
-                loadScoresFromActiveContext(); 
-                renderEvaluatorView();
-                
-                // Pequeño feedback visual de éxito
-                const btn = document.getElementById('btn-save-scores');
-                if (btn) {
-                    const originalText = btn.textContent;
-                    btn.textContent = "¡Guardado Exitoso Localmente!";
-                    btn.style.backgroundColor = "var(--color-bueno)";
-                    btn.style.color = "#000";
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.style.backgroundColor = "";
-                        btn.style.color = "";
-                    }, 2500);
-                }
+            // Una vez guardado localmente, sincronizar solo la tabla de scores.
+            syncSingleStoreToCloud('scores', (success) => {
+                dbGetAll('scores', (scores) => {
+                    allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
+                    loadScoresFromActiveContext(); 
+                    renderEvaluatorView();
+                    
+                    const btn = document.getElementById('btn-save-scores');
+                    if (btn) {
+                        const originalText = btn.textContent;
+                        if (success) {
+                            btn.textContent = "¡Guardado y Sincronizado!";
+                            btn.style.backgroundColor = "var(--color-bueno)";
+                            btn.style.color = "#000";
+                        } else {
+                            btn.textContent = "Guardado Local (Fallo Sincronización)";
+                            btn.style.backgroundColor = "var(--color-aceptable)";
+                            btn.style.color = "#000";
+                        }
+                        setTimeout(() => {
+                            btn.textContent = originalText;
+                            btn.style.backgroundColor = "";
+                            btn.style.color = "";
+                        }, 3000);
+                    }
+                });
             });
         };
     });
@@ -1453,7 +1495,8 @@ function calculateLiveScore() {
                 itemId: id,
                 stage: currentStage,
                 score: val,
-                cobertura: currentCoverage
+                cobertura: currentCoverage,
+                hora: formatDateTime(new Date())
             });
         }
     });
