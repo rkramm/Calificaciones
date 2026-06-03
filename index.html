@@ -11,19 +11,28 @@
     <!-- CONTENEDOR DE LOGIN PERFECTAMENTE CENTRADO -->
     <div id="login-container" class="login-screen-center">
         <form id="login-screen" class="login-card" onsubmit="event.preventDefault();">
-            <h2>Ingreso al Sistema</h2>
+            <div class="login-header text-center">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                <h2>Bienvenido</h2>
+                <p style="color: #666; font-size: 0.9rem; margin-top: 5px; margin-bottom: 25px;">Sistema de Precalificación e Inspección</p>
+            </div>
+            
             <div class="form-group">
                 <label for="username">Usuario</label>
-                <input type="text" id="username" placeholder="Ej: 12345678-9">
+                <input type="text" id="username" placeholder="RUT (Ej: 12345678-9)" class="modern-input">
             </div>
             <div class="form-group">
                 <label for="password">Contraseña</label>
-                <input type="password" id="password" value="123456">
+                <input type="password" id="password" value="123456" class="modern-input">
             </div>
-            <button type="button" id="btn-login" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Ingresar</button>
+            <button type="button" id="btn-login" class="btn btn-primary btn-login-modern">Ingresar al Sistema</button>
             
-            <div id="connection-status" style="margin-top: 15px; font-size: 0.85rem; color: #666; text-align: center; display: flex; justify-content: center; align-items: center; gap: 6px;">
-                <span style="display:inline-block; width:10px; height:10px; background-color:#CCC; border-radius:50%; transition: 0.3s;" id="conn-dot"></span>
+            <div id="connection-status" class="login-status-indicator">
+                <span id="conn-dot" class="status-dot"></span>
                 <span id="conn-text">Verificando conexión...</span>
             </div>
         </form>
@@ -36,7 +45,10 @@
                 <h1 id="app-title">Panel de Control</h1>
                 <p id="user-profile"></p>
             </div>
-            <button id="btn-logout" class="btn btn-danger">Cerrar Sesión</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="btn-sync-cloud" class="btn btn-primary" style="background-color: #28A745; font-weight: bold; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">☁️ Sincronizar a la Nube</button>
+                <button id="btn-logout" class="btn btn-danger">Cerrar Sesión</button>
+            </div>
         </header>
 
         <!-- VISTA ADMINISTRADOR -->
@@ -163,24 +175,13 @@
 
             <!-- SUBPANEL: EVALUADORES -->
             <div id="panel-evaluadores" class="admin-subpanel hidden">
-                <div class="card compact-card" style="margin-bottom: 15px;">
-                    <h3 style="margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px; color:var(--primary-dark);">
-                        Registrar Evaluador
-                    </h3>
-                    <div class="grid-2" style="gap:10px; margin-bottom:5px;">
-                        <input type="text" id="ev-nombre" placeholder="Nombre Completo">
-                        <input type="text" id="ev-rut" placeholder="RUT (Ej: 17444555-6)">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 10px;">
-                        <div class="grid-2" style="gap:10px;">
-                            <input type="text" id="ev-area" placeholder="Área / Departamento">
-                            <input type="text" id="ev-clave" placeholder="Contraseña (Por defecto: 123456)">
+                <div class="card compact-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px;">
+                        <h3 style="color:var(--primary-dark); font-size:1.1rem; margin:0; width: 100%; max-width: 250px;">Directorio de Evaluadores</h3>
+                        <div style="display: flex; gap: 5px;">
+                            <button id="btn-open-evaluador-modal" class="btn btn-primary" style="padding:4px 10px; font-size:0.8rem;">+ Nuevo Evaluador</button>
                         </div>
                     </div>
-                    <button id="btn-create-evaluador" class="btn btn-primary">Guardar Evaluador</button>
-                </div>
-                <div class="card compact-card">
-                    <h3 style="margin-bottom:10px;">Directorio de Evaluadores</h3>
                     <div class="table-responsive">
                         <table class="evaluation-table" style="font-size: 0.8rem;">
                             <thead>
@@ -392,6 +393,37 @@
             </div>
             <div style="margin-top: 15px; text-align: right;">
                 <button id="btn-save-entidad-modal" class="btn btn-primary">Guardar Entidad</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA NUEVO / EDITAR EVALUADOR -->
+    <div id="modal-evaluador" class="modal-overlay hidden">
+        <div class="modal-content card">
+            <div class="modal-header-box">
+                <h3 id="evaluador-modal-title">Datos del Evaluador</h3>
+                <button id="btn-close-evaluador-modal" class="btn-close">&times;</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px;">
+                <div class="form-group">
+                    <label style="font-size:0.8rem; font-weight:bold;">Nombre Completo</label>
+                    <input type="text" id="ev-nombre" placeholder="Ej: Juan Pérez">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:0.8rem; font-weight:bold;">RUT Evaluador</label>
+                    <input type="text" id="ev-rut" placeholder="Ej: 17.444.555-6">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:0.8rem; font-weight:bold;">Área / Departamento</label>
+                    <input type="text" id="ev-area" placeholder="Ej: Depto. Técnico">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:0.8rem; font-weight:bold;">Contraseña</label>
+                    <input type="text" id="ev-clave" placeholder="Por defecto: 123456">
+                </div>
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button id="btn-save-evaluador-modal" class="btn btn-primary">Guardar Evaluador</button>
             </div>
         </div>
     </div>

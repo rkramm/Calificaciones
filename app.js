@@ -120,25 +120,57 @@ function clearFormInputs(ids) {
     ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 }
 
-function dbGetAll(storeName, callback) {
-    if (CLOUD_MODE_ENABLED) {
+function dbGetAll(storeName, callback, forceCloud = false) {
+    if (CLOUD_MODE_ENABLED && forceCloud) {
         showProgressBar(`Conectando al servidor: ${storeName}...`);
         cloudGet(storeName).then(data => {
-            hideProgressBar();
-            callback(data);
+            if (data !== null && Array.isArray(data)) {
+                const tx = dbInstance.transaction([storeName], 'readwrite');
+                tx.objectStore(storeName).clear().onsuccess = () => {
+                    data.forEach(item => tx.objectStore(storeName).put(item));
+                };
+                tx.oncomplete = () => {
+                    hideProgressBar();
+                    callback(data);
+                };
+            } else {
+                hideProgressBar();
+                dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll().onsuccess = (e) => callback(e.target.result);
+            }
         });
     } else {
         dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll().onsuccess = (e) => callback(e.target.result);
     }
 }
 
-function getMultipleStores(storeNames, callback) {
-    if (CLOUD_MODE_ENABLED) {
+function getMultipleStores(storeNames, callback, forceCloud = false) {
+    if (CLOUD_MODE_ENABLED && forceCloud) {
         showProgressBar(`Sincronizando base de datos...`);
         Promise.all(storeNames.map(store => cloudGet(store)))
             .then(results => {
-                hideProgressBar();
-                callback(results);
+                const tx = dbInstance.transaction(storeNames, 'readwrite');
+                storeNames.forEach((store, i) => {
+                    const data = results[i];
+                    if (data !== null && Array.isArray(data)) {
+                        const storeObj = tx.objectStore(store);
+                        storeObj.clear().onsuccess = () => {
+                            data.forEach(item => storeObj.put(item));
+                        };
+                    }
+                });
+                tx.oncomplete = () => {
+                    hideProgressBar();
+                    const readTx = dbInstance.transaction(storeNames, 'readonly');
+                    const finalResults = new Array(storeNames.length);
+                    let completed = 0;
+                    storeNames.forEach((store, i) => {
+                        readTx.objectStore(store).getAll().onsuccess = (e) => {
+                            finalResults[i] = e.target.result;
+                            completed++;
+                            if (completed === storeNames.length) callback(finalResults);
+                        };
+                    });
+                };
             });
     } else {
         const tx = dbInstance.transaction(storeNames, 'readonly');
@@ -157,11 +189,14 @@ function getMultipleStores(storeNames, callback) {
 /* ================= MOTOR DE NUBE (GOOGLE APPS SCRIPT) ================= */
 async function cloudGet(table) {
     try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}`);
-        return await response.json();
+        // Agregamos &t=Date.now() para forzar al navegador a ignorar el caché y obtener la info fresca real
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}&t=${Date.now()}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return Array.isArray(data) ? data : (data.data || []);
     } catch (error) {
         console.error(`Error leyendo tabla ${table} desde el servidor:`, error);
-        return [];
+        return null;
     }
 }
 
@@ -178,6 +213,47 @@ async function cloudSave(table, dataArray) {
         console.error(`Error guardando en tabla ${table}:`, error);
         return { success: false, error: error.message };
     }
+}
+
+/* NUEVA FUNCIÓN DE SINCRONIZACIÓN MASIVA MANUAL */
+function syncAllToCloud() {
+    if (!CLOUD_MODE_ENABLED) {
+        alert('El modo nube está desactivado.');
+        return;
+    }
+    if (!confirm('¿Desea enviar todos los datos guardados en este dispositivo a la Nube?\n\nAl confirmar, su información se respaldará permanentemente en Google Sheets.')) return;
+
+    showProgressBar("Iniciando sincronización con la Nube...");
+    
+    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores'];
+    let completed = 0;
+
+    const syncNext = (index) => {
+        if (index >= storeNames.length) {
+            updateProgressBar(100);
+            setTimeout(() => {
+                hideProgressBar();
+                alert('✅ Sincronización completada con éxito. Todos los datos han sido enviados a Google Sheets.');
+            }, 500);
+            return;
+        }
+        
+        const storeName = storeNames[index];
+        updateProgressBar((index / storeNames.length) * 100);
+        document.getElementById('progress-title').textContent = `Enviando ${storeName}... (${index + 1}/${storeNames.length})`;
+
+        const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
+        req.onsuccess = (e) => {
+            cloudSave(storeName, e.target.result).then(res => {
+                syncNext(index + 1);
+            }).catch(err => {
+                console.error(`Error de red al sincronizar ${storeName}:`, err);
+                syncNext(index + 1); // Continúa a pesar del error de red
+            });
+        };
+    };
+
+    syncNext(0);
 }
 /* =============================================================================== */
 
@@ -235,9 +311,9 @@ function parseSafeDate(isoString) {
     return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 23, 59, 59);
 }
 
-// NUEVA VERSIÓN V18: PUNTO DE GUARDADO Y ESTABILIZACIÓN DE LA MATRIZ DE ASIGNACIÓN
+// NUEVA VERSIÓN V18: PUNTO DE GUARDADO Y RESTAURACIÓN
 const DB_NAME = 'SistemaEvaluacionDB_v18';
-const DB_VERSION = 2; // Actualizamos la versión para forzar el reinicio de la estructura
+const DB_VERSION = 3; // Actualizamos la versión para crear un punto de restauración de la estructura
 
 document.addEventListener('DOMContentLoaded', () => {
     initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
@@ -245,10 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setupEventListeners() {
     document.getElementById('btn-login').addEventListener('click', handleLogin);
+    document.getElementById('btn-sync-cloud').addEventListener('click', syncAllToCloud);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     document.getElementById('btn-save-items').addEventListener('click', saveAdminItems);
     document.getElementById('btn-save-scores').addEventListener('click', (e) => { e.preventDefault(); saveEvaluatorScores(); });
-    document.getElementById('btn-create-evaluador').addEventListener('click', createEvaluador);
     document.getElementById('btn-save-asignacion').addEventListener('click', () => { processAsignacionStaging(false); });
     document.getElementById('btn-save-partial').addEventListener('click', () => { processAsignacionStaging(true); });
     document.getElementById('btn-save-config').addEventListener('click', saveConfigDeadline);
@@ -262,6 +338,18 @@ function setupEventListeners() {
 
     const btnExportBackup = document.getElementById('btn-export-backup');
     if (btnExportBackup) btnExportBackup.addEventListener('click', exportDatabaseToJSON);
+
+    const btnOpenEv = document.getElementById('btn-open-evaluador-modal');
+    if (btnOpenEv) btnOpenEv.addEventListener('click', () => {
+        currentEditingEvaluadorRut = null;
+        clearFormInputs(['ev-nombre', 'ev-rut', 'ev-area', 'ev-clave']);
+        document.getElementById('ev-rut').disabled = false;
+        toggleElement('modal-evaluador', true);
+    });
+    const btnCloseEv = document.getElementById('btn-close-evaluador-modal');
+    if (btnCloseEv) btnCloseEv.addEventListener('click', () => toggleElement('modal-evaluador', false));
+    const btnSaveEv = document.getElementById('btn-save-evaluador-modal');
+    if (btnSaveEv) btnSaveEv.addEventListener('click', createEvaluador);
 
     document.getElementById('btn-open-entidad-modal').addEventListener('click', () => {
         currentEditingEntidadId = null; // Limpiamos la memoria de edición para forzar un registro nuevo
@@ -454,10 +542,10 @@ function initIndexedDB(callback) {
 }
 
 function loadCoreData(callback) {
-    getMultipleStores(['items', 'configuracion'], ([items, config]) => {
-        const cfgReq = config.find(c => c.clave === 'fecha_limite');
+    getMultipleStores(['items', 'configuracion', 'entidades', 'evaluadores', 'asignaciones', 'scores'], ([items, config, entidades, evaluadores, asignaciones, scores]) => {
+        const cfgReq = config ? config.find(c => c.clave === 'fecha_limite') : null;
         
-        if (items.length < DEFAULT_ITEMS.length) {
+        if (!items || items.length < DEFAULT_ITEMS.length) {
             dbItems = DEFAULT_ITEMS;
             if (!CLOUD_MODE_ENABLED) {
                 const writeTx = dbInstance.transaction(['items'], 'readwrite');
@@ -478,12 +566,13 @@ function loadCoreData(callback) {
         if (dot && txt) {
             dot.style.backgroundColor = '#92D050'; // Forzamos el color hexadecimal
             txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Desconectado';
+            txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Conectado (Modo Local)';
             txt.style.color = '#25306B';
             txt.style.fontWeight = 'bold';
         }
 
         if (callback) callback();
-    });
+    }, true);
 }
 
 function checkDeadlineStatus() {
@@ -612,8 +701,23 @@ function renderAdminEntidadesColumn() {
         col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Sin entidades registradas</span>`;
         return;
     }
+
+    const savedPrograms = adminSelectedProvincia ? (adminTemporaryLogisticaMap[adminSelectedProvincia] || []) : [];
+    
+    if (savedPrograms.length === 0) {
+        col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Seleccione un programa</span>`;
+        return;
+    }
+
+    const filteredEntidades = adminTemporaryEntidades.filter(ent => savedPrograms.includes(ent.programa));
+
+    if (filteredEntidades.length === 0) {
+        col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Sin entidades para los programas seleccionados</span>`;
+        return;
+    }
+
     col.innerHTML = `<div style="font-size:0.75rem; font-weight:bold; color:var(--primary-blue); margin-bottom:5px; text-transform:uppercase;">Seleccionar Entidad:</div>` + 
-        adminTemporaryEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.nombre}"> ${ent.nombre}</label></div>`).join('');
+        filteredEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.nombre}"> ${ent.nombre}</label></div>`).join('');
 }
 
 /* FIX CRÍTICO DE INGRESO: CONTROL DE EXCEPCIÓN CUANDO LA MUESTRA ESTÁ VACÍA V16 */
@@ -648,13 +752,14 @@ function handleLogin() {
             const userAsignaciones = asignaciones.filter(a => a.rut === currentUser.rut);
             
             if(userAsignaciones.length === 0) {
-                allAsignacionesMapped = [{ cobertura: "DS10 - CHILOÉ", etapas: [1] }];
-            } else {
-                allAsignacionesMapped = userAsignaciones.map(a => ({
-                    cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
-                    etapas: (a.etapas || [1]).sort((a, b) => a - b)
-                })).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+                alert('No tiene precalificaciones asignadas en este momento.');
+                return;
             }
+            
+            allAsignacionesMapped = userAsignaciones.map(a => ({
+                cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
+                etapas: (a.etapas || [1]).sort((a, b) => a - b)
+            })).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
 
             allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
             currentCoverage = allAsignacionesMapped[0].cobertura;
@@ -668,6 +773,9 @@ function handleLogin() {
 }
 
 function handleLogout() {
+    if (!confirm('¿Ha recordado sincronizar sus cambios con la Nube?\n\nSi no lo ha hecho, presione Cancelar y utilice el botón "Sincronizar a la Nube" antes de salir.\n\n¿Desea cerrar sesión de todas formas?')) {
+        return;
+    }
     currentUser = null; currentRole = null;
     toggleElement('main-screen', false);
     toggleElement('login-container', true);
@@ -749,7 +857,6 @@ window.changeStage = function(stageNum) {
 };
 
 function processAsignacionStaging(isPartialSave) {
-    adminTemporaryLogisticaMap = {};
     captureCurrentAdminProgramsState();
 
     const selectedEvaluatorsRuts = [];
@@ -776,9 +883,16 @@ function processAsignacionStaging(isPartialSave) {
     const combinedCoverages = [];
     totalCoveragesList.forEach(t => {
         if (selectedEntidades.length > 0) {
+            let matched = false;
             selectedEntidades.forEach(ent => {
-                combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: ent.id, entidadNombre: ent.name });
+                const entityData = adminTemporaryEntidades.find(e => e.idEntidad === ent.id);
+                // Asegurar que la entidad que se asigna pertenece al programa de este ciclo
+                if (entityData && entityData.programa === t.programa) {
+                    combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: ent.id, entidadNombre: ent.name });
+                    matched = true;
+                }
             });
+            if (!matched) combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: null, entidadNombre: 'Sin Entidad' });
         } else {
             combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: null, entidadNombre: 'Sin Entidad' });
         }
@@ -786,7 +900,12 @@ function processAsignacionStaging(isPartialSave) {
 
     currentScreenStaging = null;
 
-    if (selectedEvaluatorsRuts.length > 0 && etapas.length > 0 && combinedCoverages.length > 0) {
+    if (selectedEvaluatorsRuts.length === 0 || etapas.length === 0 || combinedCoverages.length === 0) {
+        if (pendingAsignacionesStaging.length === 0) {
+            alert('Para realizar una asignación debe seleccionar al menos: 1 Evaluador, 1 Programa y 1 Etapa.');
+            return;
+        }
+    } else {
         if (isPartialSave) {
             pendingAsignacionesStaging.push({ ruts: selectedEvaluatorsRuts, names: selectedEvaluatorsNames, etapas, coberturas: combinedCoverages });
             document.querySelectorAll('.asig-programa-dinamico-chk').forEach(c => c.checked = false);
@@ -796,8 +915,6 @@ function processAsignacionStaging(isPartialSave) {
         } else {
             currentScreenStaging = { ruts: selectedEvaluatorsRuts, names: selectedEvaluatorsNames, etapas, coberturas: combinedCoverages };
         }
-    } else if (pendingAsignacionesStaging.length === 0) {
-        return;
     }
 
     const allToSave = [...pendingAsignacionesStaging];
@@ -853,7 +970,9 @@ function executeCommitAsignacion() {
         };
     } else { writeOps(); }
 
-    tx.oncomplete = () => { closeModal(); pendingAsignacionesStaging = []; currentScreenStaging = null; populateAdminMatrix(); };
+    tx.oncomplete = () => { 
+        closeModal(); pendingAsignacionesStaging = []; currentScreenStaging = null; populateAdminMatrix(); 
+    };
 }
 
 function renderMonitoringTable() {
@@ -998,26 +1117,12 @@ function renderReportes() {
         const safeId = 'ent_grp_' + idx;
         
         // Fila Principal (Entidad)
-        rows.push(`<tr style="cursor:pointer; background-color:#F8F9FA;" onclick="toggleEntityDetails('${safeId}')" title="Clic para ver detalle por programa">
-            <td><b style="color:var(--primary-dark); font-size:0.9rem;"><span id="icon-${safeId}">➕</span> ${ent}</b></td>
-            <td class="text-center">${eRow.s[1]}</td><td class="text-center">${eRow.s[2]}</td>
-            <td class="text-center">${eRow.s[3]}</td><td class="text-center">${eRow.s[4]}</td>
-            <td class="text-center">${eRow.s[5]}</td><td class="text-center">${eRow.s[6]}</td>
-            <td class="text-center" style="font-size:1.15rem; font-weight:bold;">${eRow.finalAvg}</td>
-            <td class="text-center">${eRow.badge}</td>
-        </tr>`);
+        rows.push(buildReportRowHtml(ent, eRow, safeId, false));
 
         // Filas Secundarias (Desglose por Programa)
         Object.keys(entData.programs).sort().forEach(prog => {
             const pRow = calculateAveragesForReport(entData.programs[prog].stages);
-            rows.push(`<tr class="hidden detail-${safeId}" style="background-color:#FFF; transition: all 0.2s;">
-                <td style="padding-left: 25px; font-size:0.85rem; color:#555;">└ Programa: <b style="color:var(--primary-blue);">${prog}</b></td>
-                <td class="text-center">${pRow.s[1]}</td><td class="text-center">${pRow.s[2]}</td>
-                <td class="text-center">${pRow.s[3]}</td><td class="text-center">${pRow.s[4]}</td>
-                <td class="text-center">${pRow.s[5]}</td><td class="text-center">${pRow.s[6]}</td>
-                <td class="text-center" style="font-weight:bold;">${pRow.finalAvg}</td>
-                <td class="text-center">${pRow.badge}</td>
-            </tr>`);
+            rows.push(buildReportRowHtml(prog, pRow, safeId, true));
         });
     });
 
@@ -1096,6 +1201,7 @@ function createEvaluador() {
         clearFormInputs(['ev-nombre', 'ev-rut', 'ev-area', 'ev-clave']);
         document.getElementById('ev-rut').disabled = false;
         currentEditingEvaluadorRut = null;
+        toggleElement('modal-evaluador', false);
         populateAdminMatrix(); 
     };
 }
@@ -1130,6 +1236,7 @@ window.editEvaluador = function(rut) {
         document.getElementById('ev-nombre').value = ev.nombre;
         if (document.getElementById('ev-area')) document.getElementById('ev-area').value = ev.area || '';
         if (document.getElementById('ev-clave')) document.getElementById('ev-clave').value = ev.clave || '123456';
+        toggleElement('modal-evaluador', true);
     });
 };
 
@@ -1214,7 +1321,7 @@ function saveAdminItems() {
         const id = input.getAttribute('data-id'); const match = dbItems.find(i => i.id === id);
         if (match) { match.text = input.value.trim(); tx.objectStore('items').put(match); }
     });
-    tx.oncomplete = () => { };
+    tx.oncomplete = () => { alert("Textos guardados localmente. Recuerde Sincronizar a la Nube."); };
 }
 
 function saveEvaluatorScores() {
@@ -1244,7 +1351,7 @@ function saveEvaluatorScores() {
             });
         });
 
-        tx.oncomplete = () => { 
+        tx.oncomplete = () => {
             dbGetAll('scores', (scores) => {
                 allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
                 loadScoresFromActiveContext(); 
@@ -1254,7 +1361,7 @@ function saveEvaluatorScores() {
                 const btn = document.getElementById('btn-save-scores');
                 if (btn) {
                     const originalText = btn.textContent;
-                    btn.textContent = "¡Guardado Exitoso!";
+                    btn.textContent = "¡Guardado Exitoso Localmente!";
                     btn.style.backgroundColor = "var(--color-bueno)";
                     btn.style.color = "#000";
                     setTimeout(() => {
