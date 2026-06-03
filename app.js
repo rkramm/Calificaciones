@@ -783,6 +783,8 @@ function handleLogin() {
                 return;
             }
             
+            allAsignacionesMapped = userAsignaciones.map(a => {
+                let parsedEtapas = a.etapas;
                 if (typeof parsedEtapas === 'string') {
                     parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
                 } else if (!Array.isArray(parsedEtapas)) {
@@ -790,7 +792,10 @@ function handleLogin() {
                 }
                 return {
                     cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
-                    etapas: parsedEtapas.sort((x, y) => x - y)
+                    etapas: parsedEtapas.sort((x, y) => x - y),
+                    programa: a.programa,
+                    provincia: a.provincia,
+                    entidadNombre: a.entidadNombre
                 };
             }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
 
@@ -1378,23 +1383,29 @@ function saveEvaluatorScores() {
         const store = tx.objectStore('scores');
         const horaEnvio = formatDateTime(new Date());
 
-        // 1. Borramos todas las calificaciones anteriores de ESTA cobertura para el evaluador actual
-        const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut && r.cobertura === currentCoverage);
+        // 1. Borramos todas las calificaciones anteriores de TODAS las coberturas para el evaluador actual
+        const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut);
         oldRecords.forEach(r => store.delete(r.idTx));
 
-        // 2. Insertamos la foto actualizada en memoria, que YA contiene las modificaciones de TODAS las etapas
-        const memoryRecordsToSave = allMemoryScores.filter(r => r.cobertura === currentCoverage);
+        // 2. Insertamos la foto actualizada en memoria, que YA contiene las modificaciones de TODAS las etapas y coberturas
+        const memoryRecordsToSave = allMemoryScores.filter(r => r.rutEvaluador === currentUser.rut);
         
         memoryRecordsToSave.forEach(memScore => {
-            const stableId = `${currentUser.rut}_${currentCoverage.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
+            const stableId = `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
+            const activeAsig = allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
+            
             store.put({
                 idTx: stableId,
                 timestampId: Date.now().toString(),
                 rutEvaluador: currentUser.rut,
-                itemId: memScore.itemId,
+                nombreEvaluador: memScore.nombreEvaluador || currentUser.nombre,
+                programa: memScore.programa || activeAsig.programa || '',
+                provincia: memScore.provincia || activeAsig.provincia || '',
+                entidad: memScore.entidad || activeAsig.entidadNombre || '',
+                cobertura: memScore.cobertura,
                 stage: memScore.stage,
+                itemId: memScore.itemId,
                 score: memScore.score,
-                cobertura: currentCoverage,
                 hora: horaEnvio
             });
         });
@@ -1502,14 +1513,19 @@ function calculateLiveScore() {
         if (existingIdx >= 0) {
             allMemoryScores[existingIdx].score = val;
         } else {
+            const activeAsig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage) || {};
             allMemoryScores.push({
                 idTx: `pending_${currentUser.rut}_${currentCoverage.replace(/[\s-]+/g, '')}_${id}`,
                 timestampId: 'pending',
                 rutEvaluador: currentUser.rut,
-                itemId: id,
-                stage: currentStage,
-                score: val,
+                nombreEvaluador: currentUser.nombre,
+                programa: activeAsig.programa || '',
+                provincia: activeAsig.provincia || '',
+                entidad: activeAsig.entidadNombre || '',
                 cobertura: currentCoverage,
+                stage: currentStage,
+                itemId: id,
+                score: val,
                 hora: formatDateTime(new Date())
             });
         }
