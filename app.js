@@ -343,9 +343,9 @@ function parseSafeDate(isoString) {
     return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 23, 59, 59);
 }
 
-// NUEVA VERSIÓN V18: PUNTO DE GUARDADO Y RESTAURACIÓN
-const DB_NAME = 'SistemaEvaluacionDB_v18';
-const DB_VERSION = 3; // Actualizamos la versión para crear un punto de restauración de la estructura
+// NUEVA VERSIÓN V19: ESTABILIZACIÓN OFFLINE-FIRST Y SINCRONIZACIÓN DIFERIDA
+const DB_NAME = 'SistemaEvaluacionDB_v19';
+const DB_VERSION = 4; // Actualizamos la versión para crear un punto de restauración de la estructura y guardar el estado actual
 
 document.addEventListener('DOMContentLoaded', () => {
     initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
@@ -783,10 +783,16 @@ function handleLogin() {
                 return;
             }
             
-            allAsignacionesMapped = userAsignaciones.map(a => ({
-                cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
-                etapas: (a.etapas || [1]).sort((a, b) => a - b)
-            })).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+                if (typeof parsedEtapas === 'string') {
+                    parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                } else if (!Array.isArray(parsedEtapas)) {
+                    parsedEtapas = [1];
+                }
+                return {
+                    cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
+                    etapas: parsedEtapas.sort((x, y) => x - y)
+                };
+            }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
 
             allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
             currentCoverage = allAsignacionesMapped[0].cobertura;
@@ -1020,11 +1026,19 @@ function renderMonitoringTable() {
         asignaciones.forEach(asig => {
             const nom = evMap[asig.rut] || asig.rut;
             const cobLabel = buildCoberturaLabel(asig.programa, asig.provincia, asig.entidadNombre);
-            asig.etapas.forEach(stg => {
+            
+            let parsedEtapas = asig.etapas;
+            if (typeof parsedEtapas === 'string') {
+                parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+            } else if (!Array.isArray(parsedEtapas)) {
+                parsedEtapas = [1];
+            }
+
+            parsedEtapas.forEach(stg => {
                 const currentScores = scoresMap[`${asig.rut}_${cobLabel}_${stg}`] || [];
-                let sum = 0, count = 0; currentScores.forEach(s => { sum += s.score; count++; });
+                let sum = 0, count = 0; currentScores.forEach(s => { sum += (parseInt(s.score, 10) || 0); count++; });
                 const avg = count > 0 ? Math.round(sum / count) : 0;
-                monitoringData.push({ idAsig: asig.idAsig, rut: asig.rut, nombre: nom, evaluadorLabel: `${nom} (${asig.rut})`, programa: asig.programa, provincia: asig.provincia, entidadNombre: asig.entidadNombre, coberturaLabel: cobLabel, stageNum: stg, haEvaluado: (count > 0), average: avg });
+                monitoringData.push({ idAsig: asig.idAsig, rut: asig.rut, nombre: nom, evaluadorLabel: `${nom} (${asig.rut})`, programa: asig.programa, provincia: asig.provincia, entidadNombre: asig.entidadNombre, coberturaLabel: cobLabel, stageNum: parseInt(stg, 10), haEvaluado: (count > 0), average: avg });
             });
         });
         setupMonitoringHeaders(); drawMonitoringTable(); renderMonitoringCharts(); renderReportes();
