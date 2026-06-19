@@ -282,7 +282,7 @@ function syncAllToCloud() {
 
     showProgressBar("Iniciando sincronización con la Nube...");
     
-    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos'];
+    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos', 'asigna_historico'];
     let completed = 0;
 
     const syncNext = (index) => {
@@ -357,9 +357,9 @@ function parseSafeDate(isoString) {
     return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 23, 59, 59);
 }
 
-// NUEVA VERSIÓN V21: MÓDULO DE CALIFICACIONES HISTÓRICAS (recreación forzada por store faltante)
-const DB_NAME = 'SistemaEvaluacionDB_v21';
-const DB_VERSION = 6; // Se fuerza recreación de la base para asegurar que exista 'historicos'
+// NUEVA VERSIÓN V22: MÓDULO DE ASIGNACIONES HISTÓRICAS PERSISTENTES
+const DB_NAME = 'SistemaEvaluacionDB_v22';
+const DB_VERSION = 7; // Se agrega store 'asigna_historico' para asignaciones históricas persistentes
 
 document.addEventListener('DOMContentLoaded', () => {
     initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
@@ -604,6 +604,7 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains('asignaciones')) db.createObjectStore('asignaciones', { keyPath: 'idAsig' });
         if (!db.objectStoreNames.contains('configuracion')) db.createObjectStore('configuracion', { keyPath: 'clave' });
         if (!db.objectStoreNames.contains('historicos')) db.createObjectStore('historicos', { keyPath: 'idHist' });
+        if (!db.objectStoreNames.contains('asigna_historico')) db.createObjectStore('asigna_historico', { keyPath: 'idAsig' });
         
         // Forzar eliminación de la tabla antigua para destruir la llave primaria 'rut' que quedó guardada en el caché del navegador
         if (db.objectStoreNames.contains('entidades')) {
@@ -903,6 +904,7 @@ function showPanel(titleText) {
         if (countdownInterval) clearInterval(countdownInterval);
         populateAdminMatrix();
         window.changeStage(1);
+        checkAsignacionesHistoricasConflict();
     } else {
         toggleElement('admin-view', false);
         toggleElement('evaluador-view', true);
@@ -1138,7 +1140,7 @@ function exportDatabaseToJSON() {
     showProgressBar("Generando respaldo del sistema...");
     updateProgressBar(10);
 
-    const storeNames = ['items', 'scores', 'evaluadores', 'asignaciones', 'configuracion', 'entidades', 'historicos'];
+    const storeNames = ['items', 'scores', 'evaluadores', 'asignaciones', 'configuracion', 'entidades', 'historicos', 'asigna_historico'];
     const tx = dbInstance.transaction(storeNames, 'readonly');
     const backupData = {};
     let completed = 0;
@@ -1844,6 +1846,31 @@ function saveAsignacionHistorica() {
 
     const anio = document.getElementById('sel-anio-historico').value;
 
+    // Generar asignaciones históricas con idAsig compuesto
+    const asignacionesHistoricas = combinedCoverages.map((c, idx) => ({
+        idAsig: `${anio}_${c.programa}_${idx + 1}`,
+        rut: selectedEvaluatorsRuts[0],
+        programa: c.programa,
+        provincia: c.provincia,
+        entidadId: c.entidadId || '',
+        entidadNombre: c.entidadNombre,
+        etapas: etapas.join(',')
+    }));
+
+    // Guardar localmente en IndexedDB
+    const tx = dbInstance.transaction(['asigna_historico'], 'readwrite');
+    const store = tx.objectStore('asigna_historico');
+    asignacionesHistoricas.forEach(a => store.put(a));
+    tx.oncomplete = () => {
+        // Sincronizar con la nube
+        syncSingleStoreToCloud('asigna_historico', () => {
+            // Continuar con la vista histórica
+            continuarAAsignacionHistorica(combinedCoverages, selectedEvaluatorsRuts, selectedEvaluatorsNames, etapas, anio);
+        });
+    };
+}
+
+function continuarAAsignacionHistorica(combinedCoverages, selectedEvaluatorsRuts, selectedEvaluatorsNames, etapas, anio) {
     // Guardar todas las entidades asignadas para el selector superior del tab histórico
     historicoEntidadesAsignadas = combinedCoverages.map(c => ({
         entidadId: c.entidadId,
@@ -2186,6 +2213,141 @@ function transformHistoricosToWideRows(registros) {
     });
 
     return Object.values(grouped);
+}
+
+/* ================= SINCRONIZACIÓN BIDIRECCIONAL DE ASIGNACIONES HISTÓRICAS ================= */
+function checkAsignacionesHistoricasConflict() {
+    if (!CLOUD_MODE_ENABLED) return;
+
+    Promise.all([
+        new Promise(resolve => dbGetAll('asigna_historico', resolve)),
+        cloudGet('asigna_historico')
+    ]).then(([local, remote]) => {
+        if (!Array.isArray(remote)) return;
+
+        const localMap = {};
+        (local || []).forEach(a => { localMap[a.idAsig] = a; });
+        const remoteMap = {};
+        remote.forEach(a => { remoteMap[a.idAsig] = a; });
+
+        const added = [];
+        const removed = [];
+        const modified = [];
+
+        // Detectar agregados y modificados en remoto
+        remote.forEach(r => {
+            if (!localMap[r.idAsig]) {
+                added.push({ idAsig: r.idAsig, data: r, source: 'remote' });
+            } else {
+                const l = localMap[r.idAsig];
+                if (l.rut !== r.rut || l.programa !== r.programa || l.provincia !== r.provincia || l.entidadId !== r.entidadId || l.entidadNombre !== r.entidadNombre || l.etapas !== r.etapas) {
+                    modified.push({ idAsig: r.idAsig, local: l, remote: r });
+                }
+            }
+        });
+
+        // Detectar eliminados en remoto (existen local pero no remoto)
+        (local || []).forEach(l => {
+            if (!remoteMap[l.idAsig]) {
+                removed.push({ idAsig: l.idAsig, data: l });
+            }
+        });
+
+        if (added.length === 0 && removed.length === 0 && modified.length === 0) return;
+
+        showConflictModal(added, removed, modified, remote);
+    }).catch(err => {
+        console.error('Error al verificar conflictos de asignaciones históricas:', err);
+    });
+}
+
+function showConflictModal(added, removed, modified, remoteData) {
+    const modal = document.getElementById('audit-modal');
+    document.getElementById('modal-title').textContent = 'Conflictos de Asignaciones Históricas';
+    toggleElement('modal-table-container', false);
+    toggleElement('modal-overwrite-question', false);
+    toggleElement('modal-action-footer', true);
+
+    let html = `
+        <div style="background:#FFF3CD; border-left:4px solid #856404; padding:10px; border-radius:4px; margin-bottom:10px; font-size:0.85rem;">
+            <strong>Resumen:</strong> Se detectaron diferencias entre las asignaciones históricas locales y las del servidor.
+            <ul style="margin:5px 0 0 15px; padding:0;">
+                <li><strong>Agregadas en servidor:</strong> ${added.length}</li>
+                <li><strong>Eliminadas en servidor:</strong> ${removed.length}</li>
+                <li><strong>Modificadas en servidor:</strong> ${modified.length}</li>
+            </ul>
+        </div>
+        <p style="font-size:0.85rem; margin-bottom:10px;">Seleccione para cada asignación si desea <strong>Mantener local</strong> o <strong>Sincronizar servidor</strong>.</p>
+    `;
+
+    const renderItem = (item, type, idx) => {
+        const d = item.data || item.remote || item.local;
+        let detail = '';
+        if (type === 'modified') {
+            detail = `<br><span style="color:#006BB9;">Local:</span> ${item.local.rut} | ${item.local.programa} | ${item.local.provincia} | ${item.local.entidadNombre} | Etapas: ${item.local.etapas}<br>
+                      <span style="color:#28A745;">Servidor:</span> ${item.remote.rut} | ${item.remote.programa} | ${item.remote.provincia} | ${item.remote.entidadNombre} | Etapas: ${item.remote.etapas}`;
+        } else {
+            detail = `${d.rut} | ${d.programa} | ${d.provincia} | ${d.entidadNombre} | Etapas: ${d.etapas}`;
+        }
+        return `
+            <div style="background:#F8F9FA; padding:8px; border-left:3px solid var(--primary-blue); margin-bottom:6px; font-size:0.82rem;">
+                <div style="margin-bottom:4px;"><strong>${item.idAsig}</strong> (${type === 'added' ? 'Agregada' : type === 'removed' ? 'Eliminada' : 'Modificada'})</div>
+                <div style="margin-bottom:6px;">${detail}</div>
+                <div style="display:flex; gap:8px;">
+                    <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="radio" name="conflict_${type}_${idx}" value="local" checked> Mantener local</label>
+                    <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="radio" name="conflict_${type}_${idx}" value="server"> Sincronizar servidor</label>
+                </div>
+            </div>
+        `;
+    };
+
+    added.forEach((item, i) => { html += renderItem(item, 'added', i); });
+    removed.forEach((item, i) => { html += renderItem(item, 'removed', i); });
+    modified.forEach((item, i) => { html += renderItem(item, 'modified', i); });
+
+    document.getElementById('modal-custom-html-body').innerHTML = html;
+
+    const confirmBtn = document.getElementById('btn-modal-confirm');
+    confirmBtn.onclick = () => {
+        applyConflictResolution(added, removed, modified, remoteData);
+        closeModal();
+    };
+
+    toggleElement('audit-modal', true);
+}
+
+function applyConflictResolution(added, removed, modified, remoteData) {
+    const tx = dbInstance.transaction(['asigna_historico'], 'readwrite');
+    const store = tx.objectStore('asigna_historico');
+
+    // Procesar agregadas
+    added.forEach((item, i) => {
+        const choice = document.querySelector(`input[name="conflict_added_${i}"]:checked`).value;
+        if (choice === 'server') {
+            store.put(item.data);
+        }
+    });
+
+    // Procesar eliminadas
+    removed.forEach((item, i) => {
+        const choice = document.querySelector(`input[name="conflict_removed_${i}"]:checked`).value;
+        if (choice === 'server') {
+            store.delete(item.idAsig);
+        }
+    });
+
+    // Procesar modificadas
+    modified.forEach((item, i) => {
+        const choice = document.querySelector(`input[name="conflict_modified_${i}"]:checked`).value;
+        if (choice === 'server') {
+            store.put(item.remote);
+        }
+    });
+
+    tx.oncomplete = () => {
+        alert('Resolución de conflictos aplicada. Se sincronizarán los cambios con el servidor.');
+        syncSingleStoreToCloud('asigna_historico');
+    };
 }
 
 /* ================= EXPORTACIÓN A PDF DEL EVALUADOR ================= */

@@ -13,5 +13,7 @@
 ## Enfoque actual
 - Verificar estabilidad del nuevo módulo histórico.
 - Validar sincronización de históricos con Google Sheets.
-- Validar recreación de IndexedDB v21 y existencia de store 'historicos'.
-- Validar guardado local de históricos y sincronización con nube.
+- Validar recreación de IndexedDB v22 y existencia de stores 'historicos' y 'asigna_historico'.
+- Validar guardado local de asignaciones históricas y sincronización con nube.
+- Validar diálogo de resolución de conflictos al iniciar sesión como admin.
+- Validar persistencia y recuperación de asignaciones históricas desde Google Sheets.

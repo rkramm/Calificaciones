@@ -7,10 +7,12 @@ function doPost(e) {
     const dataArray = payload.data;
     
     // Conecta con el archivo usando el ID
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(tableName);
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = spreadsheet.getSheetByName(tableName);
     
+    // Si la pestaña no existe, crearla automáticamente
     if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({ success: false, error: "La pestaña " + tableName + " no existe." })).setMimeType(ContentService.MimeType.JSON);
+      sheet = spreadsheet.insertSheet(tableName);
     }
     
     // Borrar contenido antiguo (Como hacemos Sincronización Masiva, reemplaza todo)
@@ -21,6 +23,8 @@ function doPost(e) {
       let headers;
       if (tableName === 'historicos') {
         headers = ['PROVINCIA','PROGRAMA','ENTIDAD','CALIFICADOR','AÑO','1.1','1.2','1.3','1.4','1.5','1.6','1.7','1.8','1.9','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8','2.9','3.1','3.2','3.3','3.4','3.5','3.6','3.7','4.1','4.2','4.3','4.4','4.5','4.6','4.7','4.8','4.9','4.10','5.1','5.2','5.3','5.4','5.5','5.6','5.7','6.1','6.2','6.3','6.4','6.5','6.6','6.7','6.8','6.9'];
+      } else if (tableName === 'asigna_historico') {
+        headers = ['idAsig','rut','programa','provincia','entidadId','entidadNombre','etapas'];
       } else {
         headers = Object.keys(dataArray[0]);
       }
