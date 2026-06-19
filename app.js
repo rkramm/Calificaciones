@@ -225,19 +225,57 @@ async function cloudGet(table) {
     }
 }
 
-async function cloudSave(table, dataArray) {
+async function cloudSave(table, dataArray, mode = 'incremental') {
     try {
         // Enviar como texto plano (text/plain) evita que el navegador bloquee la solicitud por CORS
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-            body: JSON.stringify({ table, data: dataArray })
+            body: JSON.stringify({ table, data: dataArray, mode })
         });
         return await response.json();
     } catch (error) {
         console.error(`Error guardando en tabla ${table}:`, error);
         return { success: false, error: error.message };
     }
+}
+
+let syncCancelRequested = false;
+
+function requestSyncCancel() {
+    syncCancelRequested = true;
+    hideProgressBar();
+    alert('Sincronización cancelada por el usuario. No se perdieron datos locales.');
+}
+
+function downloadAutoBackupJSON() {
+    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos', 'asigna_historico'];
+    const tx = dbInstance.transaction(storeNames, 'readonly');
+    const backupData = {};
+    let completed = 0;
+
+    storeNames.forEach((storeName) => {
+        const req = tx.objectStore(storeName).getAll();
+        req.onsuccess = (e) => {
+            backupData[storeName] = e.target.result;
+            completed++;
+            if (completed === storeNames.length) {
+                try {
+                    const jsonString = JSON.stringify(backupData, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `Respaldo_Auto_${formatDDMMYYYY(new Date())}_${Date.now()}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (err) {
+                    console.error('Error descargando respaldo JSON:', err);
+                }
+            }
+        };
+    });
 }
 
 function syncSingleStoreToCloud(storeName, callback) {
@@ -278,43 +316,90 @@ function syncAllToCloud() {
         alert('El modo nube está desactivado.');
         return;
     }
-    if (!confirm('¿Desea enviar todos los datos guardados en este dispositivo a la Nube?\n\nAl confirmar, su información se respaldará permanentemente en Google Sheets.')) return;
+    if (!confirm('¿Desea enviar todos los datos guardados en este dispositivo a la Nube?\n\nSe creará un respaldo automático en Google Sheets y se descargará un JSON local antes de sincronizar.')) return;
 
-    showProgressBar("Iniciando sincronización con la Nube...");
-    
-    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos', 'asigna_historico'];
-    let completed = 0;
+    syncCancelRequested = false;
 
-    const syncNext = (index) => {
-        if (index >= storeNames.length) {
-            updateProgressBar(100);
-            setTimeout(() => {
-                hideProgressBar();
-                alert('✅ Sincronización completada con éxito. Todos los datos han sido enviados a Google Sheets.');
-            }, 500);
-            return;
-        }
-        
-        const storeName = storeNames[index];
-        updateProgressBar((index / storeNames.length) * 100);
-        document.getElementById('progress-title').textContent = `Enviando ${storeName}... (${index + 1}/${storeNames.length})`;
+    // 1. Descargar respaldo JSON local automáticamente
+    downloadAutoBackupJSON();
 
-        const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
-        req.onsuccess = (e) => {
-            let dataToSend = e.target.result;
-            if (storeName === 'historicos') {
-                dataToSend = transformHistoricosToWideRows(dataToSend);
+    // 2. Crear respaldo en Google Sheets
+    showProgressBar("Creando respaldo en Google Sheets...");
+    cloudSave('__backup__', [], 'backup').then(backupRes => {
+        if (syncCancelRequested) return;
+
+        // 3. Sincronización incremental
+        const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos', 'asigna_historico'];
+        let completed = 0;
+
+        const syncNext = (index) => {
+            if (syncCancelRequested) return;
+
+            if (index >= storeNames.length) {
+                updateProgressBar(100);
+                setTimeout(() => {
+                    hideProgressBar();
+                    alert('✅ Sincronización completada con éxito. Todos los datos han sido enviados a Google Sheets.');
+                }, 500);
+                return;
             }
-            cloudSave(storeName, dataToSend).then(res => {
-                syncNext(index + 1);
-            }).catch(err => {
-                console.error(`Error de red al sincronizar ${storeName}:`, err);
-                syncNext(index + 1); // Continúa a pesar del error de red
-            });
-        };
-    };
+            
+            const storeName = storeNames[index];
+            updateProgressBar((index / storeNames.length) * 100);
+            document.getElementById('progress-title').textContent = `Enviando ${storeName}... (${index + 1}/${storeNames.length})`;
 
-    syncNext(0);
+            const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
+            req.onsuccess = (e) => {
+                if (syncCancelRequested) return;
+                let dataToSend = e.target.result;
+                if (storeName === 'historicos') {
+                    dataToSend = transformHistoricosToWideRows(dataToSend);
+                }
+                cloudSave(storeName, dataToSend, 'incremental').then(res => {
+                    if (syncCancelRequested) return;
+                    syncNext(index + 1);
+                }).catch(err => {
+                    console.error(`Error de red al sincronizar ${storeName}:`, err);
+                    if (!syncCancelRequested) syncNext(index + 1);
+                });
+            };
+        };
+
+        syncNext(0);
+    }).catch(err => {
+        hideProgressBar();
+        console.error('Error creando respaldo en Google Sheets:', err);
+        alert('No se pudo crear el respaldo en Google Sheets. La sincronización se ha cancelado para proteger los datos.');
+    });
+}
+
+function handleRestoreBackupJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const backupData = JSON.parse(e.target.result);
+            const storeNames = Object.keys(backupData);
+            const tx = dbInstance.transaction(storeNames, 'readwrite');
+            storeNames.forEach(storeName => {
+                const store = tx.objectStore(storeName);
+                store.clear().onsuccess = () => {
+                    (backupData[storeName] || []).forEach(item => store.put(item));
+                };
+            });
+            tx.oncomplete = () => {
+                alert('Respaldo restaurado correctamente. Recargue la página para ver los cambios.');
+            };
+            tx.onerror = () => {
+                alert('Error al restaurar el respaldo.');
+            };
+        } catch (err) {
+            alert('El archivo seleccionado no es un respaldo válido.');
+        }
+    };
+    reader.readAsText(file);
 }
 /* =============================================================================== */
 
@@ -474,6 +559,12 @@ function setupEventListeners() {
 
     const btnGuardarHistorico = document.getElementById('btn-guardar-historico');
     if (btnGuardarHistorico) btnGuardarHistorico.addEventListener('click', guardarHistorico);
+
+    const btnCancelSync = document.getElementById('btn-cancel-sync');
+    if (btnCancelSync) btnCancelSync.addEventListener('click', requestSyncCancel);
+
+    const inputRestoreBackup = document.getElementById('input-restore-backup');
+    if (inputRestoreBackup) inputRestoreBackup.addEventListener('change', handleRestoreBackupJSON);
 }
 
 let historicoEntidadesAsignadas = [];

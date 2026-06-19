@@ -520,8 +520,12 @@
                 <div id="progress-bar-fill" style="width: 0%; background: var(--color-bueno); height: 100%; transition: width 0.2s;"></div>
             </div>
             <p id="progress-text" style="font-size: 0.85rem; font-weight: bold; color: #555;">0%</p>
+            <button id="btn-cancel-sync" class="btn" style="background-color:#6C757D; color:#FFF; margin-top:10px; width:100%;">Cancelar Sincronización</button>
         </div>
     </div>
+
+    <!-- INPUT OCULTO PARA RESTAURAR RESPALDO JSON -->
+    <input type="file" id="input-restore-backup" accept="application/json" style="display:none;">
 
     <script src="app.js"></script>
 </body>
