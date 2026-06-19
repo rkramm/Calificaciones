@@ -118,6 +118,10 @@ input[type="number"] { -moz-appearance: textfield; }
 .tab-button { background-color: #DCE1E9; border: none; padding: 8px 14px; font-weight: bold; color: var(--primary-dark); cursor: pointer; border-radius: 4px 4px 0 0; font-size: 0.85rem; }
 .tab-button.active { background-color: var(--primary-dark); color: var(--white); }
 
+/* Tabs verticales para módulo histórico */
+.historico-tabs-vertical { display: flex; flex-direction: column; gap: 4px; min-width: 90px; }
+.historico-tabs-vertical .tab-button { border-radius: 4px; text-align: left; padding: 8px 10px; }
+
 .timing-dashboard { display: flex; justify-content: space-between; align-items: center; background: #25306B; color: #FFF; padding: 10px 20px; margin-bottom: 10px; border-radius: 4px; font-size: 0.88rem; }
 .countdown-container { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 4px; }
 .countdown-clock { color: #FF4D4D; font-weight: bold; font-family: monospace; }

@@ -75,6 +75,12 @@ const STAGES_METADATA = {
 let currentUser = null, currentRole = null, currentStage = 1, currentCoverage = "", deadlineExpired = false;
 let dbInstance = null, dbItems = [], dbScores = {}, allMemoryScores = [], allAsignacionesMapped = [];
 
+// Estado del módulo histórico
+let historicoConfig = null;
+let historicoStage = 1;
+let historicoScores = {};
+let historicoMemory = [];
+
 let adminSelectedProvincia = "";
 let adminTemporaryLogisticaMap = {}; 
 let adminTemporaryEntidades = [];
@@ -89,10 +95,15 @@ let monitoringData = [];
 
 let currentEditingEntidadId = null;
 let currentEditingEvaluadorRut = null;
-let entidadesCurrentPage = 1;
-const entidadesPerPage = 10;
+
 let entidadesSortCol = -1;
 let entidadesSortAsc = true;
+let evaluadoresSortCol = -1;
+let evaluadoresSortAsc = true;
+let adminTemporaryEvaluadores = [];
+let reportesSortCol = -1;
+let reportesSortAsc = true;
+let hasUnsavedEvaluatorChanges = false;
 
 /* ================= FUNCIONES AUXILIARES (REDUCCIÓN DE CÓDIGO) ================= */
 function formatDDMMYYYY(dateObj) {
@@ -104,6 +115,20 @@ function formatDDMMYYYY(dateObj) {
 
 function formatDateTime(dateObj) {
     return formatDDMMYYYY(dateObj) + " " + dateObj.toLocaleTimeString('es-CL', {hour: '2-digit', minute:'2-digit'});
+}
+
+function parseAnyDate(dateStr) {
+    if (!dateStr) return 0;
+    let ts = new Date(dateStr).getTime();
+    if (!isNaN(ts)) return ts;
+    let parts = dateStr.split(' ');
+    if (parts.length === 2) {
+        let dP = parts[0].split('-'), tP = parts[1].split(':');
+        if (dP.length === 3 && tP.length >= 2) {
+            return new Date(dP[2], dP[1]-1, dP[0], tP[0], tP[1]).getTime();
+        }
+    }
+    return 0;
 }
 
 function closeModal() {
@@ -257,7 +282,7 @@ function syncAllToCloud() {
 
     showProgressBar("Iniciando sincronización con la Nube...");
     
-    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores'];
+    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos'];
     let completed = 0;
 
     const syncNext = (index) => {
@@ -276,7 +301,11 @@ function syncAllToCloud() {
 
         const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
         req.onsuccess = (e) => {
-            cloudSave(storeName, e.target.result).then(res => {
+            let dataToSend = e.target.result;
+            if (storeName === 'historicos') {
+                dataToSend = transformHistoricosToWideRows(dataToSend);
+            }
+            cloudSave(storeName, dataToSend).then(res => {
                 syncNext(index + 1);
             }).catch(err => {
                 console.error(`Error de red al sincronizar ${storeName}:`, err);
@@ -316,21 +345,6 @@ function updateProgressBar(percent) {
 function hideProgressBar() { toggleElement('progress-overlay', false); }
 /* =============================================================================== */
 
-/* ================= PROTECCIÓN BÁSICA DE INTERFAZ ================= */
-// Bloquear el clic derecho (Menú contextual)
-document.addEventListener('contextmenu', event => event.preventDefault());
-
-// Bloquear atajos de teclado para herramientas de desarrollador (F12, Ctrl+Shift+I, Ctrl+U)
-document.addEventListener('keydown', event => {
-    if (
-        event.key === 'F12' || 
-        (event.ctrlKey && event.shiftKey && (event.key === 'I' || event.key === 'J' || event.key === 'C')) || 
-        (event.ctrlKey && event.key === 'U') || 
-        (event.ctrlKey && event.key === 'S')
-    ) {
-        event.preventDefault();
-    }
-});
 
 function parseSafeDate(isoString) {
     if (!isoString) return null;
@@ -343,9 +357,9 @@ function parseSafeDate(isoString) {
     return new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 23, 59, 59);
 }
 
-// NUEVA VERSIÓN V19: ESTABILIZACIÓN OFFLINE-FIRST Y SINCRONIZACIÓN DIFERIDA
-const DB_NAME = 'SistemaEvaluacionDB_v19';
-const DB_VERSION = 4; // Actualizamos la versión para crear un punto de restauración de la estructura y guardar el estado actual
+// NUEVA VERSIÓN V21: MÓDULO DE CALIFICACIONES HISTÓRICAS (recreación forzada por store faltante)
+const DB_NAME = 'SistemaEvaluacionDB_v21';
+const DB_VERSION = 6; // Se fuerza recreación de la base para asegurar que exista 'historicos'
 
 document.addEventListener('DOMContentLoaded', () => {
     initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
@@ -356,7 +370,8 @@ function setupEventListeners() {
     document.getElementById('btn-sync-cloud').addEventListener('click', syncAllToCloud);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     document.getElementById('btn-save-items').addEventListener('click', saveAdminItems);
-    document.getElementById('btn-save-scores').addEventListener('click', (e) => { e.preventDefault(); saveEvaluatorScores(); });
+    document.getElementById('btn-save-scores').addEventListener('click', (e) => { e.preventDefault(); saveEvaluatorScores(null); });
+    document.getElementById('btn-eval-pdf').addEventListener('click', exportEvaluatorPDF);
     document.getElementById('btn-save-asignacion').addEventListener('click', () => { processAsignacionStaging(false); });
     document.getElementById('btn-save-partial').addEventListener('click', () => { processAsignacionStaging(true); });
     document.getElementById('btn-save-config').addEventListener('click', saveConfigDeadline);
@@ -425,20 +440,67 @@ function setupEventListeners() {
             populateAdminMatrix(); 
         };
     });
+
+    const searchEntidades = document.getElementById('search-entidades');
+    if (searchEntidades) searchEntidades.addEventListener('input', renderEntidadesAgregadas);
+
+    const searchEvaluadores = document.getElementById('search-evaluadores');
+    if (searchEvaluadores) searchEvaluadores.addEventListener('input', drawEvaluadoresTable);
+
+    const searchMonitoreo = document.getElementById('search-monitoreo');
+    if (searchMonitoreo) searchMonitoreo.addEventListener('input', drawMonitoringTable);
+
+    // Event listeners del módulo histórico
+    const chkHistorico = document.getElementById('chk-modo-historico');
+    if (chkHistorico) chkHistorico.addEventListener('change', toggleModoHistorico);
+
+    const selAnioHistorico = document.getElementById('sel-anio-historico');
+    if (selAnioHistorico) selAnioHistorico.addEventListener('change', () => {
+        if (historicoConfig) historicoConfig.anio = selAnioHistorico.value;
+    });
+
+    const btnSaveAsigHist = document.getElementById('btn-save-asignacion-historica');
+    if (btnSaveAsigHist) btnSaveAsigHist.addEventListener('click', saveAsignacionHistorica);
+
+    const selHistoricoAnio = document.getElementById('sel-historico-anio');
+    if (selHistoricoAnio) selHistoricoAnio.addEventListener('change', () => {
+        if (historicoConfig) {
+            historicoConfig.anio = selHistoricoAnio.value;
+            historicoMemory = [];
+            historicoScores = {};
+            renderHistoricoView();
+        }
+    });
+
+    const btnGuardarHistorico = document.getElementById('btn-guardar-historico');
+    if (btnGuardarHistorico) btnGuardarHistorico.addEventListener('click', guardarHistorico);
 }
+
+let historicoEntidadesAsignadas = [];
 
 function renderEntidadesAgregadas() {
     const tbodyTabla = document.getElementById('tabla-entidades-body');
+    const searchInput = document.getElementById('search-entidades');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     
     if (adminTemporaryEntidades.length === 0) { 
         if (tbodyTabla) tbodyTabla.innerHTML = '<tr><td colspan="7" class="text-center">Sin entidades guardadas.</td></tr>';
-        const pagDiv = document.getElementById('entidades-pagination');
-        if (pagDiv) pagDiv.style.display = 'none';
         return; 
     }
 
     if (tbodyTabla) {
-        let sortedEntidades = [...adminTemporaryEntidades];
+        let filteredEntidades = adminTemporaryEntidades;
+        if (searchTerm) {
+            filteredEntidades = filteredEntidades.filter(e => 
+                (e.rut && e.rut.toLowerCase().includes(searchTerm)) ||
+                (e.nombre && e.nombre.toLowerCase().includes(searchTerm)) ||
+                (e.comuna && e.comuna.toLowerCase().includes(searchTerm)) ||
+                (e.programa && e.programa.toLowerCase().includes(searchTerm)) ||
+                (e.convenio && e.convenio.toLowerCase().includes(searchTerm))
+            );
+        }
+
+        let sortedEntidades = [...filteredEntidades];
         if (entidadesSortCol > -1) {
             const cols = ['rut', 'nombre', 'comuna', 'programa', 'convenio', 'fecha'];
             sortedEntidades.sort((a, b) => {
@@ -448,49 +510,25 @@ function renderEntidadesAgregadas() {
             });
         }
 
-        const totalPages = Math.ceil(sortedEntidades.length / entidadesPerPage) || 1;
-        if (entidadesCurrentPage > totalPages) entidadesCurrentPage = totalPages;
-        if (entidadesCurrentPage < 1) entidadesCurrentPage = 1;
-        
-        const startIdx = (entidadesCurrentPage - 1) * entidadesPerPage;
-        const paginated = sortedEntidades.slice(startIdx, startIdx + entidadesPerPage);
-
-        tbodyTabla.innerHTML = paginated.map((e) => `
-            <tr>
-                <td>${e.rut}</td><td>${e.nombre}</td><td>${e.comuna}</td>
-                <td class="text-center"><strong>${e.programa}</strong></td>
-                <td>${e.convenio}</td><td class="text-center">${e.fecha}</td>
-                <td class="text-center">
-                    <button class="btn btn-primary" style="padding:2px 8px; border-radius:3px; font-size:0.75rem; margin-right:4px;" onclick="editEntidad('${e.idEntidad}')" title="Editar Entidad">Editar</button>
-                    <button class="btn btn-danger" style="padding:2px 8px; border-radius:3px; font-size:0.75rem;" onclick="removeEntidad('${e.idEntidad}')" title="Eliminar Entidad">X</button>
-                </td>
-            </tr>
-        `).join('');
-
-        let paginationDiv = document.getElementById('entidades-pagination');
-        if (!paginationDiv) {
-            paginationDiv = document.createElement('div');
-            paginationDiv.id = 'entidades-pagination';
-            paginationDiv.style = "display: flex; justify-content: space-between; align-items: center; margin-top: 10px;";
-            const table = tbodyTabla.closest('table');
-            if (table && table.parentNode) table.parentNode.insertBefore(paginationDiv, table.nextSibling);
+        if (sortedEntidades.length === 0) {
+            tbodyTabla.innerHTML = '<tr><td colspan="7" class="text-center">No se encontraron entidades con esa búsqueda.</td></tr>';
+        } else {
+            tbodyTabla.innerHTML = sortedEntidades.map((e) => `
+                <tr>
+                    <td>${e.rut}</td><td>${e.nombre}</td><td>${e.comuna}</td>
+                    <td class="text-center"><strong>${e.programa}</strong></td>
+                    <td>${e.convenio}</td><td class="text-center">${e.fecha}</td>
+                    <td class="text-center">
+                        <button class="btn btn-primary" style="padding:2px 8px; border-radius:3px; font-size:0.75rem; margin-right:4px;" onclick="editEntidad('${e.idEntidad}')" title="Editar Entidad">Editar</button>
+                        <button class="btn btn-danger" style="padding:2px 8px; border-radius:3px; font-size:0.75rem;" onclick="removeEntidad('${e.idEntidad}')" title="Eliminar Entidad">X</button>
+                    </td>
+                </tr>
+            `).join('');
         }
-        
-        paginationDiv.style.display = 'flex';
-        paginationDiv.innerHTML = `
-            <button class="btn btn-primary" style="padding: 4px 10px;" onclick="changeEntidadesPage(-1)" ${entidadesCurrentPage === 1 ? 'disabled' : ''}>Anterior</button>
-            <span style="font-size:0.85rem; font-weight:bold;">Página ${entidadesCurrentPage} de ${totalPages}</span>
-            <button class="btn btn-primary" style="padding: 4px 10px;" onclick="changeEntidadesPage(1)" ${entidadesCurrentPage === totalPages ? 'disabled' : ''}>Siguiente</button>
-        `;
 
         setupEntidadesHeaders();
     }
 }
-
-window.changeEntidadesPage = function(delta) {
-    entidadesCurrentPage += delta;
-    renderEntidadesAgregadas();
-};
 
 function setupEntidadesHeaders() {
     const tbodyTabla = document.getElementById('tabla-entidades-body');
@@ -550,6 +588,7 @@ function setupAdminTabs() {
             const targetId = e.target.getAttribute('data-target');
             toggleElement(targetId, true);
             if (targetId === 'panel-monitoreo' || targetId === 'panel-reportes') renderMonitoringTable();
+            if (targetId === 'panel-historicos') renderHistoricoView();
         });
     });
 }
@@ -564,6 +603,7 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains('evaluadores')) db.createObjectStore('evaluadores', { keyPath: 'rut' });
         if (!db.objectStoreNames.contains('asignaciones')) db.createObjectStore('asignaciones', { keyPath: 'idAsig' });
         if (!db.objectStoreNames.contains('configuracion')) db.createObjectStore('configuracion', { keyPath: 'clave' });
+        if (!db.objectStoreNames.contains('historicos')) db.createObjectStore('historicos', { keyPath: 'idHist' });
         
         // Forzar eliminación de la tabla antigua para destruir la llave primaria 'rut' que quedó guardada en el caché del navegador
         if (db.objectStoreNames.contains('entidades')) {
@@ -571,6 +611,18 @@ function initIndexedDB(callback) {
         }
         db.createObjectStore('entidades', { keyPath: 'idEntidad' });
     };
+    request.onerror = (e) => {
+        console.error('Error al abrir IndexedDB:', e.target.error);
+        alert('Error al abrir la base de datos local. Intente recargar la página.');
+    };
+    request.onblocked = () => {
+        alert('La base de datos local está bloqueada. Cierre otras pestañas del sistema y recargue.');
+    };
+}
+
+function ensureStoreExists(storeName) {
+    if (!dbInstance) return false;
+    return dbInstance.objectStoreNames.contains(storeName);
 }
 
 function loadCoreData(callback) {
@@ -811,13 +863,28 @@ function handleLogin() {
 }
 
 function handleLogout() {
-    if (!confirm('¿Ha recordado sincronizar sus cambios con la Nube?\n\nSi no lo ha hecho, presione Cancelar y utilice el botón "Sincronizar a la Nube" antes de salir.\n\n¿Desea cerrar sesión de todas formas?')) {
-        return;
+    if (currentRole === 'evaluador' && hasUnsavedEvaluatorChanges) {
+        if (confirm('⚠️ ¡ATENCIÓN! Tiene calificaciones sin guardar que se perderán al salir.\n\n¿Desea GUARDAR sus calificaciones ahora antes de cerrar la sesión?')) {
+            saveEvaluatorScores(() => { performLogout(); });
+            return;
+        }
+    } else if (currentRole === 'admin') {
+        if (!confirm('¿Ha recordado sincronizar sus cambios con la Nube?\n\nSi no lo ha hecho, presione Cancelar y utilice el botón "Sincronizar a la Nube" antes de salir.\n\n¿Desea cerrar sesión de todas formas?')) {
+            return;
+        }
+    } else {
+        if (!confirm('¿Desea cerrar sesión y volver a la pantalla de inicio?')) return;
     }
+    performLogout();
+}
+
+function performLogout() {
     currentUser = null; currentRole = null;
+    hasUnsavedEvaluatorChanges = false;
     toggleElement('main-screen', false);
     toggleElement('login-container', true);
     document.getElementById('username').value = '';
+    document.getElementById('password').value = '123456';
     if (countdownInterval) clearInterval(countdownInterval);
 }
 
@@ -831,6 +898,8 @@ function showPanel(titleText) {
         toggleElement('admin-view', true);
         toggleElement('evaluador-view', false);
         toggleElement('btn-sync-cloud', true);
+        toggleElement('btn-save-scores', false);
+        toggleElement('btn-eval-pdf', false);
         if (countdownInterval) clearInterval(countdownInterval);
         populateAdminMatrix();
         window.changeStage(1);
@@ -838,6 +907,8 @@ function showPanel(titleText) {
         toggleElement('admin-view', false);
         toggleElement('evaluador-view', true);
         toggleElement('btn-sync-cloud', false);
+        toggleElement('btn-save-scores', true);
+        toggleElement('btn-eval-pdf', true);
         checkDeadlineStatus();
         renderCoverageTabs();
     }
@@ -1041,9 +1112,15 @@ function renderMonitoringTable() {
 
             parsedEtapas.forEach(stg => {
                 const currentScores = scoresMap[`${asig.rut}_${cobLabel}_${stg}`] || [];
-                let sum = 0, count = 0; currentScores.forEach(s => { sum += (parseInt(s.score, 10) || 0); count++; });
+                let sum = 0, count = 0, maxTs = 0, lastDateStr = "";
+                currentScores.forEach(s => { 
+                    sum += (parseInt(s.score, 10) || 0); count++; 
+                    let ts = parseAnyDate(s.hora);
+                    if (ts > maxTs) { maxTs = ts; lastDateStr = s.hora; }
+                    else if (lastDateStr === "" && s.hora) lastDateStr = s.hora;
+                });
                 const avg = count > 0 ? Math.round(sum / count) : 0;
-                monitoringData.push({ idAsig: asig.idAsig, rut: asig.rut, nombre: nom, evaluadorLabel: `${nom} (${asig.rut})`, programa: asig.programa, provincia: asig.provincia, entidadNombre: asig.entidadNombre, coberturaLabel: cobLabel, stageNum: parseInt(stg, 10), haEvaluado: (count > 0), average: avg });
+                monitoringData.push({ idAsig: asig.idAsig, rut: asig.rut, nombre: nom, evaluadorLabel: `${nom} (${asig.rut})`, programa: asig.programa, provincia: asig.provincia, entidadNombre: asig.entidadNombre, coberturaLabel: cobLabel, stageNum: parseInt(stg, 10), haEvaluado: (count > 0), average: avg, lastDate: lastDateStr, maxTs: maxTs });
             });
         });
         setupMonitoringHeaders(); drawMonitoringTable(); renderMonitoringCharts(); renderReportes();
@@ -1061,7 +1138,7 @@ function exportDatabaseToJSON() {
     showProgressBar("Generando respaldo del sistema...");
     updateProgressBar(10);
 
-    const storeNames = ['items', 'scores', 'evaluadores', 'asignaciones', 'configuracion', 'entidades'];
+    const storeNames = ['items', 'scores', 'evaluadores', 'asignaciones', 'configuracion', 'entidades', 'historicos'];
     const tx = dbInstance.transaction(storeNames, 'readonly');
     const backupData = {};
     let completed = 0;
@@ -1099,30 +1176,50 @@ function exportDatabaseToJSON() {
 }
 
 /* ================= FUNCIONES DE REPORTES Y EXCEL ================= */
-function getReportesGroupedData() {
-    const dataByEntidad = {};
-    monitoringData.forEach(d => {
-        if (!d.haEvaluado) return; 
-        let ent = (d.entidadNombre && d.entidadNombre !== 'Sin Entidad') ? d.entidadNombre : 'Sin Entidad Asociada';
-        let prog = d.programa || 'Sin Programa';
-        
-        if (!dataByEntidad[ent]) dataByEntidad[ent] = { stages: {} };
-        if (!dataByEntidad[ent].programs) dataByEntidad[ent].programs = {};
-        
-        // Agrupación Nivel 1: Entidad Global
-        if (!dataByEntidad[ent].stages[d.stageNum]) dataByEntidad[ent].stages[d.stageNum] = [];
-        dataByEntidad[ent].stages[d.stageNum].push(d.average);
+function getReportesGroupedData(callback) {
+    dbGetAll('scores', (scores) => {
+        const dataByEntidad = {};
+        scores.forEach(s => {
+            let ent = (s.entidad && s.entidad !== 'Sin Entidad') ? s.entidad : 'Sin Entidad Asociada';
+            let prog = s.programa || 'Sin Programa';
+            let nombreEv = s.nombreEvaluador || 'Sin Evaluador';
+            let subKey = `Programa: ${prog} - Evaluador: ${nombreEv}`;
+            
+            if (!dataByEntidad[ent]) dataByEntidad[ent] = { stages: {}, programs: {}, maxTs: 0, lastDate: "" };
+            
+            let val = parseInt(s.score, 10) || 0;
+            let stageNum = parseInt(s.stage, 10);
+            
+            if (!dataByEntidad[ent].stages[stageNum]) dataByEntidad[ent].stages[stageNum] = [];
+            dataByEntidad[ent].stages[stageNum].push(val);
+            
+            let dTs = parseAnyDate(s.hora);
+            
+            if (dTs > dataByEntidad[ent].maxTs) {
+                dataByEntidad[ent].maxTs = dTs;
+                dataByEntidad[ent].lastDate = s.hora;
+            } else if (dataByEntidad[ent].lastDate === "" && s.hora) {
+                dataByEntidad[ent].lastDate = s.hora;
+            }
 
-        // Agrupación Nivel 2: Por Programa dentro de la Entidad
-        if (!dataByEntidad[ent].programs[prog]) dataByEntidad[ent].programs[prog] = { stages: {} };
-        if (!dataByEntidad[ent].programs[prog].stages[d.stageNum]) dataByEntidad[ent].programs[prog].stages[d.stageNum] = [];
-        dataByEntidad[ent].programs[prog].stages[d.stageNum].push(d.average);
+            if (!dataByEntidad[ent].programs[subKey]) dataByEntidad[ent].programs[subKey] = { stages: {}, maxTs: 0, lastDate: "" };
+            if (!dataByEntidad[ent].programs[subKey].stages[stageNum]) dataByEntidad[ent].programs[subKey].stages[stageNum] = [];
+            dataByEntidad[ent].programs[subKey].stages[stageNum].push(val);
+            
+            if (dTs > dataByEntidad[ent].programs[subKey].maxTs) {
+                dataByEntidad[ent].programs[subKey].maxTs = dTs;
+                dataByEntidad[ent].programs[subKey].lastDate = s.hora;
+            } else if (dataByEntidad[ent].programs[subKey].lastDate === "" && s.hora) {
+                dataByEntidad[ent].programs[subKey].lastDate = s.hora;
+            }
+        });
+        callback(dataByEntidad);
     });
-    return dataByEntidad;
 }
 
-function calculateAveragesForReport(stagesData) {
+function calculateAveragesForReport(nodeData) {
     let s = {}, sumAll = 0, countAll = 0;
+    const stagesData = nodeData.stages;
     for (let i = 1; i <= 6; i++) {
         if (stagesData[i] && stagesData[i].length > 0) {
             let sum = stagesData[i].reduce((a,b) => a+b, 0);
@@ -1135,12 +1232,12 @@ function calculateAveragesForReport(stagesData) {
     let finalAvg = countAll > 0 ? Math.round(sumAll / countAll) : 0;
     let status = getStatusInfo(finalAvg);
     let badge = `<span style="background:${status.bg}; color:${status.color}; padding:3px 8px; border-radius:4px; font-weight:bold;">${status.text}</span>`;
-    return { s, finalAvg, statusText: status.text, badge };
+    return { s, finalAvg, statusText: status.text, badge, lastDate: nodeData.lastDate || '---' };
 }
 
 function buildReportRowHtml(title, data, safeId, isSubRow) {
     const trClass = isSubRow ? `class="hidden detail-${safeId}" style="background-color:#FFF; transition: all 0.2s;"` : `style="cursor:pointer; background-color:#F8F9FA;" onclick="toggleEntityDetails('${safeId}')" title="Clic para ver detalle por programa"`;
-    const titleCell = isSubRow ? `<td style="padding-left: 25px; font-size:0.85rem; color:#555;">└ Programa: <b style="color:var(--primary-blue);">${title}</b></td>` : `<td><b style="color:var(--primary-dark); font-size:0.9rem;"><span id="icon-${safeId}">➕</span> ${title}</b></td>`;
+    const titleCell = isSubRow ? `<td style="padding-left: 25px; font-size:0.85rem; color:#555;">└ <b style="color:var(--primary-blue);">${title}</b></td>` : `<td><b style="color:var(--primary-dark); font-size:0.9rem;"><span id="icon-${safeId}">➕</span> ${title}</b></td>`;
     const fw = isSubRow ? 'bold' : 'bold; font-size:1.15rem;';
     return `<tr ${trClass}>
         ${titleCell}
@@ -1149,6 +1246,7 @@ function buildReportRowHtml(title, data, safeId, isSubRow) {
         <td class="text-center">${data.s[5]}</td><td class="text-center">${data.s[6]}</td>
         <td class="text-center" style="${fw}">${data.finalAvg}</td>
         <td class="text-center">${data.badge}</td>
+        <td class="text-center" style="font-size:0.85rem; color:#555; font-weight:bold;">${data.lastDate}</td>
     </tr>`;
 }
 
@@ -1156,26 +1254,67 @@ function renderReportes() {
     const tbody = document.getElementById('reportes-entidad-body');
     if (!tbody) return;
 
-    const dataByEntidad = getReportesGroupedData();
-    const rows = [];
+    getReportesGroupedData((dataByEntidad) => {
+        const rows = [];
 
-    Object.keys(dataByEntidad).sort().forEach((ent, idx) => {
-        const entData = dataByEntidad[ent];
-        const eRow = calculateAveragesForReport(entData.stages);
-        const safeId = 'ent_grp_' + idx;
-        
-        // Fila Principal (Entidad)
-        rows.push(buildReportRowHtml(ent, eRow, safeId, false));
-
-        // Filas Secundarias (Desglose por Programa)
-        Object.keys(entData.programs).sort().forEach(prog => {
-            const pRow = calculateAveragesForReport(entData.programs[prog].stages);
-            rows.push(buildReportRowHtml(prog, pRow, safeId, true));
+        let entitiesArray = Object.keys(dataByEntidad).map((ent, idx) => {
+            const entData = dataByEntidad[ent];
+            const eRow = calculateAveragesForReport(entData);
+            return { ent, entData, eRow, safeId: 'ent_grp_' + idx };
         });
-    });
 
-    if (rows.length === 0) tbody.innerHTML = `<tr><td colspan="9" class="text-center">No hay precalificaciones realizadas aún.</td></tr>`;
-    else tbody.innerHTML = rows.join('');
+        if (reportesSortCol > -1) {
+            entitiesArray.sort((a, b) => {
+                let vA, vB;
+                if (reportesSortCol === 0) {
+                    vA = a.ent.toLowerCase(); vB = b.ent.toLowerCase();
+                } else if (reportesSortCol >= 1 && reportesSortCol <= 6) {
+                    vA = a.eRow.s[reportesSortCol] === '-' ? -1 : a.eRow.s[reportesSortCol];
+                    vB = b.eRow.s[reportesSortCol] === '-' ? -1 : b.eRow.s[reportesSortCol];
+                } else if (reportesSortCol === 7) {
+                    vA = a.eRow.finalAvg; vB = b.eRow.finalAvg;
+                } else if (reportesSortCol === 8) {
+                    vA = a.eRow.statusText; vB = b.eRow.statusText;
+                } else {
+                    vA = a.entData.maxTs || 0; vB = b.entData.maxTs || 0;
+                }
+                return vA < vB ? (reportesSortAsc ? -1 : 1) : vA > vB ? (reportesSortAsc ? 1 : -1) : 0;
+            });
+        } else {
+            entitiesArray.sort((a, b) => a.ent.localeCompare(b.ent)); 
+        }
+
+        entitiesArray.forEach(({ent, entData, eRow, safeId}) => {
+            rows.push(buildReportRowHtml(ent, eRow, safeId, false));
+            Object.keys(entData.programs).sort().forEach(prog => {
+                const pRow = calculateAveragesForReport(entData.programs[prog]);
+                rows.push(buildReportRowHtml(prog, pRow, safeId, true));
+            });
+        });
+
+        if (rows.length === 0) tbody.innerHTML = `<tr><td colspan="10" class="text-center">No hay precalificaciones realizadas aún.</td></tr>`;
+        else tbody.innerHTML = rows.join('');
+        
+        setupReportesHeaders();
+    });
+}
+
+function setupReportesHeaders() {
+    const tbodyTabla = document.getElementById('reportes-entidad-body');
+    if (!tbodyTabla) return;
+    const thead = tbodyTabla.closest('table').querySelector('thead');
+    if (thead && !thead.dataset.sortSetup) {
+        thead.querySelectorAll('th').forEach((th, i) => {
+            th.style.cursor = 'pointer';
+            th.title = 'Clic para ordenar por esta columna';
+            th.onclick = () => {
+                reportesSortAsc = (reportesSortCol === i) ? !reportesSortAsc : true;
+                reportesSortCol = i;
+                renderReportes();
+            };
+        });
+        thead.dataset.sortSetup = "true";
+    }
 }
 
 window.toggleEntityDetails = function(groupId) {
@@ -1190,46 +1329,47 @@ window.toggleEntityDetails = function(groupId) {
 };
 
 function exportReportesExcel() {
-    const groupedData = getReportesGroupedData();
-    if (Object.keys(groupedData).length === 0) { alert('No hay datos para exportar.'); return; }
+    getReportesGroupedData((groupedData) => {
+        if (Object.keys(groupedData).length === 0) { alert('No hay datos para exportar.'); return; }
 
-    showProgressBar("Generando Excel...");
-    let progress = 0;
-    const interval = setInterval(() => { progress += 15; if (progress > 85) progress = 85; updateProgressBar(progress); }, 50);
-
-    setTimeout(() => {
-        let csvContent = "\uFEFF"; 
-        csvContent += "Nombre Entidad / Programa;Etapa 1;Etapa 2;Etapa 3;Etapa 4;Etapa 5;Etapa 6;Promedio Final;Estado\n";
-
-        const getCsvRow = (title, data, isSub) => {
-            const prefix = isSub ? `"  └ Programa: ${title}"` : `"${title}"`;
-            return `${prefix};"${data.s[1]}";"${data.s[2]}";"${data.s[3]}";"${data.s[4]}";"${data.s[5]}";"${data.s[6]}";"${data.finalAvg}";"${data.statusText}"\n`;
-        };
-
-        Object.keys(groupedData).sort().forEach(ent => {
-            const entData = groupedData[ent];
-            csvContent += getCsvRow(ent, calculateAveragesForReport(entData.stages), false);
-
-            Object.keys(entData.programs).sort().forEach(prog => {
-                csvContent += getCsvRow(prog, calculateAveragesForReport(entData.programs[prog].stages), true);
-            });
-        });
-
-        clearInterval(interval);
-        updateProgressBar(100);
+        showProgressBar("Generando Excel...");
+        let progress = 0;
+        const interval = setInterval(() => { progress += 15; if (progress > 85) progress = 85; updateProgressBar(progress); }, 50);
 
         setTimeout(() => {
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.setAttribute("href", URL.createObjectURL(blob));
-            link.setAttribute("download", `Consolidado_Precalificaciones_${formatDDMMYYYY(new Date())}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            hideProgressBar();
-        }, 400);
-    }, 200);
+            let csvContent = "\uFEFF"; 
+            csvContent += "Nombre Entidad / Detalle (Programa y Evaluador);Etapa 1;Etapa 2;Etapa 3;Etapa 4;Etapa 5;Etapa 6;Promedio Final;Estado;Fecha Calificación\n";
+
+            const getCsvRow = (title, data, isSub) => {
+                const prefix = isSub ? `"  └ ${title}"` : `"${title}"`;
+                return `${prefix};"${data.s[1]}";"${data.s[2]}";"${data.s[3]}";"${data.s[4]}";"${data.s[5]}";"${data.s[6]}";"${data.finalAvg}";"${data.statusText}";"${data.lastDate}"\n`;
+            };
+
+            Object.keys(groupedData).sort().forEach(ent => {
+                const entData = groupedData[ent];
+                csvContent += getCsvRow(ent, calculateAveragesForReport(entData), false);
+
+                Object.keys(entData.programs).sort().forEach(prog => {
+                    csvContent += getCsvRow(prog, calculateAveragesForReport(entData.programs[prog]), true);
+                });
+            });
+
+            clearInterval(interval);
+            updateProgressBar(100);
+
+            setTimeout(() => {
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.setAttribute("href", URL.createObjectURL(blob));
+                link.setAttribute("download", `Consolidado_Precalificaciones_${formatDDMMYYYY(new Date())}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                hideProgressBar();
+            }, 400);
+        }, 200);
+    });
 }
 
 /* COMPORTAMIENTO REPARADO DE EVALUADORES: ACCIÓN CRUD DIRECTA */
@@ -1255,13 +1395,43 @@ function createEvaluador() {
 }
 
 function renderEvaluadoresTable(evaluadores) {
+    adminTemporaryEvaluadores = evaluadores;
+    drawEvaluadoresTable();
+}
+
+function drawEvaluadoresTable() {
     const tbody = document.getElementById('tabla-evaluadores-body');
     if (!tbody) return;
-    if (evaluadores.length === 0) {
+    const searchInput = document.getElementById('search-evaluadores');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+    if (adminTemporaryEvaluadores.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center">Sin evaluadores guardados.</td></tr>';
         return;
     }
-    tbody.innerHTML = evaluadores.map(ev => `
+
+    let filtered = adminTemporaryEvaluadores;
+    if (searchTerm) {
+        filtered = filtered.filter(ev => 
+            (ev.rut && ev.rut.toLowerCase().includes(searchTerm)) ||
+            (ev.nombre && ev.nombre.toLowerCase().includes(searchTerm)) ||
+            (ev.area && ev.area.toLowerCase().includes(searchTerm))
+        );
+    }
+
+    if (evaluadoresSortCol > -1) {
+        const cols = ['rut', 'nombre', 'area'];
+        filtered.sort((a, b) => {
+            let vA = (a[cols[evaluadoresSortCol]] || '').toString().toLowerCase();
+            let vB = (b[cols[evaluadoresSortCol]] || '').toString().toLowerCase();
+            return vA < vB ? (evaluadoresSortAsc ? -1 : 1) : vA > vB ? (evaluadoresSortAsc ? 1 : -1) : 0;
+        });
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No se encontraron evaluadores con esa búsqueda.</td></tr>';
+    } else {
+        tbody.innerHTML = filtered.map(ev => `
         <tr>
             <td>${ev.rut}</td>
             <td>${ev.nombre}</td>
@@ -1272,6 +1442,28 @@ function renderEvaluadoresTable(evaluadores) {
             </td>
         </tr>
     `).join('');
+    }
+    setupEvaluadoresHeaders();
+}
+
+function setupEvaluadoresHeaders() {
+    const tbodyTabla = document.getElementById('tabla-evaluadores-body');
+    if (!tbodyTabla) return;
+    const thead = tbodyTabla.closest('table').querySelector('thead');
+    if (thead && !thead.dataset.sortSetup) {
+        thead.querySelectorAll('th').forEach((th, i) => {
+            if (i < 3) { 
+                th.style.cursor = 'pointer';
+                th.title = 'Clic para ordenar por esta columna';
+                th.onclick = () => {
+                    evaluadoresSortAsc = (evaluadoresSortCol === i) ? !evaluadoresSortAsc : true;
+                    evaluadoresSortCol = i;
+                    drawEvaluadoresTable();
+                };
+            }
+        });
+        thead.dataset.sortSetup = "true";
+    }
 }
 
 window.editEvaluador = function(rut) {
@@ -1305,15 +1497,32 @@ window.removeEvaluador = function(rut) {
 function drawMonitoringTable() {
     const tbody = document.getElementById('admin-monitoring-rows');
     if (!tbody) return;
+
+    const searchInput = document.getElementById('search-monitoreo');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+    let filtered = monitoringData;
+    if (searchTerm) {
+        filtered = filtered.filter(item => 
+            (item.evaluadorLabel && item.evaluadorLabel.toLowerCase().includes(searchTerm)) ||
+            (item.programa && item.programa.toLowerCase().includes(searchTerm)) ||
+            (item.stageNum && item.stageNum.toString().includes(searchTerm))
+        );
+    }
+
     if (currentSortCol > -1) {
-        monitoringData.sort((a, b) => {
+        filtered.sort((a, b) => {
             const props = ['evaluadorLabel', 'coberturaLabel', 'stageNum', 'haEvaluado', 'average'];
             let vA = a[props[currentSortCol]], vB = b[props[currentSortCol]];
             if (currentSortCol === 3) { vA = vA ? 1 : 0; vB = vB ? 1 : 0; }
             return vA < vB ? (currentSortAsc ? -1 : 1) : vA > vB ? (currentSortAsc ? 1 : -1) : 0;
         });
     }
-    tbody.innerHTML = monitoringData.map(item => `<tr><td><b>${item.evaluadorLabel}</b></td><td style="color:var(--primary-blue); font-weight:600;">${item.coberturaLabel}</td><td class="text-center">Etapa ${item.stageNum}</td><td class="text-center">${item.haEvaluado ? '<span class="badge-evaluado" style="background-color:var(--color-bueno);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">EVALUADO</span>' : '<span class="badge-no-evaluado" style="background-color:var(--color-malo);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">NO EVALUADO</span>'}</td><td class="text-center"><b>${item.average}</b></td><td class="text-center"><button class="btn btn-primary" style="padding:3px 6px; font-size:0.78rem;" onclick="openAuditModal('${item.rut}','${item.nombre}','${item.coberturaLabel}',${item.stageNum})">Ver Detalle</button><button class="btn btn-danger" style="padding:3px 6px; font-size:0.78rem; margin-left:4px;" onclick="deleteAsignacion('${item.idAsig}')">Borrar</button></td></tr>`).join('');
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No se encontraron registros.</td></tr>';
+    } else {
+        tbody.innerHTML = filtered.map(item => `<tr><td><b>${item.evaluadorLabel}</b></td><td style="color:var(--primary-blue); font-weight:600;">${item.coberturaLabel}</td><td class="text-center">Etapa ${item.stageNum}</td><td class="text-center">${item.haEvaluado ? '<span class="badge-evaluado" style="background-color:var(--color-bueno);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">EVALUADO</span>' : '<span class="badge-no-evaluado" style="background-color:var(--color-malo);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">NO EVALUADO</span>'}</td><td class="text-center"><b>${item.average}</b></td><td class="text-center"><button class="btn btn-primary" style="padding:3px 6px; font-size:0.78rem;" onclick="openAuditModal('${item.rut}','${item.nombre}','${item.coberturaLabel}',${item.stageNum})">Ver Detalle</button><button class="btn btn-danger" style="padding:3px 6px; font-size:0.78rem; margin-left:4px;" onclick="deleteAsignacion('${item.idAsig}')">Borrar</button></td></tr>`).join('');
+    }
 }
 
 function renderMonitoringCharts() {
@@ -1333,7 +1542,21 @@ function openAuditModal(rut, nombre, cobertura, stageNum) {
 
     dbGetAll('scores', (scores) => {
         const relevantScores = scores.filter(r => r.rutEvaluador === rut && r.cobertura === cobertura && parseInt(r.stage, 10) === stageNum);
-        document.getElementById('modal-table-rows').innerHTML = dbItems.filter(i => i.stage === stageNum).map(item => {
+            
+            let maxTs = 0, lastDate = "---";
+            relevantScores.forEach(s => {
+                let ts = parseAnyDate(s.hora);
+                if (ts > maxTs) { maxTs = ts; lastDate = s.hora; }
+                else if (lastDate === "---" && s.hora) lastDate = s.hora;
+            });
+
+            document.getElementById('modal-custom-html-body').innerHTML = `
+                <div style="margin-bottom: 10px; font-size: 0.9rem; background: #F8F9FA; padding: 8px; border-radius: 4px; border-left: 3px solid var(--primary-blue);">
+                    <strong>Fecha de Calificación:</strong> <span style="color:var(--primary-dark); font-weight:bold;">${lastDate}</span>
+                </div>
+            `;
+
+            document.getElementById('modal-table-rows').innerHTML = dbItems.filter(i => i.stage === stageNum).map(item => {
             const recs = relevantScores.filter(r => r.itemId === item.id);
             recs.sort((a,b) => a.idTx.localeCompare(b.idTx));
             return `<tr><td class="text-center" style="font-weight:bold;">${item.id}</td><td>${item.text}</td><td class="text-center" style="font-weight:bold; color:var(--primary-blue);">${recs.length > 0 ? recs[recs.length - 1].score : "---"}</td></tr>`;
@@ -1355,8 +1578,19 @@ function populateAdminMatrix() {
         document.querySelectorAll('.asig-etapa-chk').forEach(c => c.checked = false);
         adminSelectedProvincia = ""; adminTemporaryLogisticaMap = {};
         const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
-        renderAdminProgramsColumn(); 
+        renderAdminProgramsColumn();
+        fillAnioSelectors();
     });
+}
+
+function fillAnioSelectors() {
+    const currentYear = new Date().getFullYear();
+    const options = [currentYear - 2, currentYear - 1, currentYear].map(y => `<option value="${y}">${y}</option>`).join('');
+    const defaultYear = (currentYear - 1).toString();
+    const sel1 = document.getElementById('sel-anio-historico');
+    const sel2 = document.getElementById('sel-historico-anio');
+    if (sel1) { sel1.innerHTML = options; sel1.value = defaultYear; }
+    if (sel2) { sel2.innerHTML = options; sel2.value = defaultYear; }
 }
 
 function renderAdminView() {
@@ -1372,9 +1606,10 @@ function saveAdminItems() {
     tx.oncomplete = () => { alert("Textos guardados localmente. Recuerde Sincronizar a la Nube."); };
 }
 
-function saveEvaluatorScores() {
+function saveEvaluatorScores(callback) {
     if (deadlineExpired) {
         alert('El plazo para evaluar ha expirado. No se pueden guardar cambios.');
+        if (callback) callback(false);
         return;
     }
     
@@ -1411,6 +1646,7 @@ function saveEvaluatorScores() {
         });
 
         tx.oncomplete = () => {
+            hasUnsavedEvaluatorChanges = false; // Restablecer la bandera de cambios sin guardar
             // Una vez guardado localmente, sincronizar solo la tabla de scores.
             syncSingleStoreToCloud('scores', (success) => {
                 dbGetAll('scores', (scores) => {
@@ -1436,6 +1672,7 @@ function saveEvaluatorScores() {
                             btn.style.color = "";
                         }, 3000);
                     }
+                    if (callback) callback(success);
                 });
             });
         };
@@ -1477,7 +1714,7 @@ function renderEvaluatorView() {
     tbody.innerHTML = rowsHtml.join('');
 
     document.querySelectorAll('.score-input').forEach(input => {
-        input.addEventListener('input', calculateLiveScore);
+        input.addEventListener('input', () => { hasUnsavedEvaluatorChanges = true; calculateLiveScore(); });
     });
 
     calculateLiveScore();
@@ -1542,4 +1779,494 @@ function calculateLiveScore() {
         if (finalScoreCell) finalScoreCell.textContent = "0"; 
         if (statusTextCell) { statusTextCell.textContent = "---"; statusTextCell.style.backgroundColor = "transparent"; }
     }
+}
+
+/* ================= MÓDULO DE CALIFICACIONES HISTÓRICAS ================= */
+function toggleModoHistorico() {
+    const chk = document.getElementById('chk-modo-historico');
+    const selAnio = document.getElementById('sel-anio-historico');
+    const btnPartial = document.getElementById('btn-save-partial');
+    const btnNormal = document.getElementById('btn-save-asignacion');
+    const btnHistorico = document.getElementById('btn-save-asignacion-historica');
+    const activo = chk && chk.checked;
+
+    if (selAnio) toggleElement('sel-anio-historico', activo);
+    if (btnPartial) toggleElement('btn-save-partial', !activo);
+    if (btnNormal) toggleElement('btn-save-asignacion', !activo);
+    if (btnHistorico) toggleElement('btn-save-asignacion-historica', activo);
+}
+
+function saveAsignacionHistorica() {
+    captureCurrentAdminProgramsState();
+
+    const selectedEvaluatorsRuts = [];
+    const selectedEvaluatorsNames = [];
+    document.querySelectorAll('.asig-evaluador-chk:checked').forEach(c => {
+        selectedEvaluatorsRuts.push(c.value);
+        selectedEvaluatorsNames.push(c.getAttribute('data-name'));
+    });
+
+    const etapas = [];
+    document.querySelectorAll('.asig-etapa-chk:checked').forEach(c => etapas.push(parseInt(c.value, 10)));
+    etapas.sort((a, b) => a - b);
+
+    let totalCoveragesList = [];
+    for (const [provincia, programas] of Object.entries(adminTemporaryLogisticaMap)) {
+        programas.forEach(prog => totalCoveragesList.push({ provincia: provincia, programa: prog }));
+    }
+
+    const selectedEntidades = [];
+    document.querySelectorAll('.asig-entidad-chk:checked').forEach(c => {
+        selectedEntidades.push({ id: c.value, name: c.getAttribute('data-name') });
+    });
+
+    const combinedCoverages = [];
+    totalCoveragesList.forEach(t => {
+        if (selectedEntidades.length > 0) {
+            let matched = false;
+            selectedEntidades.forEach(ent => {
+                const entityData = adminTemporaryEntidades.find(e => e.idEntidad === ent.id);
+                if (entityData && entityData.programa === t.programa) {
+                    combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: ent.id, entidadNombre: ent.name });
+                    matched = true;
+                }
+            });
+            if (!matched) combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: null, entidadNombre: 'Sin Entidad' });
+        } else {
+            combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: null, entidadNombre: 'Sin Entidad' });
+        }
+    });
+
+    if (selectedEvaluatorsRuts.length === 0 || etapas.length === 0 || combinedCoverages.length === 0) {
+        alert('Para una asignación histórica debe seleccionar al menos: 1 Evaluador, 1 Programa y 1 Etapa.');
+        return;
+    }
+
+    const anio = document.getElementById('sel-anio-historico').value;
+
+    // Guardar todas las entidades asignadas para el selector superior del tab histórico
+    historicoEntidadesAsignadas = combinedCoverages.map(c => ({
+        entidadId: c.entidadId,
+        entidadNombre: c.entidadNombre,
+        provincia: c.provincia,
+        programa: c.programa
+    }));
+
+    historicoConfig = {
+        evaluadorRut: selectedEvaluatorsRuts[0],
+        evaluadorNombre: selectedEvaluatorsNames[0],
+        provincia: combinedCoverages[0].provincia,
+        programa: combinedCoverages[0].programa,
+        entidadId: combinedCoverages[0].entidadId,
+        entidadNombre: combinedCoverages[0].entidadNombre,
+        etapas: etapas,
+        anio: anio
+    };
+
+    historicoStage = etapas[0];
+    historicoScores = {};
+    historicoMemory = [];
+
+    // Cambiar al tab histórico
+    document.querySelectorAll('.admin-main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.admin-subpanel').forEach(p => p.classList.add('hidden'));
+    const tabHist = document.querySelector('.admin-main-tab[data-target="panel-historicos"]');
+    if (tabHist) tabHist.classList.add('active');
+    toggleElement('panel-historicos', true);
+
+    document.getElementById('sel-historico-anio').value = anio;
+    renderHistoricoView();
+}
+
+function renderHistoricoView() {
+    if (!historicoConfig) {
+        document.getElementById('historico-resumen-texto').textContent = 'Sin asignación histórica seleccionada.';
+        return;
+    }
+
+    const cfg = historicoConfig;
+    document.getElementById('historico-resumen-texto').innerHTML = `
+        <strong>Evaluador:</strong> ${cfg.evaluadorNombre} (${cfg.evaluadorRut}) |
+        <strong>Provincia:</strong> ${cfg.provincia} |
+        <strong>Programa:</strong> ${cfg.programa} |
+        <strong>Entidad:</strong> ${cfg.entidadNombre} |
+        <strong>Etapa:</strong> ${historicoStage} |
+        <strong>Año:</strong> ${cfg.anio}
+    `;
+
+    // Renderizar tabs de entidades asignadas en la parte superior
+    const entidadesContainer = document.getElementById('historico-entidades-tabs');
+    entidadesContainer.innerHTML = '';
+    if (historicoEntidadesAsignadas.length > 0) {
+        historicoEntidadesAsignadas.forEach(ent => {
+            const btn = document.createElement('button');
+            const isActive = cfg.entidadId === ent.entidadId;
+            btn.className = `tab-button ${isActive ? 'active' : ''}`;
+            btn.textContent = ent.entidadNombre;
+            btn.onclick = () => { cambiarEntidadHistorica(ent); };
+            entidadesContainer.appendChild(btn);
+        });
+    }
+
+    const container = document.getElementById('historico-tabs');
+    container.innerHTML = '';
+    cfg.etapas.sort((a, b) => a - b).forEach(i => {
+        const btn = document.createElement('button');
+        btn.className = `tab-button ${historicoStage === i ? 'active' : ''}`;
+        btn.textContent = `Etapa ${i}`;
+        if (historicoStage === i) {
+            btn.style.backgroundColor = `var(--bg-stage-${i})`;
+            btn.style.color = '#000';
+            btn.style.border = '1px solid var(--primary-dark)';
+        }
+        btn.onclick = () => { saveHistoricoMemoryFromInputs(); historicoStage = i; renderHistoricoView(); };
+        container.appendChild(btn);
+    });
+
+    const titleLabel = document.getElementById('historico-stage-title');
+    const descLabel = document.getElementById('historico-stage-desc');
+    if (STAGES_METADATA[historicoStage]) {
+        titleLabel.textContent = STAGES_METADATA[historicoStage].title;
+        descLabel.textContent = STAGES_METADATA[historicoStage].desc;
+    }
+    document.getElementById('historico-stage-footer-label').textContent = `PRECALIFICACIÓN ETAPA ${historicoStage}`;
+
+    const tableCard = document.getElementById('historico-table-card');
+    if (tableCard) tableCard.style.backgroundColor = `var(--bg-stage-${historicoStage})`;
+
+    loadHistoricoScoresFromMemory();
+    renderHistoricoTable();
+}
+
+function loadHistoricoScoresFromMemory() {
+    historicoScores = {};
+    historicoMemory.filter(r => r.stage === historicoStage).forEach(r => {
+        historicoScores[r.itemId] = r.score;
+    });
+}
+
+function renderHistoricoTable() {
+    const tbody = document.getElementById('historico-rows');
+    const rowsHtml = dbItems.filter(i => i.stage === historicoStage).map(item => {
+        const score = historicoScores[item.id] !== undefined ? historicoScores[item.id] : "";
+        return `
+            <tr>
+                <td class="cell-index bold-text">${item.id}</td>
+                <td class="cell-desc">${item.text}</td>
+                <td colspan="3" class="cell-score-input">
+                    <input type="number" class="historico-score-input" data-id="${item.id}" min="0" max="100" value="${score}" placeholder="0">
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = rowsHtml.join('');
+
+    document.querySelectorAll('.historico-score-input').forEach(input => {
+        input.addEventListener('input', calculateHistoricoLiveScore);
+    });
+
+    calculateHistoricoLiveScore();
+}
+
+function calculateHistoricoLiveScore() {
+    const inputs = document.querySelectorAll('.historico-score-input');
+    let totalStage = 0, countStage = 0;
+
+    inputs.forEach(input => {
+        let val = parseInt(input.value, 10);
+        const id = input.getAttribute('data-id');
+        const existingIdx = historicoMemory.findIndex(r => r.stage === historicoStage && r.itemId === id);
+
+        if (isNaN(val)) {
+            delete historicoScores[id];
+            if (existingIdx >= 0) historicoMemory.splice(existingIdx, 1);
+            return;
+        }
+        if (val < 0) { input.value = 0; val = 0; }
+        if (val > 100) { input.value = 100; val = 100; }
+        historicoScores[id] = val;
+        totalStage += val; countStage++;
+
+        if (existingIdx >= 0) {
+            historicoMemory[existingIdx].score = val;
+        } else {
+            historicoMemory.push({
+                idHist: `hist_${Date.now().toString()}_${id}`,
+                anio: historicoConfig.anio,
+                calificador: historicoConfig.evaluadorNombre,
+                calificadorRut: historicoConfig.evaluadorRut,
+                provincia: historicoConfig.provincia,
+                programa: historicoConfig.programa,
+                entidad: historicoConfig.entidadNombre,
+                entidadId: historicoConfig.entidadId,
+                stage: historicoStage,
+                itemId: id,
+                score: val,
+                fecha: formatDateTime(new Date())
+            });
+        }
+    });
+
+    const finalScoreCell = document.getElementById('historico-final-score');
+    const statusTextCell = document.getElementById('historico-status-text');
+
+    if (countStage > 0) {
+        const stageAverage = Math.round(totalStage / countStage);
+        if (finalScoreCell) finalScoreCell.textContent = stageAverage;
+        setEvaluationStatus(statusTextCell, stageAverage);
+    } else {
+        if (finalScoreCell) finalScoreCell.textContent = "0";
+        if (statusTextCell) { statusTextCell.textContent = "---"; statusTextCell.style.backgroundColor = "transparent"; }
+    }
+}
+
+function saveHistoricoMemoryFromInputs() {
+    calculateHistoricoLiveScore();
+}
+
+function cambiarEntidadHistorica(ent) {
+    if (!historicoConfig) return;
+    saveHistoricoMemoryFromInputs();
+    historicoConfig.entidadId = ent.entidadId;
+    historicoConfig.entidadNombre = ent.entidadNombre;
+    historicoConfig.provincia = ent.provincia;
+    historicoConfig.programa = ent.programa;
+    historicoStage = historicoConfig.etapas[0];
+    historicoScores = {};
+    historicoMemory = [];
+    renderHistoricoView();
+}
+
+function autoCargarHistorico() {
+    if (!historicoConfig) return;
+    const anio = document.getElementById('sel-historico-anio').value;
+    historicoConfig.anio = anio;
+
+    dbGetAll('historicos', (registros) => {
+        const filtrados = registros.filter(r =>
+            r.calificadorRut === historicoConfig.evaluadorRut &&
+            r.provincia === historicoConfig.provincia &&
+            r.programa === historicoConfig.programa &&
+            r.entidadId === historicoConfig.entidadId &&
+            r.anio === anio
+        );
+
+        historicoMemory = historicoMemory.filter(r => !(r.calificadorRut === historicoConfig.evaluadorRut && r.provincia === historicoConfig.provincia && r.programa === historicoConfig.programa && r.entidadId === historicoConfig.entidadId && r.anio === anio));
+        filtrados.forEach(r => historicoMemory.push(r));
+        loadHistoricoScoresFromMemory();
+        renderHistoricoTable();
+    });
+}
+
+function cargarHistorico() {
+    if (!historicoConfig) {
+        alert('No hay una asignación histórica configurada. Use el check HISTORICO en Asignación Rápida.');
+        return;
+    }
+
+    const anio = document.getElementById('sel-historico-anio').value;
+    historicoConfig.anio = anio;
+
+    dbGetAll('historicos', (registros) => {
+        const filtrados = registros.filter(r =>
+            r.calificadorRut === historicoConfig.evaluadorRut &&
+            r.provincia === historicoConfig.provincia &&
+            r.programa === historicoConfig.programa &&
+            r.entidadId === historicoConfig.entidadId &&
+            r.anio === anio
+        );
+
+        if (filtrados.length === 0) {
+            alert('No se encontraron calificaciones históricas para esta combinación.');
+            historicoMemory = historicoMemory.filter(r => !(r.calificadorRut === historicoConfig.evaluadorRut && r.provincia === historicoConfig.provincia && r.programa === historicoConfig.programa && r.entidadId === historicoConfig.entidadId && r.anio === anio));
+            loadHistoricoScoresFromMemory();
+            renderHistoricoTable();
+            return;
+        }
+
+        // Reemplazar en memoria los registros de esta combinación
+        historicoMemory = historicoMemory.filter(r => !(r.calificadorRut === historicoConfig.evaluadorRut && r.provincia === historicoConfig.provincia && r.programa === historicoConfig.programa && r.entidadId === historicoConfig.entidadId && r.anio === anio));
+        filtrados.forEach(r => historicoMemory.push(r));
+        loadHistoricoScoresFromMemory();
+        renderHistoricoTable();
+    });
+}
+
+function guardarHistorico() {
+    if (!historicoConfig) {
+        alert('No hay una asignación histórica configurada.');
+        return;
+    }
+
+    if (!ensureStoreExists('historicos')) {
+        alert('La base de datos local no está lista. Recargue la página para recrear la estructura.');
+        return;
+    }
+
+    saveHistoricoMemoryFromInputs();
+
+    const anio = document.getElementById('sel-historico-anio').value;
+    historicoConfig.anio = anio;
+
+    // Actualizar año en todos los registros en memoria de esta combinación
+    historicoMemory.forEach(r => {
+        if (r.calificadorRut === historicoConfig.evaluadorRut && r.provincia === historicoConfig.provincia && r.programa === historicoConfig.programa && r.entidadId === historicoConfig.entidadId) {
+            r.anio = anio;
+        }
+    });
+
+    showProgressBar('Guardando calificación histórica...');
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 10;
+        if (progress > 90) progress = 90;
+        updateProgressBar(progress);
+    }, 150);
+
+    dbGetAll('historicos', (registros) => {
+        const tx = dbInstance.transaction(['historicos'], 'readwrite');
+        const store = tx.objectStore('historicos');
+
+        // Borrar registros previos de esta combinación
+        registros.filter(r =>
+            r.calificadorRut === historicoConfig.evaluadorRut &&
+            r.provincia === historicoConfig.provincia &&
+            r.programa === historicoConfig.programa &&
+            r.entidadId === historicoConfig.entidadId &&
+            r.anio === anio
+        ).forEach(r => store.delete(r.idHist));
+
+        // Insertar registros actuales de esta combinación
+        const registrosActuales = historicoMemory.filter(r =>
+            r.calificadorRut === historicoConfig.evaluadorRut &&
+            r.provincia === historicoConfig.provincia &&
+            r.programa === historicoConfig.programa &&
+            r.entidadId === historicoConfig.entidadId &&
+            r.anio === anio
+        );
+
+        registrosActuales.forEach(r => store.put(r));
+
+        tx.oncomplete = () => {
+            clearInterval(progressInterval);
+            updateProgressBar(100);
+            setTimeout(() => {
+                hideProgressBar();
+                alert('Calificación histórica guardada localmente.');
+            }, 400);
+        };
+
+        tx.onerror = () => {
+            clearInterval(progressInterval);
+            hideProgressBar();
+            alert('Error al guardar la calificación histórica.');
+        };
+    });
+}
+
+function transformHistoricosToWideRows(registros) {
+    const itemIds = ['1.1','1.2','1.3','1.4','1.5','1.6','1.7','1.8','1.9','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8','2.9','3.1','3.2','3.3','3.4','3.5','3.6','3.7','4.1','4.2','4.3','4.4','4.5','4.6','4.7','4.8','4.9','4.10','5.1','5.2','5.3','5.4','5.5','5.6','5.7','6.1','6.2','6.3','6.4','6.5','6.6','6.7','6.8','6.9'];
+    const grouped = {};
+
+    registros.forEach(r => {
+        const key = `${r.provincia}|${r.programa}|${r.entidad}|${r.calificador}|${r.anio}`;
+        if (!grouped[key]) {
+            grouped[key] = {
+                PROVINCIA: r.provincia,
+                PROGRAMA: r.programa,
+                ENTIDAD: r.entidad,
+                CALIFICADOR: r.calificador,
+                AÑO: r.anio
+            };
+            itemIds.forEach(id => grouped[key][id] = '');
+        }
+        if (itemIds.includes(r.itemId)) {
+            grouped[key][r.itemId] = r.score;
+        }
+    });
+
+    return Object.values(grouped);
+}
+
+/* ================= EXPORTACIÓN A PDF DEL EVALUADOR ================= */
+function exportEvaluatorPDF() {
+    const exportDate = formatDateTime(new Date());
+
+    const printContainer = document.createElement('div');
+    printContainer.id = 'pdf-print-container';
+    
+    let contentHtml = `
+        <div style="text-align:center; margin-bottom: 20px;">
+            <h2 style="color: var(--primary-dark); font-size: 1.5rem; margin-bottom: 5px;">Respaldo Integral de Precalificaciones</h2>
+            <p style="font-size: 1rem; margin-bottom: 2px;"><strong>Evaluador:</strong> ${currentUser.nombre} (${currentUser.rut})</p>
+            <p style="font-size: 1rem;"><strong>Fecha y Hora de Exportación:</strong> ${exportDate}</p>
+        </div>
+    `;
+    
+    allAsignacionesMapped.forEach(asig => {
+        asig.etapas.forEach(stg => {
+            const stageRecords = allMemoryScores.filter(r => r.cobertura === asig.cobertura && r.stage === stg);
+            let lastEvalDate = "Sin registro";
+            let maxTs = 0;
+            stageRecords.forEach(r => {
+                let ts = parseAnyDate(r.hora);
+                if (ts > maxTs) { maxTs = ts; lastEvalDate = r.hora; }
+                else if (lastEvalDate === "Sin registro" && r.hora) lastEvalDate = r.hora;
+            });
+
+            const meta = STAGES_METADATA[stg] || { title: `ETAPA ${stg}`, desc: "" };
+            const stageItems = dbItems.filter(i => i.stage === stg);
+            let totalScore = 0, countScore = 0;
+            
+            const rowsHtml = stageItems.map(item => {
+                const rec = stageRecords.find(r => r.itemId === item.id);
+                const val = rec && rec.score !== undefined ? rec.score : "-";
+                if (val !== "-") { totalScore += parseInt(val, 10); countScore++; }
+                return `
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 6px; font-weight:bold; text-align:center; width:8%;">${item.id}</td>
+                        <td style="border: 1px solid #000; padding: 6px; width:77%; font-size: 0.85rem;">${item.text}</td>
+                        <td style="border: 1px solid #000; padding: 6px; text-align:center; font-weight:bold; width:15%;">${val}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const finalAvg = countScore > 0 ? Math.round(totalScore / countScore) : 0;
+            const status = getStatusInfo(finalAvg);
+            const statusText = countScore > 0 ? status.text : "---";
+
+            contentHtml += `
+                <div style="page-break-inside: avoid; margin-bottom: 30px;">
+                    <table style="width:100%; border-collapse: collapse; margin-bottom: 8px; font-size: 0.9rem;">
+                        <tr><td style="padding: 4px; border: 1px solid #000; background-color: #EEE; width: 25%;"><strong>Cobertura:</strong></td><td style="padding: 4px; border: 1px solid #000;">${asig.cobertura}</td></tr>
+                        <tr><td style="padding: 4px; border: 1px solid #000; background-color: #EEE;"><strong>Fecha de Calificación:</strong></td><td style="padding: 4px; border: 1px solid #000;">${lastEvalDate}</td></tr>
+                    </table>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="background-color: var(--primary-dark); color: #FFF; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                                <th colspan="2" style="border: 1px solid #000; padding: 6px; text-align:left;">${meta.title}</th>
+                                <th style="border: 1px solid #000; padding: 6px; text-align:center;">NOTA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" style="border: 1px solid #000; padding: 6px; text-align:right; font-weight:bold; background-color: #F8F9FA;">ESTADO: <span style="color:${status.color === '#FFF' ? '#000' : status.color};">${statusText}</span> | PROMEDIO FINAL</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align:center; font-weight:bold; font-size: 1.1rem; background-color: #F8F9FA;">${countScore > 0 ? finalAvg : '-'}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        });
+    });
+
+    printContainer.innerHTML = contentHtml;
+    document.body.appendChild(printContainer);
+
+    window.print();
+
+    document.body.removeChild(printContainer);
 }
