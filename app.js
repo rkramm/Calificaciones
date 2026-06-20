@@ -93,6 +93,10 @@ let currentSortCol = -1;
 let currentSortAsc = true;
 let monitoringData = [];
 
+// Estado para sincronización selectiva
+let pendingSyncChanges = null;
+let selectedSyncChanges = null;
+
 let currentEditingEntidadId = null;
 let currentEditingEvaluadorRut = null;
 
@@ -151,9 +155,8 @@ function dbGetAll(storeName, callback, forceCloud = false) {
         cloudGet(storeName).then(data => {
             if (data !== null && Array.isArray(data)) {
                 const tx = dbInstance.transaction([storeName], 'readwrite');
-                tx.objectStore(storeName).clear().onsuccess = () => {
-                    data.forEach(item => tx.objectStore(storeName).put(item));
-                };
+                // NO borrar datos locales, solo actualizar/agregar registros del servidor
+                data.forEach(item => tx.objectStore(storeName).put(item));
                 tx.oncomplete = () => {
                     hideProgressBar();
                     callback(data);
@@ -169,43 +172,135 @@ function dbGetAll(storeName, callback, forceCloud = false) {
 }
 
 function getMultipleStores(storeNames, callback, forceCloud = false) {
+    // Verificar que todas las tablas existan antes de proceder
+    const missingStores = storeNames.filter(name => !dbInstance.objectStoreNames.contains(name));
+    if (missingStores.length > 0) {
+        console.error('Tablas faltantes en IndexedDB:', missingStores);
+        alert('Error: La base de datos local está desactualizada.\n\nPor favor, recargue la página o sincronice desde la nube.');
+        callback(storeNames.map(() => []));
+        return;
+    }
+    
     if (CLOUD_MODE_ENABLED && forceCloud) {
         showProgressBar(`Sincronizando base de datos...`);
-        Promise.all(storeNames.map(store => cloudGet(store)))
-            .then(results => {
-                const tx = dbInstance.transaction(storeNames, 'readwrite');
-                storeNames.forEach((store, i) => {
-                    const data = results[i];
-                    if (data !== null && Array.isArray(data)) {
-                        const storeObj = tx.objectStore(store);
-                        storeObj.clear().onsuccess = () => {
-                            data.forEach(item => storeObj.put(item));
+        updateProgressBar(0);
+        
+        // Sincronizar cada tabla individualmente con manejo de errores
+        const results = new Array(storeNames.length);
+        let completed = 0;
+        let hasErrors = false;
+        
+        storeNames.forEach((store, i) => {
+            updateProgressBar((i / storeNames.length) * 100);
+            document.getElementById('progress-title').textContent = `Sincronizando ${store}... (${i + 1}/${storeNames.length})`;
+            
+            cloudGet(store).then(data => {
+                if (data !== null && Array.isArray(data)) {
+                    results[i] = data;
+                } else {
+                    console.warn(`No se pudo sincronizar ${store} desde el servidor. Usando datos locales.`);
+                    hasErrors = true;
+                    // Leer datos locales como fallback
+                    const localTx = dbInstance.transaction([store], 'readonly');
+                    localTx.objectStore(store).getAll().onsuccess = (e) => {
+                        results[i] = e.target.result;
+                    };
+                }
+                
+                completed++;
+                updateProgressBar((completed / storeNames.length) * 100);
+                
+                if (completed === storeNames.length) {
+                    // IMPORTANTE: No borrar datos locales, solo actualizar/agregar registros del servidor
+                    const tx = dbInstance.transaction(storeNames, 'readwrite');
+                    storeNames.forEach((storeName, idx) => {
+                        if (results[idx] !== undefined && Array.isArray(results[idx])) {
+                            const storeObj = tx.objectStore(storeName);
+                            // Actualizar o agregar registros del servidor sin borrar los existentes
+                            results[idx].forEach(item => {
+                                storeObj.put(item);
+                            });
+                        }
+                    });
+                    
+                    tx.oncomplete = () => {
+                        hideProgressBar();
+                        if (hasErrors) {
+                            alert('⚠️ Algunas tablas no se pudieron sincronizar completamente. Se utilizaron datos locales o parciales del servidor.');
+                        }
+                        // Leer datos finales de IndexedDB
+                        const readTx = dbInstance.transaction(storeNames, 'readonly');
+                        const finalResults = new Array(storeNames.length);
+                        let readCompleted = 0;
+                        storeNames.forEach((storeName, idx) => {
+                            readTx.objectStore(storeName).getAll().onsuccess = (e) => {
+                                finalResults[idx] = e.target.result;
+                                readCompleted++;
+                                if (readCompleted === storeNames.length) callback(finalResults);
+                            };
+                        });
+                    };
+                }
+            }).catch(err => {
+                console.error(`Error de red al sincronizar ${store}:`, err);
+                hasErrors = true;
+                // Intentar usar datos locales
+                const localTx = dbInstance.transaction([store], 'readonly');
+                localTx.objectStore(store).getAll().onsuccess = (e) => {
+                    results[i] = e.target.result;
+                    completed++;
+                    updateProgressBar((completed / storeNames.length) * 100);
+                    if (completed === storeNames.length) {
+                        const tx = dbInstance.transaction(storeNames, 'readwrite');
+                        storeNames.forEach((storeName, idx) => {
+                            if (results[idx] !== undefined && Array.isArray(results[idx])) {
+                                const storeObj = tx.objectStore(storeName);
+                                results[idx].forEach(item => {
+                                    storeObj.put(item);
+                                });
+                            }
+                        });
+                        tx.oncomplete = () => {
+                            hideProgressBar();
+                            alert('⚠️ Error de conexión. Se utilizaron datos locales almacenados previamente.');
+                            const readTx = dbInstance.transaction(storeNames, 'readonly');
+                            const finalResults = new Array(storeNames.length);
+                            let readCompleted = 0;
+                            storeNames.forEach((storeName, idx) => {
+                                readTx.objectStore(storeName).getAll().onsuccess = (e) => {
+                                    finalResults[idx] = e.target.result;
+                                    readCompleted++;
+                                    if (readCompleted === storeNames.length) callback(finalResults);
+                                };
+                            });
                         };
                     }
-                });
-                tx.oncomplete = () => {
-                    hideProgressBar();
-                    const readTx = dbInstance.transaction(storeNames, 'readonly');
-                    const finalResults = new Array(storeNames.length);
-                    let completed = 0;
-                    storeNames.forEach((store, i) => {
-                        readTx.objectStore(store).getAll().onsuccess = (e) => {
-                            finalResults[i] = e.target.result;
-                            completed++;
-                            if (completed === storeNames.length) callback(finalResults);
-                        };
-                    });
                 };
             });
+        });
     } else {
         const tx = dbInstance.transaction(storeNames, 'readonly');
         const results = new Array(storeNames.length);
         let completed = 0;
+        let hasError = false;
+        
         storeNames.forEach((store, i) => {
             tx.objectStore(store).getAll().onsuccess = (e) => {
                 results[i] = e.target.result;
                 completed++;
                 if (completed === storeNames.length) callback(results);
+            };
+            tx.objectStore(store).getAll().onerror = (e) => {
+                console.error(`Error leyendo tabla ${store}:`, e.target.error);
+                hasError = true;
+                results[i] = [];
+                completed++;
+                if (completed === storeNames.length) {
+                    if (hasError) {
+                        alert('⚠️ Error al leer datos locales. Se recomienda sincronizar desde la nube.');
+                    }
+                    callback(results);
+                }
             };
         });
     }
@@ -316,45 +411,308 @@ function syncAllToCloud() {
         alert('El modo nube está desactivado.');
         return;
     }
-    if (!confirm('¿Desea enviar todos los datos guardados en este dispositivo a la Nube?\n\nSe creará un respaldo automático en Google Sheets y se descargará un JSON local antes de sincronizar.')) return;
 
     syncCancelRequested = false;
 
     // 1. Descargar respaldo JSON local automáticamente
     downloadAutoBackupJSON();
 
-    // 2. Crear respaldo en Google Sheets
-    showProgressBar("Creando respaldo en Google Sheets...");
+    // 2. Obtener datos locales y remotos para comparar
+    showProgressBar("Analizando cambios...");
+    updateProgressBar(0);
+    
+    const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos', 'asigna_historico'];
+    const localData = {};
+    const remoteData = {};
+    
+    // Leer datos locales
+    const localTx = dbInstance.transaction(storeNames, 'readonly');
+    let localCompleted = 0;
+    
+    storeNames.forEach(storeName => {
+        const req = localTx.objectStore(storeName).getAll();
+        req.onsuccess = (e) => {
+            localData[storeName] = e.target.result;
+            localCompleted++;
+            if (localCompleted === storeNames.length) {
+                // Leer datos remotos
+                updateProgressBar(50);
+                document.getElementById('progress-title').textContent = 'Comparando con servidor...';
+                
+                Promise.all(storeNames.map(store => cloudGet(store))).then(remoteResults => {
+                    updateProgressBar(80);
+                    
+                    remoteResults.forEach((data, idx) => {
+                        remoteData[storeNames[idx]] = data || [];
+                    });
+                    
+                    // Calcular diferencias
+                    const changes = calculateChanges(localData, remoteData);
+                    
+                    if (changes.totalChanges === 0) {
+                        hideProgressBar();
+                        alert('✅ No hay cambios para sincronizar. Los datos locales y remotos están sincronizados.');
+                        return;
+                    }
+                    
+                    // Mostrar modal de confirmación
+                    showSyncConfirmationModal(changes, storeNames);
+                });
+            }
+        };
+    });
+}
+
+function calculateChanges(localData, remoteData) {
+    const changes = {
+        totalChanges: 0,
+        byStore: {},
+        details: {}
+    };
+    
+    const storeNames = Object.keys(localData);
+    
+    storeNames.forEach(storeName => {
+        const local = localData[storeName] || [];
+        const remote = remoteData[storeName] || [];
+        
+        const localMap = new Map(local.map(item => {
+            const key = getItemKey(storeName, item);
+            return [key, item];
+        }));
+        
+        const remoteMap = new Map(remote.map(item => {
+            const key = getItemKey(storeName, item);
+            return [key, item];
+        }));
+        
+        const added = [];
+        const modified = [];
+        
+        // Detectar agregados y modificados locales
+        local.forEach(localItem => {
+            const key = getItemKey(storeName, localItem);
+            const remoteItem = remoteMap.get(key);
+            
+            if (!remoteItem) {
+                added.push({ key, local: localItem, remote: null });
+            } else if (JSON.stringify(localItem) !== JSON.stringify(remoteItem)) {
+                modified.push({ key, local: localItem, remote: remoteItem });
+            }
+        });
+        
+        const changeCount = added.length + modified.length;
+        changes.totalChanges += changeCount;
+        changes.byStore[storeName] = changeCount;
+        changes.details[storeName] = { added, modified };
+    });
+    
+    return changes;
+}
+
+function getItemKey(storeName, item) {
+    switch(storeName) {
+        case 'items': return item.id;
+        case 'scores': return item.idTx;
+        case 'evaluadores': return item.rut;
+        case 'asignaciones': return item.idAsig;
+        case 'configuracion': return item.clave;
+        case 'entidades': return item.idEntidad;
+        case 'historicos': return item.idHist;
+        case 'asigna_historico': return item.idAsig;
+        default: return JSON.stringify(item);
+    }
+}
+
+function showSyncConfirmationModal(changes, storeNames) {
+    const modal = document.getElementById('audit-modal');
+    document.getElementById('modal-title').textContent = 'Confirmar Sincronización con la Nube';
+    toggleElement('modal-table-container', false);
+    toggleElement('modal-overwrite-question', false);
+    toggleElement('modal-action-footer', true);
+    
+    // Guardar cambios pendientes para selección
+    pendingSyncChanges = changes;
+    selectedSyncChanges = null;
+    
+    let html = `
+        <div style="background:#FFF3CD; border-left:4px solid #856404; padding:10px; border-radius:4px; margin-bottom:10px; font-size:0.85rem;">
+            <strong>Resumen de cambios:</strong> Se detectaron <strong>${changes.totalChanges}</strong> registros diferentes entre local y servidor.
+        </div>
+        <div style="max-height:400px; overflow-y:auto; margin-bottom:10px;">
+    `;
+    
+    storeNames.forEach(storeName => {
+        const count = changes.byStore[storeName];
+        if (count === 0) return;
+        
+        const details = changes.details[storeName];
+        html += `<div style="margin-bottom:10px;"><strong>${storeName.toUpperCase()}</strong> (${count} cambios)</div>`;
+        
+        details.added.forEach((item, idx) => {
+            html += `
+                <div style="background:#D4EDDA; padding:8px; border-left:3px solid #28A745; margin-bottom:4px; font-size:0.82rem; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" class="sync-change-check" data-store="${storeName}" data-type="added" data-key="${item.key}" data-idx="${idx}" checked>
+                    <div style="flex:1;">
+                        <strong>[AGREGADO]</strong> ${item.key}
+                    </div>
+                </div>
+            `;
+        });
+        
+        details.modified.forEach((item, idx) => {
+            html += `
+                <div style="background:#FFF3CD; padding:8px; border-left:3px solid #FFC107; margin-bottom:4px; font-size:0.82rem; display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" class="sync-change-check" data-store="${storeName}" data-type="modified" data-key="${item.key}" data-idx="${idx}" checked>
+                    <div style="flex:1;">
+                        <strong>[MODIFICADO]</strong> ${item.key}
+                    </div>
+                </div>
+            `;
+        });
+    });
+    
+    html += `
+        </div>
+        <div style="background:#F8F9FA; padding:10px; border-radius:4px; font-size:0.85rem;">
+            <strong>Opciones:</strong>
+            <ul style="margin:5px 0 0 15px; padding:0;">
+                <li><strong>Aceptar seleccionados:</strong> Sincroniza solo los cambios marcados</li>
+                <li><strong>Aceptar todos:</strong> Sincroniza todos los cambios locales al servidor</li>
+                <li><strong>Cancelar:</strong> No realiza cambios y mantiene datos locales</li>
+            </ul>
+        </div>
+    `;
+    
+    document.getElementById('modal-custom-html-body').innerHTML = html;
+    
+    // Cambiar comportamiento del botón confirmar
+    const confirmBtn = document.getElementById('btn-modal-confirm');
+    confirmBtn.textContent = 'Aceptar Seleccionados';
+    confirmBtn.onclick = () => {
+        const selected = getSelectedChanges(changes, storeNames);
+        if (selected.totalChanges === 0) {
+            alert('No hay cambios seleccionados para sincronizar.');
+            return;
+        }
+        closeModal();
+        executeSyncAllToCloud(selected, storeNames);
+    };
+    
+    // Agregar botón aceptar todos
+    const cancelBtn = document.getElementById('btn-modal-cancel');
+    cancelBtn.textContent = 'Aceptar Todos';
+    cancelBtn.onclick = () => {
+        closeModal();
+        executeSyncAllToCloud(changes, storeNames);
+    };
+    
+    toggleElement('audit-modal', true);
+}
+
+function getSelectedChanges(changes, storeNames) {
+    const selected = {
+        totalChanges: 0,
+        byStore: {},
+        details: {}
+    };
+    
+    const checkboxes = document.querySelectorAll('.sync-change-check:checked');
+    
+    checkboxes.forEach(chk => {
+        const storeName = chk.getAttribute('data-store');
+        const type = chk.getAttribute('data-type');
+        const key = chk.getAttribute('data-key');
+        const idx = parseInt(chk.getAttribute('data-idx'));
+        
+        if (!selected.details[storeName]) {
+            selected.details[storeName] = { added: [], modified: [] };
+        }
+        
+        const originalItem = changes.details[storeName][type][idx];
+        if (originalItem) {
+            selected.details[storeName][type].push(originalItem);
+            selected.totalChanges++;
+            selected.byStore[storeName] = (selected.byStore[storeName] || 0) + 1;
+        }
+    });
+    
+    return selected;
+}
+
+function executeSyncAllToCloud(changes, storeNames) {
+    showProgressBar("Sincronizando con la Nube...");
+    updateProgressBar(0);
+    
+    // Crear respaldo en Google Sheets primero
     cloudSave('__backup__', [], 'backup').then(backupRes => {
         if (syncCancelRequested) return;
-
-        // 3. Sincronización incremental
-        const storeNames = ['configuracion', 'entidades', 'evaluadores', 'asignaciones', 'items', 'scores', 'historicos', 'asigna_historico'];
+        
         let completed = 0;
-
+        const storesToSync = [];
+        
+        // Determinar qué tablas necesitan sincronización
+        if (changes && changes.totalChanges > 0) {
+            // Sincronización selectiva: solo tablas con cambios
+            Object.keys(changes.byStore).forEach(store => {
+                if (changes.byStore[store] > 0) {
+                    storesToSync.push(store);
+                }
+            });
+        } else {
+            // Sincronización completa: todas las tablas
+            storesToSync.push(...storeNames);
+        }
+        
         const syncNext = (index) => {
             if (syncCancelRequested) return;
-
-            if (index >= storeNames.length) {
+            
+            if (index >= storesToSync.length) {
                 updateProgressBar(100);
                 setTimeout(() => {
                     hideProgressBar();
-                    alert('✅ Sincronización completada con éxito. Todos los datos han sido enviados a Google Sheets.');
+                    alert('✅ Sincronización completada con éxito. Los datos han sido enviados a Google Sheets.');
                 }, 500);
                 return;
             }
             
-            const storeName = storeNames[index];
-            updateProgressBar((index / storeNames.length) * 100);
-            document.getElementById('progress-title').textContent = `Enviando ${storeName}... (${index + 1}/${storeNames.length})`;
-
+            const storeName = storesToSync[index];
+            updateProgressBar((index / storesToSync.length) * 100);
+            document.getElementById('progress-title').textContent = `Enviando ${storeName}... (${index + 1}/${storesToSync.length})`;
+            
             const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
             req.onsuccess = (e) => {
                 if (syncCancelRequested) return;
                 let dataToSend = e.target.result;
+                
+                // Si hay cambios seleccionados, filtrar solo esos registros
+                if (changes && changes.totalChanges > 0 && changes.details[storeName]) {
+                    const storeChanges = changes.details[storeName];
+                    const keysToSend = new Set();
+                    
+                    // Recopilar claves de registros modificados
+                    storeChanges.modified.forEach(item => {
+                        keysToSend.add(item.key);
+                    });
+                    
+                    // Recopilar claves de registros agregados
+                    storeChanges.added.forEach(item => {
+                        keysToSend.add(item.key);
+                    });
+                    
+                    // Filtrar datos locales para enviar solo los cambios
+                    if (keysToSend.size > 0) {
+                        dataToSend = dataToSend.filter(item => {
+                            const key = getItemKey(storeName, item);
+                            return keysToSend.has(key);
+                        });
+                    }
+                }
+                
                 if (storeName === 'historicos') {
                     dataToSend = transformHistoricosToWideRows(dataToSend);
                 }
+                
                 cloudSave(storeName, dataToSend, 'incremental').then(res => {
                     if (syncCancelRequested) return;
                     syncNext(index + 1);
@@ -364,7 +722,7 @@ function syncAllToCloud() {
                 });
             };
         };
-
+        
         syncNext(0);
     }).catch(err => {
         hideProgressBar();
@@ -415,35 +773,62 @@ function downloadHistoricosFromCloud() {
         cloudGet('historicos'),
         cloudGet('asigna_historico')
     ]).then(([historicos, asignaciones]) => {
+        // Validar que las tablas existan en IndexedDB
+        if (!dbInstance.objectStoreNames.contains('historicos') || !dbInstance.objectStoreNames.contains('asigna_historico')) {
+            hideProgressBar();
+            alert('Error: La base de datos local no tiene las tablas necesarias.\n\nPor favor, recargue la página para inicializar la base de datos.');
+            return;
+        }
+
         const tx = dbInstance.transaction(['historicos', 'asigna_historico'], 'readwrite');
         const histStore = tx.objectStore('historicos');
         const asigStore = tx.objectStore('asigna_historico');
 
+        let histCount = 0;
+        let asigCount = 0;
+
+        // Limpiar y guardar históricos
         histStore.clear().onsuccess = () => {
             if (Array.isArray(historicos)) {
-                historicos.forEach(r => histStore.put(r));
+                historicos.forEach(r => {
+                    try {
+                        histStore.put(r);
+                        histCount++;
+                    } catch (e) {
+                        console.error('Error guardando registro histórico:', r, e);
+                    }
+                });
             }
         };
 
+        // Limpiar y guardar asignaciones históricas
         asigStore.clear().onsuccess = () => {
             if (Array.isArray(asignaciones)) {
-                asignaciones.forEach(a => asigStore.put(a));
+                asignaciones.forEach(a => {
+                    try {
+                        asigStore.put(a);
+                        asigCount++;
+                    } catch (e) {
+                        console.error('Error guardando asignación histórica:', a, e);
+                    }
+                });
             }
         };
 
         tx.oncomplete = () => {
             hideProgressBar();
-            alert('Datos históricos descargados correctamente. Vaya al tab Históricos para visualizarlos.');
+            alert(`Datos históricos descargados correctamente.\n\nRegistros guardados: ${histCount}\nAsignaciones guardadas: ${asigCount}\n\nVaya al tab Históricos para visualizarlos.`);
         };
 
-        tx.onerror = () => {
+        tx.onerror = (e) => {
             hideProgressBar();
-            alert('Error al guardar los datos descargados localmente.');
+            console.error('Error en transacción de IndexedDB:', e.target.error);
+            alert('Error al guardar los datos descargados localmente.\n\nDetalle: ' + (e.target.error ? e.target.error.message : 'Error desconocido'));
         };
     }).catch(err => {
         hideProgressBar();
         console.error('Error descargando datos históricos:', err);
-        alert('Error de red al descargar datos históricos. Verifique su conexión.');
+        alert('Error de red al descargar datos históricos.\n\nVerifique su conexión a internet e intente nuevamente.\n\nDetalle: ' + err.message);
     });
 }
 /* =============================================================================== */
@@ -732,7 +1117,19 @@ function setupAdminTabs() {
 
 function initIndexedDB(callback) {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onsuccess = (e) => { dbInstance = e.target.result; loadCoreData(callback); };
+    request.onsuccess = (e) => { 
+        dbInstance = e.target.result; 
+        // Actualizar indicador de conexión INMEDIATAMENTE al abrir la DB
+        const dot = document.getElementById('conn-dot');
+        const txt = document.getElementById('conn-text');
+        if (dot && txt) {
+            dot.style.backgroundColor = '#92D050';
+            txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Modo Local';
+            txt.style.color = '#25306B';
+            txt.style.fontWeight = 'bold';
+        }
+        loadCoreData(callback); 
+    };
     request.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('items')) db.createObjectStore('items', { keyPath: 'id' });
@@ -751,10 +1148,26 @@ function initIndexedDB(callback) {
     };
     request.onerror = (e) => {
         console.error('Error al abrir IndexedDB:', e.target.error);
+        const dot = document.getElementById('conn-dot');
+        const txt = document.getElementById('conn-text');
+        if (dot && txt) {
+            dot.style.backgroundColor = '#FF4444';
+            txt.textContent = 'Error de base de datos';
+            txt.style.color = '#A51D24';
+        }
         alert('Error al abrir la base de datos local. Intente recargar la página.');
+        if (callback) callback([]);
     };
     request.onblocked = () => {
+        const dot = document.getElementById('conn-dot');
+        const txt = document.getElementById('conn-text');
+        if (dot && txt) {
+            dot.style.backgroundColor = '#FFA500';
+            txt.textContent = 'Base de datos bloqueada';
+            txt.style.color = '#856404';
+        }
         alert('La base de datos local está bloqueada. Cierre otras pestañas del sistema y recargue.');
+        if (callback) callback([]);
     };
 }
 
@@ -763,8 +1176,83 @@ function ensureStoreExists(storeName) {
     return dbInstance.objectStoreNames.contains(storeName);
 }
 
-function loadCoreData(callback) {
-    getMultipleStores(['items', 'configuracion', 'entidades', 'evaluadores', 'asignaciones', 'scores'], ([items, config, entidades, evaluadores, asignaciones, scores]) => {
+function finishLocalLoad(results, callback, hasError) {
+    if (hasError) {
+        console.warn('Algunas tablas locales no están disponibles.');
+    }
+    
+    // Actualizar indicador de conexión al cargar datos locales
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-text');
+    if (dot && txt) {
+        dot.style.backgroundColor = '#92D050';
+        txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Modo Local';
+        txt.style.color = '#25306B';
+        txt.style.fontWeight = 'bold';
+    }
+    callback(results);
+}
+
+function loadCoreData(callback, forceCloud = false) {
+    // Si no se fuerza sincronización, leer solo local
+    if (!forceCloud) {
+        const stores = ['items', 'configuracion', 'entidades', 'evaluadores', 'asignaciones', 'scores', 'historicos', 'asigna_historico'];
+        const results = new Array(8);
+        let completed = 0;
+        let hasError = false;
+        
+        const tx = dbInstance.transaction(stores, 'readonly');
+        
+        stores.forEach((store, i) => {
+            const storeObj = tx.objectStore(store);
+            
+            // Verificar si la tabla existe
+            if (!dbInstance.objectStoreNames.contains(store)) {
+                console.warn(`Tabla ${store} no existe, usando array vacío`);
+                results[i] = [];
+                completed++;
+                hasError = true;
+                if (completed === 8) {
+                    finishLocalLoad(results, callback, hasError);
+                }
+                return;
+            }
+            
+            const req = storeObj.getAll();
+            req.onsuccess = (e) => {
+                results[i] = e.target.result;
+                completed++;
+                if (completed === 8) {
+                    finishLocalLoad(results, callback, hasError);
+                }
+            };
+            req.onerror = (e) => {
+                console.error(`Error leyendo tabla ${store}:`, e.target.error);
+                results[i] = [];
+                completed++;
+                hasError = true;
+                if (completed === 8) {
+                    finishLocalLoad(results, callback, hasError);
+                }
+            };
+        });
+        
+        // Timeout de seguridad: si no completa en 5 segundos, forzar finalización
+        setTimeout(() => {
+            if (completed < 8) {
+                console.error('Timeout cargando datos locales. Forzando finalización...');
+                for (let i = 0; i < 8; i++) {
+                    if (!results[i]) results[i] = [];
+                }
+                finishLocalLoad(results, callback, true);
+            }
+        }, 5000);
+        
+        return;
+    }
+    
+    // Si se fuerza sincronización, usar el método cloud
+    getMultipleStores(['items', 'configuracion', 'entidades', 'evaluadores', 'asignaciones', 'scores', 'historicos', 'asigna_historico'], ([items, config, entidades, evaluadores, asignaciones, scores, historicos, asigna_historico]) => {
         const cfgReq = config ? config.find(c => c.clave === 'fecha_limite') : null;
         
         if (!items || items.length < DEFAULT_ITEMS.length) {
@@ -788,7 +1276,6 @@ function loadCoreData(callback) {
         if (dot && txt) {
             dot.style.backgroundColor = '#92D050'; // Forzamos el color hexadecimal
             txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Desconectado';
-            txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Conectado (Modo Local)';
             txt.style.color = '#25306B';
             txt.style.fontWeight = 'bold';
         }
@@ -941,63 +1428,252 @@ function renderAdminEntidadesColumn() {
 function handleLogin() {
     const userInput = document.getElementById('username').value.trim();
     const passInput = document.getElementById('password').value.trim();
+    
+    // Actualizar indicador de conexión durante el login
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-text');
+    if (dot && txt) {
+        dot.style.backgroundColor = '#FFA500';
+        txt.textContent = 'Verificando credenciales...';
+        txt.style.color = '#856404';
+    }
+    
     if (userInput.toLowerCase() === 'admin') {
-        dbGetAll('configuracion', (config) => {
-            const cfgClave = config.find(c => c.clave === 'clave_admin');
-            const validAdminPass = cfgClave ? cfgClave.valor : 'admin123'; 
+        // SIEMPRE leer clave_admin desde el servidor (nunca desde local)
+        if (!CLOUD_MODE_ENABLED) {
+            alert('Error del sistema: El modo nube está desactivado.\n\nContacte al administrador del sistema.');
+            if (dot && txt) {
+                dot.style.backgroundColor = '#FF4444';
+                txt.textContent = 'Error de configuración';
+                txt.style.color = '#A51D24';
+            }
+            return;
+        }
+        
+        showProgressBar('Verificando credenciales...');
+        
+        cloudGet('configuracion').then(remoteConfig => {
+            hideProgressBar();
             
-            if (passInput !== validAdminPass) {
+            if (!remoteConfig || !Array.isArray(remoteConfig)) {
+                alert('Error de conexión. No se pudo verificar la configuración del servidor.');
+                if (dot && txt) {
+                    dot.style.backgroundColor = '#FF4444';
+                    txt.textContent = 'Error de conexión';
+                    txt.style.color = '#A51D24';
+                }
+                return;
+            }
+            
+            const remoteClave = remoteConfig.find(c => c.clave === 'clave_admin');
+            
+            if (!remoteClave) {
+                alert('Error del sistema: No se encontró la configuración de administrador en el servidor.\n\nContacte al administrador del sistema.');
+                if (dot && txt) {
+                    dot.style.backgroundColor = '#FF4444';
+                    txt.textContent = 'Error de configuración';
+                    txt.style.color = '#A51D24';
+                }
+                return;
+            }
+            
+            // Verificar contraseña con datos del servidor
+            if (passInput !== remoteClave.valor) {
                 alert('Contraseña de administrador incorrecta.');
+                if (dot && txt) {
+                    dot.style.backgroundColor = '#92D050';
+                    txt.textContent = 'Conectado a la Nube';
+                    txt.style.color = '#25306B';
+                }
                 return;
             }
             
             currentUser = { nombre: "Administrador", rut: "admin" };
             currentRole = 'admin';
             showPanel('Panel de Administración General');
+        }).catch(err => {
+            hideProgressBar();
+            console.error('Error sincronizando configuración:', err);
+            alert('Error de conexión. No se pudo verificar las credenciales.');
+            if (dot && txt) {
+                dot.style.backgroundColor = '#FF4444';
+                txt.textContent = 'Error de conexión';
+                txt.style.color = '#A51D24';
+            }
         });
     } else {
-        getMultipleStores(['evaluadores', 'asignaciones', 'scores'], ([evaluadores, asignaciones, scores]) => {
-            const evResult = evaluadores.find(e => e.rut === userInput);
-            if (!evResult) { alert('RUT de evaluador no registrado.'); return; }
-            
-            const validPass = evResult.clave || '123456';
-            if (validPass !== passInput) { alert('Contraseña incorrecta.'); return; }
-            
-            currentUser = evResult;
-            currentRole = 'evaluador';
-
-            const userAsignaciones = asignaciones.filter(a => a.rut === currentUser.rut);
-            
-            if(userAsignaciones.length === 0) {
-                alert('No tiene precalificaciones asignadas en este momento.');
-                return;
-            }
-            
-            allAsignacionesMapped = userAsignaciones.map(a => {
-                let parsedEtapas = a.etapas;
-                if (typeof parsedEtapas === 'string') {
-                    parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                } else if (!Array.isArray(parsedEtapas)) {
-                    parsedEtapas = [1];
+        // Leer evaluadores locales primero
+        dbGetAll('evaluadores', (evaluadores) => {
+            if (evaluadores.length > 0) {
+                // Hay datos locales, intentar login directamente
+                attemptEvaluatorLogin(evaluadores, userInput, passInput);
+            } else if (CLOUD_MODE_ENABLED) {
+                // No hay evaluadores locales, sincronizar desde el servidor (solo evaluadores)
+                console.log('Sincronizando evaluadores desde el servidor...');
+                showProgressBar('Conectando al servidor...');
+                
+                // Timeout de 8 segundos
+                const timeoutPromise = new Promise((resolve) => {
+                    setTimeout(() => {
+                        hideProgressBar();
+                        resolve({ timeout: true });
+                    }, 8000);
+                });
+                
+                const syncPromise = cloudGet('evaluadores').then(remoteEvaluadores => {
+                    return { timeout: false, data: remoteEvaluadores };
+                }).catch(err => {
+                    return { timeout: false, error: err };
+                });
+                
+                Promise.race([syncPromise, timeoutPromise]).then(result => {
+                    hideProgressBar();
+                    
+                    if (result.timeout) {
+                        alert('Tiempo de espera agotado.\n\nNo se pudo conectar al servidor. Verifique su conexión a internet.');
+                        if (dot && txt) {
+                            dot.style.backgroundColor = '#FF4444';
+                            txt.textContent = 'Error de conexión';
+                            txt.style.color = '#A51D24';
+                        }
+                        return;
+                    }
+                    
+                    if (result.error) {
+                        console.error('Error sincronizando evaluadores:', result.error);
+                        alert('Error de conexión. No se pudieron cargar los usuarios desde el servidor.');
+                        if (dot && txt) {
+                            dot.style.backgroundColor = '#FF4444';
+                            txt.textContent = 'Error de conexión';
+                            txt.style.color = '#A51D24';
+                        }
+                        return;
+                    }
+                    
+                    const remoteEvaluadores = result.data;
+                    if (!remoteEvaluadores || !Array.isArray(remoteEvaluadores) || remoteEvaluadores.length === 0) {
+                        alert('No se encontraron evaluadores registrados en el servidor.\n\nVerifique su conexión o contacte al administrador.');
+                        if (dot && txt) {
+                            dot.style.backgroundColor = '#92D050';
+                            txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Modo Local';
+                            txt.style.color = '#25306B';
+                        }
+                        return;
+                    }
+                    
+                    // Guardar evaluadores en IndexedDB para futuros logins
+                    const tx = dbInstance.transaction(['evaluadores'], 'readwrite');
+                    const store = tx.objectStore('evaluadores');
+                    remoteEvaluadores.forEach(ev => store.put(ev));
+                    tx.oncomplete = () => {
+                        // Intentar login con datos del servidor
+                        attemptEvaluatorLogin(remoteEvaluadores, userInput, passInput);
+                    };
+                });
+            } else {
+                alert('No hay evaluadores registrados en el sistema.\n\nContacte al administrador para que cree su cuenta.');
+                if (dot && txt) {
+                    dot.style.backgroundColor = '#FF4444';
+                    txt.textContent = 'Sin evaluadores';
+                    txt.style.color = '#A51D24';
                 }
-                return {
-                    cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
-                    etapas: parsedEtapas.sort((x, y) => x - y),
-                    programa: a.programa,
-                    provincia: a.provincia,
-                    entidadNombre: a.entidadNombre
-                };
-            }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
-
-            allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
-            currentCoverage = allAsignacionesMapped[0].cobertura;
-            const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-            currentStage = matchingConfig ? matchingConfig.etapas[0] : 1;
-            
-            showPanel('Sistema de Precalificación Técnica');
-            startCountdownClock();
+            }
         });
     }
+}
+
+function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
+    const evResult = evaluadores.find(e => e.rut === userInput);
+    if (!evResult) { 
+        alert('RUT de evaluador no registrado.\n\nVerifique que el RUT esté correctamente ingresado o contacte al administrador.');
+        return; 
+    }
+    
+    const validPass = evResult.clave || '123456';
+    if (validPass !== passInput) { alert('Contraseña incorrecta.'); return; }
+    
+    currentUser = evResult;
+    currentRole = 'evaluador';
+
+    // Cargar asignaciones y scores del evaluador en paralelo
+    getMultipleStores(['asignaciones', 'scores'], ([asignaciones, scores]) => {
+        const userAsignaciones = asignaciones.filter(a => a.rut === currentUser.rut);
+        
+        if(userAsignaciones.length === 0) {
+            alert('No tiene precalificaciones asignadas en este momento.\n\nContacte al administrador para que le asigne coberturas de evaluación.');
+            return;
+        }
+        
+        allAsignacionesMapped = userAsignaciones.map(a => {
+            let parsedEtapas = a.etapas;
+            if (typeof parsedEtapas === 'string') {
+                parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+            } else if (!Array.isArray(parsedEtapas)) {
+                parsedEtapas = [1];
+            }
+            return {
+                cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
+                etapas: parsedEtapas.sort((x, y) => x - y),
+                programa: a.programa,
+                provincia: a.provincia,
+                entidadNombre: a.entidadNombre
+            };
+        }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+
+        allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
+        currentCoverage = allAsignacionesMapped[0].cobertura;
+        const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+        currentStage = matchingConfig ? matchingConfig.etapas[0] : 1;
+        
+        showPanel('Sistema de Precalificación Técnica');
+        startCountdownClock();
+        
+        // Sincronizar en segundo plano para evaluadores (sin bloquear)
+        if (CLOUD_MODE_ENABLED) {
+            backgroundSyncForEvaluator();
+        }
+    }, false).catch(err => {
+        console.error('Error cargando datos del evaluador:', err);
+        alert('Error al cargar los datos locales.\n\nPor favor, recargue la página o contacte al administrador.');
+    });
+}
+
+function backgroundSyncForEvaluator() {
+    // Sincronizar solo scores del evaluador actual en segundo plano
+    const syncStore = (storeName, localData) => {
+        return cloudGet(storeName).then(remoteData => {
+            if (!remoteData || !Array.isArray(remoteData)) return localData;
+            
+            // Para scores, filtrar solo los del evaluador actual
+            if (storeName === 'scores') {
+                const myScores = remoteData.filter(r => r.rutEvaluador === currentUser.rut);
+                // Combinar con datos locales que no estén en el servidor
+                const remoteIds = new Set(myScores.map(s => s.idTx));
+                const localOnly = localData.filter(s => !remoteIds.has(s.idTx));
+                return [...myScores, ...localOnly];
+            }
+            return remoteData;
+        });
+    };
+
+    // Sincronizar scores en segundo plano sin mostrar barra de progreso
+    dbGetAll('scores', (localScores) => {
+        syncStore('scores', localScores).then(updatedScores => {
+            if (updatedScores.length !== localScores.length) {
+                // Actualizar IndexedDB con datos del servidor
+                const tx = dbInstance.transaction(['scores'], 'readwrite');
+                const store = tx.objectStore('scores');
+                updatedScores.forEach(s => store.put(s));
+                
+                // Actualizar memoria
+                allMemoryScores = updatedScores.filter(r => r.rutEvaluador === currentUser.rut);
+                loadScoresFromActiveContext();
+                renderEvaluatorView();
+            }
+        }).catch(err => {
+            console.log('Sincronización en segundo plano falló, usando datos locales:', err);
+        });
+    });
 }
 
 function handleLogout() {
@@ -1101,10 +1777,44 @@ window.changeStage = function(stageNum) {
     } else {
         const tableCard = document.getElementById('table-card-container');
         if (tableCard) tableCard.style.backgroundColor = `var(--bg-stage-${currentStage})`;
+        
+        // Actualizar scores desde el servidor en segundo plano (rápido y no bloquea)
+        if (CLOUD_MODE_ENABLED && currentUser) {
+            refreshScoresFromServer();
+        }
+        
         loadScoresFromActiveContext();
         renderEvaluatorView();
     }
 };
+
+function refreshScoresFromServer() {
+    // Actualizar scores desde el servidor sin bloquear la UI
+    cloudGet('scores').then(remoteScores => {
+        if (!remoteScores || !Array.isArray(remoteScores)) return;
+        
+        // Filtrar solo los scores del evaluador actual
+        const myRemoteScores = remoteScores.filter(r => r.rutEvaluador === currentUser.rut);
+        
+        // Combinar con datos locales que no estén en el servidor
+        const remoteIds = new Set(myRemoteScores.map(s => s.idTx));
+        const localOnly = allMemoryScores.filter(s => !remoteIds.has(s.idTx));
+        const updatedScores = [...myRemoteScores, ...localOnly];
+        
+        // Actualizar IndexedDB
+        const tx = dbInstance.transaction(['scores'], 'readwrite');
+        const store = tx.objectStore('scores');
+        updatedScores.forEach(s => store.put(s));
+        
+        // Actualizar memoria
+        allMemoryScores = updatedScores;
+        loadScoresFromActiveContext();
+        renderEvaluatorView();
+    }).catch(err => {
+        // Silenciar errores en segundo plano
+        console.log('Actualización en segundo plano falló, usando datos locales:', err);
+    });
+}
 
 function processAsignacionStaging(isPartialSave) {
     captureCurrentAdminProgramsState();
@@ -2206,7 +2916,15 @@ function autoCargarHistorico() {
     const anio = document.getElementById('sel-historico-anio').value;
     historicoConfig.anio = anio;
 
-    dbGetAll('historicos', (registros) => {
+    // Leer siempre desde el servidor
+    showProgressBar('Cargando calificaciones históricas desde el servidor...');
+    cloudGet('historicos').then(registros => {
+        hideProgressBar();
+        if (!registros || !Array.isArray(registros)) {
+            alert('No se pudieron cargar los datos históricos desde el servidor.');
+            return;
+        }
+
         const filtrados = registros.filter(r =>
             r.calificadorRut === historicoConfig.evaluadorRut &&
             r.provincia === historicoConfig.provincia &&
@@ -2219,6 +2937,10 @@ function autoCargarHistorico() {
         filtrados.forEach(r => historicoMemory.push(r));
         loadHistoricoScoresFromMemory();
         renderHistoricoTable();
+    }).catch(err => {
+        hideProgressBar();
+        console.error('Error al cargar históricos desde el servidor:', err);
+        alert('Error de conexión. No se pudieron cargar los datos históricos.');
     });
 }
 
@@ -2231,7 +2953,15 @@ function cargarHistorico() {
     const anio = document.getElementById('sel-historico-anio').value;
     historicoConfig.anio = anio;
 
-    dbGetAll('historicos', (registros) => {
+    // Leer siempre desde el servidor
+    showProgressBar('Cargando calificaciones históricas desde el servidor...');
+    cloudGet('historicos').then(registros => {
+        hideProgressBar();
+        if (!registros || !Array.isArray(registros)) {
+            alert('No se pudieron cargar los datos históricos desde el servidor.');
+            return;
+        }
+
         const filtrados = registros.filter(r =>
             r.calificadorRut === historicoConfig.evaluadorRut &&
             r.provincia === historicoConfig.provincia &&
@@ -2253,6 +2983,10 @@ function cargarHistorico() {
         filtrados.forEach(r => historicoMemory.push(r));
         loadHistoricoScoresFromMemory();
         renderHistoricoTable();
+    }).catch(err => {
+        hideProgressBar();
+        console.error('Error al cargar históricos desde el servidor:', err);
+        alert('Error de conexión. No se pudieron cargar los datos históricos.');
     });
 }
 
@@ -2314,10 +3048,16 @@ function guardarHistorico() {
         tx.oncomplete = () => {
             clearInterval(progressInterval);
             updateProgressBar(100);
-            setTimeout(() => {
+            
+            // Sincronizar automáticamente con la nube
+            syncSingleStoreToCloud('historicos', (success) => {
                 hideProgressBar();
-                alert('Calificación histórica guardada localmente.');
-            }, 400);
+                if (success) {
+                    alert('✅ Calificación histórica guardada y sincronizada con el servidor.');
+                } else {
+                    alert('⚠️ Calificación guardada localmente. Se sincronizará cuando tenga conexión.');
+                }
+            });
         };
 
         tx.onerror = () => {
