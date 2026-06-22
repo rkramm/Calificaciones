@@ -207,6 +207,21 @@ button { font-family: 'Segoe UI', sans-serif; }
 #evaluador-view > div:nth-child(3) {
     flex: 1;
     overflow: hidden;
+    display: flex;
+}
+
+#evaluador-view > div:nth-child(3) > div {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tabla de evaluación con scroll */
+#table-card-container {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 0;
 }
 
 /* =============== MEDIA QUERIES RESPONSIVE =============== */
