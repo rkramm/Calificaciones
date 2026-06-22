@@ -182,103 +182,134 @@ function getMultipleStores(storeNames, callback, forceCloud = false) {
     }
     
     if (CLOUD_MODE_ENABLED && forceCloud) {
+        console.log('🔄 Iniciando sincronización forzada desde la nube...');
         showProgressBar(`Sincronizando base de datos...`);
         updateProgressBar(0);
         
-        // Sincronizar cada tabla individualmente con manejo de errores
+        // Sincronizar cada tabla individualmente con manejo de errores robusto
         const results = new Array(storeNames.length);
+        const settled = new Array(storeNames.length).fill(false); // previene doble conteo entre timeout y cloudGet
         let completed = 0;
         let hasErrors = false;
+
+        // Inicializar resultados con arrays vacíos para evitar undefined
+        storeNames.forEach((_, i) => { results[i] = []; });
         
+        const finalize = () => {
+            console.log('📊 Resultados de sincronización:', storeNames.map((s, i) => `${s}: ${results[i].length} registros`).join(', '));
+            
+            // IMPORTANTE: No borrar datos locales, solo actualizar/agregar registros del servidor
+            const tx = dbInstance.transaction(storeNames, 'readwrite');
+            let writeCompleted = 0;
+            let writeTotal = 0;
+            
+            storeNames.forEach((storeName, idx) => {
+                if (results[idx] !== undefined && Array.isArray(results[idx]) && results[idx].length > 0) {
+                    writeTotal++;
+                    const storeObj = tx.objectStore(storeName);
+                    results[idx].forEach(item => {
+                        storeObj.put(item);
+                    });
+                }
+            });
+            
+            console.log(`💾 Escribiendo ${writeTotal} tablas en IndexedDB...`);
+            
+            if (writeTotal === 0) {
+                // No hay datos para escribir, leer directamente
+                hideProgressBar();
+                const readTx = dbInstance.transaction(storeNames, 'readonly');
+                const finalResults = new Array(storeNames.length);
+                let readCompleted = 0;
+                storeNames.forEach((storeName, idx) => {
+                    readTx.objectStore(storeName).getAll().onsuccess = (e) => {
+                        finalResults[idx] = e.target.result;
+                        readCompleted++;
+                        if (readCompleted === storeNames.length) {
+                            console.log('✅ Datos finales leídos de IndexedDB:', finalResults.map(r => r.length).join(', '));
+                            callback(finalResults);
+                        }
+                    };
+                });
+                return;
+            }
+            
+            tx.oncomplete = () => {
+                hideProgressBar();
+                console.log('✅ Datos escritos en IndexedDB correctamente');
+                if (hasErrors) {
+                    alert('⚠️ Algunas tablas no se pudieron sincronizar completamente. Se utilizaron datos locales o parciales del servidor.');
+                }
+                // Leer datos finales de IndexedDB
+                const readTx = dbInstance.transaction(storeNames, 'readonly');
+                const finalResults = new Array(storeNames.length);
+                let readCompleted = 0;
+                storeNames.forEach((storeName, idx) => {
+                    readTx.objectStore(storeName).getAll().onsuccess = (e) => {
+                        finalResults[idx] = e.target.result;
+                        readCompleted++;
+                        if (readCompleted === storeNames.length) {
+                            console.log('✅ Datos finales leídos de IndexedDB:', finalResults.map(r => r.length).join(', '));
+                            callback(finalResults);
+                        }
+                    };
+                });
+            };
+        };
+        
+        // markDone: registra el resultado de un store exactamente una vez (evita doble conteo)
+        const markDone = (i, data) => {
+            if (settled[i]) return;
+            settled[i] = true;
+            results[i] = data;
+            completed++;
+            updateProgressBar((completed / storeNames.length) * 100);
+            if (completed === storeNames.length) finalize();
+        };
+
+        // readLocalFallback: lee IndexedDB local y llama markDone cuando termina (evita timing bug async)
+        const readLocalFallback = (store, i, label) => {
+            hasErrors = true;
+            const localTx = dbInstance.transaction([store], 'readonly');
+            const req = localTx.objectStore(store).getAll();
+            req.onsuccess = (e) => {
+                console.log(`📂 ${label} ${store}: ${e.target.result.length} registros`);
+                markDone(i, e.target.result);
+            };
+            req.onerror = () => {
+                console.error(`❌ Error leyendo datos locales de ${store}`);
+                markDone(i, []);
+            };
+        };
+
         storeNames.forEach((store, i) => {
             updateProgressBar((i / storeNames.length) * 100);
             document.getElementById('progress-title').textContent = `Sincronizando ${store}... (${i + 1}/${storeNames.length})`;
-            
+            console.log(`📡 Solicitando ${store} desde el servidor...`);
+
+            // Timeout de 10 segundos: si cloudGet no respondió, usa datos locales
+            setTimeout(() => {
+                if (!settled[i]) {
+                    console.warn(`⏱️ Timeout sincronizando ${store} (10s)`);
+                    readLocalFallback(store, i, 'Timeout - datos locales de');
+                }
+            }, 10000);
+
             cloudGet(store).then(data => {
                 if (data !== null && Array.isArray(data)) {
-                    results[i] = data;
+                    console.log(`✅ ${store} recibido desde servidor: ${data.length} registros`);
+                    markDone(i, data);
                 } else {
-                    console.warn(`No se pudo sincronizar ${store} desde el servidor. Usando datos locales.`);
-                    hasErrors = true;
-                    // Leer datos locales como fallback
-                    const localTx = dbInstance.transaction([store], 'readonly');
-                    localTx.objectStore(store).getAll().onsuccess = (e) => {
-                        results[i] = e.target.result;
-                    };
-                }
-                
-                completed++;
-                updateProgressBar((completed / storeNames.length) * 100);
-                
-                if (completed === storeNames.length) {
-                    // IMPORTANTE: No borrar datos locales, solo actualizar/agregar registros del servidor
-                    const tx = dbInstance.transaction(storeNames, 'readwrite');
-                    storeNames.forEach((storeName, idx) => {
-                        if (results[idx] !== undefined && Array.isArray(results[idx])) {
-                            const storeObj = tx.objectStore(storeName);
-                            // Actualizar o agregar registros del servidor sin borrar los existentes
-                            results[idx].forEach(item => {
-                                storeObj.put(item);
-                            });
-                        }
-                    });
-                    
-                    tx.oncomplete = () => {
-                        hideProgressBar();
-                        if (hasErrors) {
-                            alert('⚠️ Algunas tablas no se pudieron sincronizar completamente. Se utilizaron datos locales o parciales del servidor.');
-                        }
-                        // Leer datos finales de IndexedDB
-                        const readTx = dbInstance.transaction(storeNames, 'readonly');
-                        const finalResults = new Array(storeNames.length);
-                        let readCompleted = 0;
-                        storeNames.forEach((storeName, idx) => {
-                            readTx.objectStore(storeName).getAll().onsuccess = (e) => {
-                                finalResults[idx] = e.target.result;
-                                readCompleted++;
-                                if (readCompleted === storeNames.length) callback(finalResults);
-                            };
-                        });
-                    };
+                    console.warn(`⚠️ Servidor devolvió respuesta inválida para ${store}. Usando datos locales.`);
+                    readLocalFallback(store, i, 'Respuesta inválida - datos locales de');
                 }
             }).catch(err => {
-                console.error(`Error de red al sincronizar ${store}:`, err);
-                hasErrors = true;
-                // Intentar usar datos locales
-                const localTx = dbInstance.transaction([store], 'readonly');
-                localTx.objectStore(store).getAll().onsuccess = (e) => {
-                    results[i] = e.target.result;
-                    completed++;
-                    updateProgressBar((completed / storeNames.length) * 100);
-                    if (completed === storeNames.length) {
-                        const tx = dbInstance.transaction(storeNames, 'readwrite');
-                        storeNames.forEach((storeName, idx) => {
-                            if (results[idx] !== undefined && Array.isArray(results[idx])) {
-                                const storeObj = tx.objectStore(storeName);
-                                results[idx].forEach(item => {
-                                    storeObj.put(item);
-                                });
-                            }
-                        });
-                        tx.oncomplete = () => {
-                            hideProgressBar();
-                            alert('⚠️ Error de conexión. Se utilizaron datos locales almacenados previamente.');
-                            const readTx = dbInstance.transaction(storeNames, 'readonly');
-                            const finalResults = new Array(storeNames.length);
-                            let readCompleted = 0;
-                            storeNames.forEach((storeName, idx) => {
-                                readTx.objectStore(storeName).getAll().onsuccess = (e) => {
-                                    finalResults[idx] = e.target.result;
-                                    readCompleted++;
-                                    if (readCompleted === storeNames.length) callback(finalResults);
-                                };
-                            });
-                        };
-                    }
-                };
+                console.error(`❌ Error de red al sincronizar ${store}:`, err);
+                readLocalFallback(store, i, 'Error de red - datos locales de');
             });
         });
     } else {
+        console.log('📂 Leyendo datos locales (sin sincronización forzada)');
         const tx = dbInstance.transaction(storeNames, 'readonly');
         const results = new Array(storeNames.length);
         let completed = 0;
@@ -288,7 +319,10 @@ function getMultipleStores(storeNames, callback, forceCloud = false) {
             tx.objectStore(store).getAll().onsuccess = (e) => {
                 results[i] = e.target.result;
                 completed++;
-                if (completed === storeNames.length) callback(results);
+                if (completed === storeNames.length) {
+                    console.log('✅ Datos locales leídos:', results.map(r => r.length).join(', '));
+                    callback(results);
+                }
             };
             tx.objectStore(store).getAll().onerror = (e) => {
                 console.error(`Error leyendo tabla ${store}:`, e.target.error);
@@ -307,32 +341,101 @@ function getMultipleStores(storeNames, callback, forceCloud = false) {
 }
 
 /* ================= MOTOR DE NUBE (GOOGLE APPS SCRIPT) ================= */
+// Mapa de versiones del servidor por tabla. Se actualiza con cada lectura/escritura.
+const serverVersions = {};
+
 async function cloudGet(table) {
     try {
         // Agregamos &t=Date.now() para forzar al navegador a ignorar el caché y obtener la info fresca real
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}&t=${Date.now()}`);
         if (!response.ok) return null;
-        const data = await response.json();
-        return Array.isArray(data) ? data : (data.data || []);
+        const payload = await response.json();
+        if (payload && typeof payload.serverVersion === 'number') {
+            serverVersions[table] = payload.serverVersion;
+        }
+        return Array.isArray(payload) ? payload : (payload.data || []);
     } catch (error) {
         console.error(`Error leyendo tabla ${table} desde el servidor:`, error);
         return null;
     }
 }
 
-async function cloudSave(table, dataArray, mode = 'incremental') {
+/**
+ * Obtiene los proyectos filtrados por programa y entidad desde las pestañas 49_py o 27_py.
+ * @param {string} programa - DS49, DS27 o DS10.
+ * @param {string} entidad - Nombre de la entidad (opcional).
+ * @returns {Promise<Array>} Lista de proyectos.
+ */
+async function cloudGetProjects(programa, entidad = '') {
     try {
+        const url = `${GOOGLE_SCRIPT_URL}?action=getProjects&programa=${encodeURIComponent(programa)}&entidad=${encodeURIComponent(entidad)}&t=${Date.now()}`;
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        const payload = await response.json();
+        return Array.isArray(payload) ? payload : (payload.data || []);
+    } catch (error) {
+        console.error('Error leyendo proyectos desde el servidor:', error);
+        return [];
+    }
+}
+
+async function cloudSave(table, dataArray, mode = 'incremental', options = {}) {
+    try {
+        const clientVersion = serverVersions[table] || 1;
+        const body = {
+            table,
+            data: dataArray,
+            mode,
+            clientVersion
+        };
+        if (options.forceVersion) {
+            body.forceVersion = true;
+        }
         // Enviar como texto plano (text/plain) evita que el navegador bloquee la solicitud por CORS
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, 
-            body: JSON.stringify({ table, data: dataArray, mode })
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(body)
         });
-        return await response.json();
+        const result = await response.json();
+        if (result && typeof result.serverVersion === 'number') {
+            serverVersions[table] = result.serverVersion;
+        }
+        return result;
     } catch (error) {
         console.error(`Error guardando en tabla ${table}:`, error);
         return { success: false, error: error.message };
     }
+}
+
+/**
+ * Muestra doble advertencia antes de operaciones destructivas en el servidor.
+ * @param {string} operationName - Nombre legible de la operación.
+ * @param {string} detail - Detalle adicional a mostrar.
+ * @returns {boolean} true si el usuario confirma ambas advertencias.
+ */
+function confirmDoubleWarning(operationName, detail = '') {
+    const first = `⚠️ ADVERTENCIA 1/2\n\nEstá a punto de realizar: ${operationName}.\n${detail ? detail + '\n' : ''}\nEsta acción afectará los datos compartidos en el servidor y podría impactar a otros usuarios conectados.\n\n¿Desea continuar?`;
+    if (!confirm(first)) return false;
+
+    const second = `⚠️ ADVERTENCIA 2/2 - CONFIRMACIÓN FINAL\n\nPor favor, confirme nuevamente que desea ${operationName.toLowerCase()}.\n\nUna vez ejecutada, esta acción no se puede deshacer desde el sistema.\n\n¿Confirma definitivamente?`;
+    return confirm(second);
+}
+
+/**
+ * Maneja una respuesta de conflicto de versión del servidor.
+ * Ofrece al usuario forzar la escritura con doble advertencia o cancelar.
+ * @param {string} table - Nombre de la tabla.
+ * @param {object} res - Respuesta del servidor.
+ * @returns {Promise<boolean>} true si el usuario decide forzar.
+ */
+async function handleVersionConflict(table, res) {
+    const detail = `La tabla "${table}" tiene una versión más reciente en el servidor (v${res.serverVersion}) que la copia local (v${res.clientVersion}).`;
+    const force = confirmDoubleWarning(
+        `FORZAR ESCRITURA EN SERVIDOR - ${table.toUpperCase()}`,
+        `${detail}\n\nSi fuerza la escritura, podría sobrescribir cambios realizados por otro usuario.`
+    );
+    return force;
 }
 
 let syncCancelRequested = false;
@@ -373,20 +476,41 @@ function downloadAutoBackupJSON() {
     });
 }
 
-function syncSingleStoreToCloud(storeName, callback) {
+function syncSingleStoreToCloud(storeName, callback, options = {}) {
     if (!CLOUD_MODE_ENABLED) {
         if (callback) callback(true);
         return;
+    }
+
+    // Doble advertencia antes de escribir en el servidor
+    if (!options.skipWarning) {
+        const confirmed = confirmDoubleWarning(
+            `SINCRONIZAR ${storeName.toUpperCase()} CON LA NUBE`,
+            `Se enviarán los datos locales de "${storeName}" al servidor compartido.`
+        );
+        if (!confirmed) {
+            if (callback) callback(false);
+            return;
+        }
     }
 
     showProgressBar(`Sincronizando ${storeName} con la Nube...`);
 
     const req = dbInstance.transaction([storeName], 'readonly').objectStore(storeName).getAll();
     req.onsuccess = (e) => {
-        cloudSave(storeName, e.target.result).then(res => {
+        cloudSave(storeName, e.target.result, 'incremental', options).then(res => {
             hideProgressBar();
             if (res && res.success) {
                 if (callback) callback(true);
+            } else if (res && res.versionConflict) {
+                handleVersionConflict(storeName, res).then(force => {
+                    if (force) {
+                        syncSingleStoreToCloud(storeName, callback, { ...options, forceVersion: true, skipWarning: true });
+                    } else {
+                        alert('Sincronización cancelada. Se mantienen los datos locales.');
+                        if (callback) callback(false);
+                    }
+                });
             } else {
                 alert(`Error al sincronizar con la Nube: ${res ? res.error : 'Respuesta inválida del servidor.'}`);
                 if (callback) callback(false);
@@ -411,6 +535,13 @@ function syncAllToCloud() {
         alert('El modo nube está desactivado.');
         return;
     }
+
+    // Doble advertencia antes de sincronización masiva
+    const confirmed = confirmDoubleWarning(
+        'SINCRONIZACIÓN MASIVA A LA NUBE',
+        'Se compararán todos los datos locales con el servidor y se enviarán los cambios seleccionados. Esto afecta a todos los usuarios conectados.'
+    );
+    if (!confirmed) return;
 
     syncCancelRequested = false;
 
@@ -641,9 +772,20 @@ function getSelectedChanges(changes, storeNames) {
 }
 
 function executeSyncAllToCloud(changes, storeNames) {
+    // Doble advertencia final antes de escribir en el servidor
+    const confirmed = confirmDoubleWarning(
+        'CONFIRMAR ESCRITURA EN SERVIDOR',
+        `Se enviarán cambios a ${Object.keys(changes.byStore).filter(s => changes.byStore[s] > 0).length} tabla(s) al servidor compartido.`
+    );
+    if (!confirmed) {
+        hideProgressBar();
+        alert('Sincronización cancelada. No se realizaron cambios en el servidor.');
+        return;
+    }
+
     showProgressBar("Sincronizando con la Nube...");
     updateProgressBar(0);
-    
+
     // Crear respaldo en Google Sheets primero
     cloudSave('__backup__', [], 'backup').then(backupRes => {
         if (syncCancelRequested) return;
@@ -715,6 +857,23 @@ function executeSyncAllToCloud(changes, storeNames) {
                 
                 cloudSave(storeName, dataToSend, 'incremental').then(res => {
                     if (syncCancelRequested) return;
+                    if (res && res.versionConflict) {
+                        hideProgressBar();
+                        handleVersionConflict(storeName, res).then(force => {
+                            if (force) {
+                                showProgressBar("Sincronizando con la Nube...");
+                                cloudSave(storeName, dataToSend, 'incremental', { forceVersion: true }).then(() => {
+                                    if (!syncCancelRequested) syncNext(index + 1);
+                                }).catch(() => {
+                                    if (!syncCancelRequested) syncNext(index + 1);
+                                });
+                            } else {
+                                alert(`Sincronización de ${storeName} cancelada. Se continuará con las siguientes tablas.`);
+                                syncNext(index + 1);
+                            }
+                        });
+                        return;
+                    }
                     syncNext(index + 1);
                 }).catch(err => {
                     console.error(`Error de red al sincronizar ${storeName}:`, err);
@@ -765,7 +924,11 @@ function downloadHistoricosFromCloud() {
         alert('El modo nube está desactivado.');
         return;
     }
-    if (!confirm('¿Desea descargar los datos históricos y asignaciones históricas desde la Nube?\n\nEsto reemplazará los datos locales de estas tablas por los del servidor.')) return;
+    const confirmed = confirmDoubleWarning(
+        'DESCARGAR HISTÓRICOS DESDE LA NUBE',
+        'Esta acción reemplazará los datos locales de históricos y asignaciones históricas por los del servidor.'
+    );
+    if (!confirmed) return;
 
     showProgressBar('Descargando datos históricos desde la Nube...');
 
@@ -1180,7 +1343,17 @@ function finishLocalLoad(results, callback, hasError) {
     if (hasError) {
         console.warn('Algunas tablas locales no están disponibles.');
     }
-    
+
+    // results[0] corresponde al store 'items' (ver array de stores en loadCoreData)
+    // Normalizamos stage a número para que todos los filtros funcionen correctamente,
+    // tanto si los ítems vienen de IndexedDB local como de Google Sheets (que los devuelve como strings).
+    const localItems = results[0] || [];
+    if (localItems.length >= DEFAULT_ITEMS.length) {
+        dbItems = localItems.map(item => ({ ...item, stage: parseInt(item.stage, 10) || item.stage }));
+    } else {
+        dbItems = DEFAULT_ITEMS;
+    }
+
     // Actualizar indicador de conexión al cargar datos locales
     const dot = document.getElementById('conn-dot');
     const txt = document.getElementById('conn-text');
@@ -1262,7 +1435,8 @@ function loadCoreData(callback, forceCloud = false) {
                 DEFAULT_ITEMS.forEach(i => writeTx.objectStore('items').put(i));
             }
         } else {
-            dbItems = items;
+            // Normalizamos stage a número: Google Sheets devuelve todo como string
+            dbItems = items.map(item => ({ ...item, stage: parseInt(item.stage, 10) || item.stage }));
         }
         
         if (cfgReq) {
@@ -1428,7 +1602,7 @@ function renderAdminEntidadesColumn() {
 function handleLogin() {
     const userInput = document.getElementById('username').value.trim();
     const passInput = document.getElementById('password').value.trim();
-    
+
     // Actualizar indicador de conexión durante el login
     const dot = document.getElementById('conn-dot');
     const txt = document.getElementById('conn-text');
@@ -1437,7 +1611,17 @@ function handleLogin() {
         txt.textContent = 'Verificando credenciales...';
         txt.style.color = '#856404';
     }
-    
+
+    if (!userInput) {
+        alert('Por favor, ingrese su RUT de usuario.');
+        if (dot && txt) {
+            dot.style.backgroundColor = '#FF4444';
+            txt.textContent = 'RUT no ingresado';
+            txt.style.color = '#A51D24';
+        }
+        return;
+    }
+
     if (userInput.toLowerCase() === 'admin') {
         // SIEMPRE leer clave_admin desde el servidor (nunca desde local)
         if (!CLOUD_MODE_ENABLED) {
@@ -1490,6 +1674,7 @@ function handleLogin() {
             
             currentUser = { nombre: "Administrador", rut: "admin" };
             currentRole = 'admin';
+            restoreConnectionStatus();
             showPanel('Panel de Administración General');
         }).catch(err => {
             hideProgressBar();
@@ -1586,11 +1771,16 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
     const evResult = evaluadores.find(e => e.rut === userInput);
     if (!evResult) { 
         alert('RUT de evaluador no registrado.\n\nVerifique que el RUT esté correctamente ingresado o contacte al administrador.');
+        restoreConnectionStatus();
         return; 
     }
     
     const validPass = evResult.clave || '123456';
-    if (validPass !== passInput) { alert('Contraseña incorrecta.'); return; }
+    if (validPass !== passInput) { 
+        alert('Contraseña incorrecta.'); 
+        restoreConnectionStatus();
+        return; 
+    }
     
     currentUser = evResult;
     currentRole = 'evaluador';
@@ -1601,6 +1791,7 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
         
         if(userAsignaciones.length === 0) {
             alert('No tiene precalificaciones asignadas en este momento.\n\nContacte al administrador para que le asigne coberturas de evaluación.');
+            restoreConnectionStatus();
             return;
         }
         
@@ -1624,7 +1815,8 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
         currentCoverage = allAsignacionesMapped[0].cobertura;
         const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
         currentStage = matchingConfig ? matchingConfig.etapas[0] : 1;
-        
+
+        restoreConnectionStatus();
         showPanel('Sistema de Precalificación Técnica');
         startCountdownClock();
         
@@ -1676,6 +1868,17 @@ function backgroundSyncForEvaluator() {
     });
 }
 
+function restoreConnectionStatus() {
+    const dot = document.getElementById('conn-dot');
+    const txt = document.getElementById('conn-text');
+    if (dot && txt) {
+        dot.style.backgroundColor = '#92D050';
+        txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Modo Local';
+        txt.style.color = '#25306B';
+        txt.style.fontWeight = 'bold';
+    }
+}
+
 function handleLogout() {
     if (currentRole === 'evaluador' && hasUnsavedEvaluatorChanges) {
         if (confirm('⚠️ ¡ATENCIÓN! Tiene calificaciones sin guardar que se perderán al salir.\n\n¿Desea GUARDAR sus calificaciones ahora antes de cerrar la sesión?')) {
@@ -1698,7 +1901,7 @@ function performLogout() {
     toggleElement('main-screen', false);
     toggleElement('login-container', true);
     document.getElementById('username').value = '';
-    document.getElementById('password').value = '123456';
+    document.getElementById('password').value = '';
     if (countdownInterval) clearInterval(countdownInterval);
 }
 
@@ -1744,7 +1947,206 @@ function renderCoverageTabs() {
         };
         container.appendChild(btn);
     });
+    renderEvaluatorHeaderInfo();
     window.changeStage(currentStage);
+}
+
+/**
+ * Renderiza las pestañas de entidades, detalles y proyectos asociados a la cobertura activa del evaluador.
+ */
+function renderEvaluatorHeaderInfo() {
+    const activeAsig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+    if (!activeAsig) {
+        document.getElementById('eval-entity-tabs-container').innerHTML = '';
+        document.getElementById('eval-entity-details').innerHTML = '<div style="padding: 16px; color: #999; text-align: center;">Seleccione una cobertura para ver la entidad.</div>';
+        document.getElementById('eval-projects-body').innerHTML = '<tr><td colspan="5" class="text-center">Seleccione una cobertura para ver los proyectos.</td></tr>';
+        document.getElementById('eval-stages-container').innerHTML = '';
+        return;
+    }
+
+    // Crear pestañas de entidades basadas en cobertura actual
+    // Si hay múltiples entidades en la cobertura, cada una tendrá una pestaña
+    const entitiesInCoverage = allAsignacionesMapped.filter(a => a.cobertura === currentCoverage);
+    const uniqueEntities = [...new Set(entitiesInCoverage.map(a => a.entidadNombre))];
+
+    // Si no hay entidad seleccionada, usar la primera
+    if (!window.currentSelectedEntity) {
+        window.currentSelectedEntity = activeAsig.entidadNombre;
+    }
+
+    // Renderizar pestañas de entidades
+    const tabsContainer = document.getElementById('eval-entity-tabs-container');
+    tabsContainer.innerHTML = '';
+    uniqueEntities.forEach(entidadNombre => {
+        const btn = document.createElement('button');
+        btn.className = `tab-button ${window.currentSelectedEntity === entidadNombre ? 'active' : ''}`;
+        btn.textContent = entidadNombre;
+        btn.style.fontSize = '0.8rem';
+        btn.style.padding = '6px 10px';
+        btn.onclick = () => {
+            window.currentSelectedEntity = entidadNombre;
+            renderEvaluatorHeaderInfo();
+        };
+        tabsContainer.appendChild(btn);
+    });
+
+    // Buscar datos de la entidad en IndexedDB
+    dbGetAll('entidades', (entidades) => {
+        const normalize = (str) => str.toString().trim().toLowerCase().replace(/\s+/g, ' ').replace(/\.+$/g, '').replace(/\s*ltda\.?\s*$/g, ' ltda').replace(/\s*spa\.?\s*$/g, ' spa');
+        const target = normalize(window.currentSelectedEntity);
+
+        let entidad = entidades.find(e => {
+            const nombre = e.nombre ? normalize(e.nombre) : '';
+            return nombre === target || nombre.includes(target) || target.includes(nombre);
+        });
+        entidad = entidad || {};
+
+        const getField = (obj, possibleKeys) => {
+            for (const key of possibleKeys) {
+                if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+                    return obj[key];
+                }
+            }
+            return '';
+        };
+
+        const convenio = getField(entidad, ['convenio', 'Convenio', 'CONVENIO', 'N° Convenio Marco Seremi', 'N°ConvenioMarcoSeremi', 'convenio_marco', 'n_convenio']);
+        const fecha = getField(entidad, ['fecha', 'Fecha', 'FECHA', 'Fecha Convenio Marco', 'FechaConvenioMarco', 'fecha_convenio']);
+
+        // Mostrar detalles de la entidad
+        document.getElementById('eval-entity-name').textContent = entidad.nombre || window.currentSelectedEntity || 'Sin Entidad';
+        document.getElementById('eval-entity-rut').textContent = entidad.rut || '---';
+        document.getElementById('eval-entity-convenio').textContent = convenio || '---';
+        document.getElementById('eval-entity-fecha').textContent = fecha || '---';
+        document.getElementById('eval-entity-programa').textContent = activeAsig.programa || '---';
+    });
+
+    // Renderizar tabla de proyectos según programa
+    renderProjectsTable(activeAsig.programa, window.currentSelectedEntity);
+
+    // Renderizar etapas a calificar
+    renderStagesForEvaluator(activeAsig);
+}
+
+/**
+ * Renderiza las etapas a calificar para el evaluador
+ */
+function renderStagesForEvaluator(activeAsig) {
+    const container = document.getElementById('eval-stages-container');
+    if (!activeAsig) {
+        container.innerHTML = '<div style="color: #999; font-size: 0.85rem;">No hay etapas asignadas.</div>';
+        return;
+    }
+
+    const etapas = activeAsig.etapas && Array.isArray(activeAsig.etapas) ? activeAsig.etapas : [1];
+    container.innerHTML = '';
+
+    etapas.sort((a, b) => a - b).forEach(stageNum => {
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            background: var(--bg-stage-${stageNum});
+            border: 1px solid var(--primary-dark);
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            color: var(--primary-dark);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+            white-space: nowrap;
+        `;
+        badge.textContent = `Etapa ${stageNum}`;
+        badge.onmouseover = () => {
+            badge.style.transform = 'translateY(-1px)';
+            badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+        };
+        badge.onmouseout = () => {
+            badge.style.transform = 'translateY(0)';
+            badge.style.boxShadow = 'none';
+        };
+        badge.onclick = () => {
+            currentStage = stageNum;
+            window.changeStage(stageNum);
+        };
+        container.appendChild(badge);
+    });
+}
+
+/**
+ * Renderiza la tabla de proyectos desde las pestañas 49_py o 27_py del Google Sheet.
+ * @param {string} programa - DS49, DS27 o DS10.
+ * @param {string} entidadNombre - Nombre de la entidad para filtrar.
+ */
+function renderProjectsTable(programa, entidadNombre) {
+    const head = document.getElementById('eval-projects-head');
+    const body = document.getElementById('eval-projects-body');
+
+    if (!programa) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center">No hay programa definido para la cobertura actual.</td></tr>';
+        return;
+    }
+
+    // DS49 requiere columna Código Proyecto adicional
+    if (programa === 'DS49') {
+        head.innerHTML = `
+            <tr style="background-color: var(--primary-dark); color:#FFF;">
+                <th>Código Proyecto</th>
+                <th>Nombre Proyecto</th>
+                <th>Comuna</th>
+                <th>Modalidad</th>
+                <th>N° Familias</th>
+                <th>Año</th>
+            </tr>
+        `;
+    } else {
+        head.innerHTML = `
+            <tr style="background-color: var(--primary-dark); color:#FFF;">
+                <th>Nombre Proyecto</th>
+                <th>Comuna</th>
+                <th>Modalidad</th>
+                <th>Familias</th>
+                <th>Año</th>
+            </tr>
+        `;
+    }
+
+    body.innerHTML = '<tr><td colspan="6" class="text-center">Cargando proyectos...</td></tr>';
+
+    cloudGetProjects(programa, entidadNombre).then(proyectos => {
+        if (!Array.isArray(proyectos) || proyectos.length === 0) {
+            const cols = programa === 'DS49' ? '6' : '5';
+            body.innerHTML = `<tr><td colspan="${cols}" class="text-center">No se encontraron proyectos para la entidad "${entidadNombre || ''}" en el programa ${programa}.</td></tr>`;
+            return;
+        }
+
+        if (programa === 'DS49') {
+            body.innerHTML = proyectos.map(p => `
+                <tr>
+                    <td>${p['Codigo proyecto'] || p.codigo_proyecto || p.Codigo || ''}</td>
+                    <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
+                    <td>${p.Comuna || p.comuna || ''}</td>
+                    <td>${p.Modalidad || p.modalidad || ''}</td>
+                    <td>${p['N°familias'] || p.Nfamilias || p.familias || ''}</td>
+                    <td>${p.Año || p.ano || p.anio || ''}</td>
+                </tr>
+            `).join('');
+        } else {
+            body.innerHTML = proyectos.map(p => `
+                <tr>
+                    <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
+                    <td>${p.Comuna || p.comuna || ''}</td>
+                    <td>${p.Modalidad || p.modalidad || ''}</td>
+                    <td>${p.Familias || p.familias || ''}</td>
+                    <td>${p.Año || p.ano || p.anio || ''}</td>
+                </tr>
+            `).join('');
+        }
+    }).catch(err => {
+        console.error('Error cargando proyectos:', err);
+        const cols = programa === 'DS49' ? '6' : '5';
+        body.innerHTML = `<tr><td colspan="${cols}" class="text-center">Error al cargar proyectos. Intente nuevamente.</td></tr>`;
+    });
 }
 
 window.changeStage = function(stageNum) {
@@ -1931,7 +2333,18 @@ function executeCommitAsignacion() {
     } else { writeOps(); }
 
     tx.oncomplete = () => { 
-        closeModal(); pendingAsignacionesStaging = []; currentScreenStaging = null; populateAdminMatrix(); 
+        closeModal(); pendingAsignacionesStaging = []; currentScreenStaging = null;
+        // Sincronizar asignaciones con la nube sin bloquear la UI
+        if (CLOUD_MODE_ENABLED) {
+            syncSingleStoreToCloud('asignaciones', () => { populateAdminMatrix(); });
+        } else {
+            populateAdminMatrix();
+        }
+    };
+
+    tx.onerror = () => {
+        closeModal();
+        alert('Error al guardar la asignación localmente.');
     };
 }
 
@@ -2417,8 +2830,12 @@ function openAuditModal(rut, nombre, cobertura, stageNum) {
 
 function populateAdminMatrix() {
     pendingAsignacionesStaging = []; adminTemporaryEntidades = [];
+    // Forzar sincronización desde la nube para el admin
     getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
-        document.getElementById('col-evaluadores').innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+        const colEvaluadores = document.getElementById('col-evaluadores');
+        if (colEvaluadores) {
+            colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+        }
         
         renderEvaluadoresTable(evaluadores);
         adminTemporaryEntidades = entidades;
@@ -2429,7 +2846,10 @@ function populateAdminMatrix() {
         const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
         renderAdminProgramsColumn();
         fillAnioSelectors();
-    });
+        
+        // Mostrar mensaje de éxito
+        console.log(`✅ Admin Matrix cargado: ${evaluadores.length} evaluadores, ${entidades.length} entidades`);
+    }, CLOUD_MODE_ENABLED);
 }
 
 function fillAnioSelectors() {
@@ -2461,7 +2881,17 @@ function saveEvaluatorScores(callback) {
         if (callback) callback(false);
         return;
     }
-    
+
+    // Doble advertencia antes de enviar calificaciones al servidor
+    const confirmed = confirmDoubleWarning(
+        'GUARDAR CALIFICACIONES EN EL SERVIDOR',
+        `Se enviarán las calificaciones del evaluador ${currentUser.nombre} (${currentUser.rut}) al servidor compartido.`
+    );
+    if (!confirmed) {
+        if (callback) callback(false);
+        return;
+    }
+
     dbGetAll('scores', (allDbScores) => {
         const tx = dbInstance.transaction(['scores'], 'readwrite');
         const store = tx.objectStore('scores');
@@ -2538,7 +2968,7 @@ function loadScoresFromActiveContext() {
 function renderEvaluatorView() {
     const titleLabel = document.getElementById('table-stage-title');
     const descLabel = document.getElementById('table-stage-desc');
-    
+
     if (STAGES_METADATA[currentStage]) {
         titleLabel.textContent = STAGES_METADATA[currentStage].title;
         descLabel.textContent = STAGES_METADATA[currentStage].desc;
@@ -2547,8 +2977,18 @@ function renderEvaluatorView() {
     document.getElementById('table-stage-footer-label').textContent = `PRECALIFICACIÓN ETAPA ${currentStage}`;
 
     const tbody = document.getElementById('evaluation-rows');
-    
-    const rowsHtml = dbItems.filter(i => i.stage === currentStage).map(item => {
+
+    // Obtener todos los ítems de la etapa actual, ordenados por id
+    const stageItems = dbItems
+        .filter(i => parseInt(i.stage, 10) === parseInt(currentStage, 10))
+        .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+
+    if (stageItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">No hay ítems configurados para la Etapa ${currentStage}.</td></tr>`;
+        return;
+    }
+
+    const rowsHtml = stageItems.map(item => {
         const score = dbScores[item.id] !== undefined ? dbScores[item.id] : "";
         return `
             <tr>
@@ -2646,6 +3086,13 @@ function toggleModoHistorico() {
 }
 
 function saveAsignacionHistorica() {
+    // Doble advertencia antes de guardar asignación histórica en servidor
+    const confirmed = confirmDoubleWarning(
+        'GUARDAR ASIGNACIÓN HISTÓRICA EN EL SERVIDOR',
+        'Se enviará una nueva asignación histórica al servidor compartido.'
+    );
+    if (!confirmed) return;
+
     captureCurrentAdminProgramsState();
 
     const selectedEvaluatorsRuts = [];
@@ -2996,6 +3443,13 @@ function guardarHistorico() {
         return;
     }
 
+    // Doble advertencia antes de guardar calificación histórica en servidor
+    const confirmed = confirmDoubleWarning(
+        'GUARDAR CALIFICACIÓN HISTÓRICA EN EL SERVIDOR',
+        `Se enviará la calificación histórica de ${historicoConfig.evaluadorNombre} al servidor compartido.`
+    );
+    if (!confirmed) return;
+
     if (!ensureStoreExists('historicos')) {
         alert('La base de datos local no está lista. Recargue la página para recrear la estructura.');
         return;
@@ -3194,6 +3648,13 @@ function showConflictModal(added, removed, modified, remoteData) {
 }
 
 function applyConflictResolution(added, removed, modified, remoteData) {
+    // Doble advertencia antes de aplicar resolución de conflictos en servidor
+    const confirmed = confirmDoubleWarning(
+        'APLICAR RESOLUCIÓN DE CONFLICTOS EN EL SERVIDOR',
+        'Se sincronizarán las asignaciones históricas resueltas con el servidor compartido.'
+    );
+    if (!confirmed) return;
+
     const tx = dbInstance.transaction(['asigna_historico'], 'readwrite');
     const store = tx.objectStore('asigna_historico');
 

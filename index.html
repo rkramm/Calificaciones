@@ -376,105 +376,122 @@
             </div>
         </div>
 
-        <!-- VISTA EVALUADOR -->
-        <div id="evaluador-view" class="hidden">
-            <div class="card timing-dashboard" style="padding: 12px 16px; margin-bottom: 12px;">
-                <div class="time-block" style="flex: 1; min-width: 120px;"><strong style="font-size: 0.8rem;">Hoy:</strong> <span id="txt-date-today" style="font-size: 0.85rem;">--/--/----</span></div>
-                <div class="time-block" style="flex: 1; min-width: 120px;"><strong style="font-size: 0.8rem;">Plazo:</strong> <span id="txt-date-deadline" style="font-size: 0.85rem;">--/--/---- --:--</span></div>
-                <div class="time-block countdown-container" style="flex: 1; min-width: 120px;"><strong style="font-size: 0.8rem;">TIEMPO:</strong> <span id="txt-countdown" class="countdown-clock" style="font-size: 0.9rem;">--:--:--</span></div>
+        <!-- VISTA EVALUADOR CON SIDEBAR -->
+        <div id="evaluador-view" class="hidden" style="display: flex; flex-direction: column; height: 100vh; gap: 0;">
+            <!-- TIMING DASHBOARD (TOP) -->
+            <div class="card timing-dashboard" style="padding: 8px 12px; margin: 0; border-radius: 0; background-color: #25306B; color: #FFF;">
+                <div class="time-block" style="flex: 1; min-width: 100px;"><strong style="font-size: 0.75rem;">Hoy:</strong> <span id="txt-date-today" style="font-size: 0.8rem;">--/--/----</span></div>
+                <div class="time-block" style="flex: 1; min-width: 150px;"><strong style="font-size: 0.75rem;">Plazo:</strong> <span id="txt-date-deadline" style="font-size: 0.8rem;">--/--/---- --:--</span></div>
+                <div class="time-block countdown-container" style="flex: 1; min-width: 100px; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 3px;"><strong style="font-size: 0.75rem;">TIEMPO:</strong> <span id="txt-countdown" class="countdown-clock" style="font-size: 0.85rem; color: #FFF;">--:--:--</span></div>
             </div>
 
-            <div id="deadline-alert" class="card hidden" style="background-color: #FCE8E6; border-left: 5px solid var(--accent-red); color: #A51D24; font-weight: bold; padding:10px; margin-bottom:10px;">
+            <div id="deadline-alert" class="card hidden" style="background-color: #FCE8E6; border-left: 5px solid var(--accent-red); color: #A51D24; font-weight: bold; padding:8px 12px; margin: 0; border-radius: 0;">
                 El periodo de evaluación ha vencido. El sistema se encuentra en modo de solo lectura.
             </div>
 
-
-            <!-- PESTAÑAS DE ENTIDADES -->
-            <div class="card" style="margin-bottom:12px; background-color:#FAFBFC; border:1px solid #E8EAED; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 0;">
-                <h3 style="font-size:0.9rem; color:var(--primary-dark); margin:0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom:1px solid #E8EAED; padding:14px 14px 10px 14px; margin-bottom: 0;">📋 Entidad</h3>
-                <div id="eval-entity-tabs-container" class="tabs-nav" style="padding: 8px 14px 0 14px; border: none; border-bottom: 2px solid var(--primary-dark); margin-bottom: 0; gap: 2px;"></div>
-                <div id="eval-entity-details" style="padding: 14px;">
-                    <div class="eval-entity-detail-item" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
-                        <div><span style="font-weight: 600; font-size: 0.8rem; color: #666; text-transform: uppercase;">Nombre:</span> <span id="eval-entity-name" style="font-size: 0.9rem; color: var(--primary-dark);">---</span></div>
-                        <div><span style="font-weight: 600; font-size: 0.8rem; color: #666; text-transform: uppercase;">RUT:</span> <span id="eval-entity-rut" style="font-size: 0.9rem; color: var(--primary-dark);">---</span></div>
+            <!-- CONTENEDOR PRINCIPAL: SIDEBAR + CONTENT -->
+            <div style="display: flex; flex: 1; overflow: hidden; gap: 0;">
+                <!-- SIDEBAR IZQUIERDO: ENTIDADES -->
+                <div style="width: 140px; background: #FAFBFC; border-right: 2px solid var(--primary-dark); overflow-y: auto; display: flex; flex-direction: column; padding: 0;">
+                    <div style="padding: 8px; background: var(--primary-dark); color: #FFF; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; text-align: center; border-bottom: 1px solid #E8EAED; flex-shrink: 0;">
+                        📋 Entidades
                     </div>
-                    <div class="eval-entity-detail-item" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
-                        <div><span style="font-weight: 600; font-size: 0.8rem; color: #666; text-transform: uppercase;">Convenio:</span> <span id="eval-entity-convenio" style="font-size: 0.9rem; color: var(--primary-dark);">---</span></div>
-                        <div><span style="font-weight: 600; font-size: 0.8rem; color: #666; text-transform: uppercase;">Fecha:</span> <span id="eval-entity-fecha" style="font-size: 0.9rem; color: var(--primary-dark);">---</span></div>
+                    <div id="eval-entity-tabs-container" style="display: flex; flex-direction: column; gap: 4px; padding: 6px; overflow-y: auto; flex: 1;">
+                        <!-- Tabs de entidades se inyectarán aquí -->
                     </div>
-                    <div class="eval-entity-detail-item"><span style="font-weight: 600; font-size: 0.8rem; color: #666; text-transform: uppercase;">Programa:</span> <span id="eval-entity-programa" style="font-size: 0.9rem; color: var(--primary-dark);">---</span></div>
                 </div>
-            </div>
 
-            <!-- TABLA DE PROYECTOS A CONSIDERAR -->
-            <div class="card" style="margin-bottom:12px; background-color:#FAFBFC; border:1px solid #E8EAED; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 14px;">
-                <h3 style="font-size:0.9rem; color:var(--primary-dark); margin:0 0 12px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom:1px solid #E8EAED; padding-bottom:10px;">🏗️ Proyectos a Evaluar</h3>
-                <div class="table-responsive" style="overflow-x: auto;">
-                    <table class="evaluation-table" style="font-size:0.82rem; margin-bottom:0; min-width: 100%;">
-                        <thead id="eval-projects-head">
-                            <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 2px solid #E8EAED;">
-                                <th style="padding: 10px 8px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap;">Código</th>
-                                <th style="padding: 10px 8px; text-align: left; border: none; border-right: 1px solid #E8EAED;">Nombre Proyecto</th>
-                                <th style="padding: 10px 8px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap;">Comuna</th>
-                                <th style="padding: 10px 8px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap;">Modalidad</th>
-                                <th style="padding: 10px 8px; text-align: center; border: none; white-space: nowrap;">Familias</th>
-                            </tr>
-                        </thead>
-                        <tbody id="eval-projects-body">
-                            <tr style="border: none;"><td colspan="5" class="text-center" style="padding: 16px 8px; color: #999; border: none; font-size: 0.85rem;">Seleccione una entidad para ver los proyectos.</td></tr>
-                        </tbody>
-                    </table>
+                <!-- CONTENIDO PRINCIPAL: DERECHA -->
+                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; gap: 0; padding: 8px; background: #F5F7FA;">
+
+                    <!-- INFORMACIÓN COMPACTA DE ENTIDAD -->
+                    <div style="background: white; border: 1px solid #E8EAED; border-radius: 4px; padding: 8px; margin-bottom: 6px; font-size: 0.75rem; line-height: 1.4; flex-shrink: 0;">
+                        <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px; align-items: center;">
+                            <span style="font-weight: 700; color: #666;">Nombre:</span>
+                            <span id="eval-entity-name" style="color: var(--primary-dark); font-weight: 600;">---</span>
+                            <span style="font-weight: 700; color: #666;">RUT:</span>
+                            <span id="eval-entity-rut" style="color: var(--primary-dark); font-weight: 600;">---</span>
+                            <span style="font-weight: 700; color: #666;">Convenio:</span>
+                            <span id="eval-entity-convenio" style="color: var(--primary-dark); font-weight: 600;">---</span>
+                            <span style="font-weight: 700; color: #666;">Fecha:</span>
+                            <span id="eval-entity-fecha" style="color: var(--primary-dark); font-weight: 600;">---</span>
+                            <span style="font-weight: 700; color: #666;">Programa:</span>
+                            <span id="eval-entity-programa" style="color: var(--primary-dark); font-weight: 600;">---</span>
+                        </div>
+                    </div>
+
+                    <!-- TABLA DE PROYECTOS (COMPRIMIDA) -->
+                    <div style="background: white; border: 1px solid #E8EAED; border-radius: 4px; padding: 6px; margin-bottom: 6px; flex-shrink: 0; max-height: 100px; overflow-y: auto;">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; text-transform: uppercase;">🏗️ Proyectos</div>
+                        <div class="table-responsive" style="overflow-x: auto; font-size: 0.7rem;">
+                            <table class="evaluation-table" style="margin-bottom:0; min-width: 100%;">
+                                <thead id="eval-projects-head">
+                                    <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
+                                        <th style="padding: 3px 4px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap;">Código</th>
+                                        <th style="padding: 3px 4px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.65rem;">Nombre</th>
+                                        <th style="padding: 3px 4px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap;">Comuna</th>
+                                        <th style="padding: 3px 4px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap;">Modal.</th>
+                                        <th style="padding: 3px 4px; text-align: center; border: none; white-space: nowrap;">Fam.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eval-projects-body">
+                                    <tr style="border: none;"><td colspan="5" class="text-center" style="padding: 6px 4px; color: #999; border: none; font-size: 0.65rem;">Seleccione entidad</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ETAPAS A CALIFICAR (BADGES) -->
+                    <div style="background: white; border: 1px solid #E8EAED; border-radius: 4px; padding: 6px; margin-bottom: 6px; flex-shrink: 0;">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; text-transform: uppercase;">📊 Etapas</div>
+                        <div id="eval-stages-container" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            <!-- Las etapas se inyectarán aquí con JS -->
+                        </div>
+                    </div>
+
+                    <!-- TABLA DE EVALUACIÓN (PRINCIPAL, OCUPAR ESPACIO) -->
+                    <div class="table-responsive card table-scroll-container" id="table-card-container" style="flex: 1; padding:0; background-color: white; border-radius: 4px; border: 1px solid #E8EAED; margin: 0; overflow-y: auto;">
+                        <table class="evaluation-table" title="Tabla de Calificaciones" style="background-color: white; font-size: 0.75rem;">
+                            <colgroup>
+                                <col style="width: 2%;">
+                                <col style="width: 70%;">
+                                <col style="width: 1.33%;">
+                                <col style="width: 1.33%;">
+                                <col style="width: 1.34%;">
+                            </colgroup>
+                            <thead>
+                                <tr class="header-top" style="background-color: #F5F7FA; border-bottom: 1px solid #E8EAED;">
+                                    <th colspan="2" class="title-etapa" id="table-stage-title" style="font-size:0.8rem; padding:6px; font-weight: 600; color: var(--primary-dark); text-align: left; border-right: 1px solid #E8EAED;">ETAPA 1...</th>
+                                    <th colspan="3" class="detail-header" style="padding: 6px; text-align: center;">
+                                        <div class="detalle-calificacion-title" style="padding: 0; font-size: 0.7rem; font-weight: 600; color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.2px;">Evaluación</div>
+                                    </th>
+                                </tr>
+                                <tr class="header-sub" style="background-color: #F5F7FA; border-bottom: 1px solid #E8EAED;">
+                                    <th colspan="2" class="description-block" id="table-stage-desc" style="font-size:0.7rem; padding:6px; color: var(--primary-dark); font-weight: 500; text-align: left; border-right: 1px solid #E8EAED;">Criterios</th>
+                                    <th class="range-header text-center" style="padding: 6px; font-weight: 500; color: #D32F2F; font-size: 0.65rem;">MALO<br><small>(0-50)</small></th>
+                                    <th class="range-header text-center" style="padding: 6px; font-weight: 500; color: #F57C00; font-size: 0.65rem;">ACEPTABLE<br><small>(51-79)</small></th>
+                                    <th class="range-header text-center" style="padding: 6px; font-weight: 500; color: #388E3C; font-size: 0.65rem;">BUENO<br><small>(80-100)</small></th>
+                                </tr>
+                            </thead>
+                            <tbody id="evaluation-rows"></tbody>
+                            <tfoot>
+                                <tr class="footer-result" style="background-color: #F5F7FA; border-top: 1px solid #E8EAED;">
+                                    <td colspan="2" class="text-uppercase bold-text cell-etapa-final" id="table-stage-footer-label" style="font-size:0.75rem; padding:6px; color: var(--primary-dark); font-weight: 600; border-right: 1px solid #E8EAED;">Resultado</td>
+                                    <td colspan="2" id="cell-status-text" class="text-center bold-text status-badge" style="font-size:0.75rem; padding: 6px; font-weight: 600;">---</td>
+                                    <td id="cell-final-score" class="text-center bold-text score-final" style="font-size:0.9rem; padding: 6px; font-weight: 700; color: var(--primary-blue);">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
-            </div>
-
-            <!-- ETAPAS A CALIFICAR -->
-            <div class="card" style="margin-bottom:12px; background-color:#FAFBFC; border:1px solid #E8EAED; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 14px;">
-                <h3 style="font-size:0.9rem; color:var(--primary-dark); margin:0 0 12px 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom:1px solid #E8EAED; padding-bottom:10px;">📊 Etapas a Calificar</h3>
-                <div id="eval-stages-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <!-- Las etapas se inyectarán aquí con JS -->
-                </div>
-            </div>
-
-            <!-- Tabs de cobertura (solo para control interno, ocultos) -->
-            <div id="evaluador-coverage-tabs" class="hidden"></div>
-
-            <!-- Tabs internos para cambio de etapa (solo para procesamiento, no visible) -->
-            <div class="tabs-nav hidden" id="evaluador-tabs"></div>
-
-            <div class="table-responsive card table-scroll-container" id="table-card-container" style="margin-top: 5px; padding:0; background-color: #FAFBFC; border-radius: 6px; border: 1px solid #E8EAED; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <table class="evaluation-table" title="Tabla de Calificaciones" style="background-color: white;">
-                    <colgroup>
-                        <col style="width: 2%;">
-                        <col style="width: 70%;">
-                        <col style="width: 1.33%;">
-                        <col style="width: 1.33%;">
-                        <col style="width: 1.34%;">
-                    </colgroup>
-                    <thead>
-                        <tr class="header-top" style="background-color: #F5F7FA; border-bottom: 2px solid #E8EAED;">
-                            <th colspan="2" class="title-etapa" id="table-stage-title" style="font-size:0.95rem; padding:12px; font-weight: 600; color: var(--primary-dark); text-align: left; border-right: 1px solid #E8EAED;">ETAPA 1...</th>
-                            <th colspan="3" class="detail-header" style="padding: 12px; text-align: center;">
-                                <div class="detalle-calificacion-title" style="padding: 0; font-size: 0.85rem; font-weight: 600; color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.3px;">Evaluación</div>
-                            </th>
-                        </tr>
-                        <tr class="header-sub" style="background-color: #F5F7FA; border-bottom: 1px solid #E8EAED;">
-                            <th colspan="2" class="description-block" id="table-stage-desc" style="font-size:0.8rem; padding:10px; color: var(--primary-dark); font-weight: 500; text-align: left; border-right: 1px solid #E8EAED;">Criterios</th>
-                            <th class="range-header text-center" style="padding: 10px; font-weight: 500; color: #D32F2F; font-size: 0.75rem;">MALO<br><small>(0-50)</small></th>
-                            <th class="range-header text-center" style="padding: 10px; font-weight: 500; color: #F57C00; font-size: 0.75rem;">ACEPTABLE<br><small>(51-79)</small></th>
-                            <th class="range-header text-center" style="padding: 10px; font-weight: 500; color: #388E3C; font-size: 0.75rem;">BUENO<br><small>(80-100)</small></th>
-                        </tr>
-                    </thead>
-                    <tbody id="evaluation-rows"></tbody>
-                    <tfoot>
-                        <tr class="footer-result" style="background-color: #F5F7FA; border-top: 2px solid #E8EAED;">
-                            <td colspan="2" class="text-uppercase bold-text cell-etapa-final" id="table-stage-footer-label" style="font-size:0.9rem; padding:12px; color: var(--primary-dark); font-weight: 600; border-right: 1px solid #E8EAED;">Resultado</td>
-                            <td colspan="2" id="cell-status-text" class="text-center bold-text status-badge" style="font-size:0.9rem; padding: 12px; font-weight: 600;">---</td>
-                            <td id="cell-final-score" class="text-center bold-text score-final" style="font-size:1.2rem; padding: 12px; font-weight: 700; color: var(--primary-blue);">0</td>
-                        </tr>
-                    </tfoot>
-                </table>
             </div>
         </div>
+
+        <!-- Tabs de cobertura (solo para control interno, ocultos) -->
+        <div id="evaluador-coverage-tabs" class="hidden"></div>
+
+        <!-- Tabs internos para cambio de etapa (solo para procesamiento, no visible) -->
+        <div class="tabs-nav hidden" id="evaluador-tabs"></div>
     </div>
 
     <!-- VENTANA EMERGENTE -->

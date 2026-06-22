@@ -1,4 +1,58 @@
 const SPREADSHEET_ID = '1apPfP7Y3ancW166QGEvh07kESYjuV8sP-Wd14cnQjjo';
+const VERSION_SHEET_NAME = '__version__';
+
+/**
+ * Obtiene o crea la hoja de versiones y retorna un objeto { tabla: version }.
+ */
+function getVersionMap() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = spreadsheet.getSheetByName(VERSION_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(VERSION_SHEET_NAME);
+    sheet.appendRow(['table', 'version']);
+  }
+  const values = sheet.getDataRange().getDisplayValues();
+  const map = {};
+  for (let i = 1; i < values.length; i++) {
+    const table = values[i][0];
+    const version = parseInt(values[i][1], 10);
+    if (table) map[table] = isNaN(version) ? 0 : version;
+  }
+  return { sheet: sheet, map: map };
+}
+
+/**
+ * Retorna la versión actual de una tabla. Si no existe, retorna 1.
+ */
+function getTableVersion(tableName) {
+  const data = getVersionMap();
+  return data.map[tableName] || 1;
+}
+
+/**
+ * Incrementa la versión de una tabla en la hoja de versiones.
+ * Acepta un versionData pre-leído para evitar lecturas redundantes de Sheets.
+ * Retorna la nueva versión para que el llamador no necesite releer.
+ * @param {string} tableName
+ * @param {{sheet: Sheet, map: Object}|null} versionData - resultado de getVersionMap() ya leído, o null para releer.
+ * @returns {number} nueva versión de la tabla.
+ */
+function bumpTableVersion(tableName, versionData) {
+  const data = versionData || getVersionMap();
+  const sheet = data.sheet;
+  const values = sheet.getDataRange().getDisplayValues();
+  let newVersion = 2;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === tableName) {
+      const current = parseInt(values[i][1], 10) || 1;
+      newVersion = current + 1;
+      sheet.getRange(i + 1, 2).setValue(newVersion);
+      return newVersion;
+    }
+  }
+  sheet.appendRow([tableName, 2]);
+  return newVersion;
+}
 
 function doPost(e) {
   try {
@@ -12,7 +66,22 @@ function doPost(e) {
       const backupName = createBackupSheet();
       return ContentService.createTextOutput(JSON.stringify({ success: true, backupName: backupName })).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
+    // Control de versión optimista por tabla (una sola lectura de __version__ por request)
+    const versionData = getVersionMap();
+    const clientVersion = parseInt(payload.clientVersion, 10) || 0;
+    const serverVersion = versionData.map[tableName] || 1;
+    const forceVersion = payload.forceVersion === true;
+    if (clientVersion < serverVersion && !forceVersion) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        versionConflict: true,
+        serverVersion: serverVersion,
+        clientVersion: clientVersion,
+        error: 'La versión del cliente es anterior a la versión del servidor. Sincronice antes de guardar.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     let sheet = spreadsheet.getSheetByName(tableName);
     
@@ -75,8 +144,14 @@ function doPost(e) {
       }
     }
     
-    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
-    
+    // Incrementar versión del servidor tras escritura exitosa (reutiliza versionData ya leído)
+    const newServerVersion = bumpTableVersion(tableName, versionData);
+
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      serverVersion: newServerVersion
+    })).setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.message })).setMimeType(ContentService.MimeType.JSON);
   }
@@ -122,24 +197,139 @@ function createBackupSheet() {
   }
 }
 
+/**
+ * Normaliza un nombre de programa a DS49, DS27 o DS10.
+ */
+function normalizePrograma(programa) {
+  if (!programa) return '';
+  const raw = programa.toString().trim().toUpperCase().replace(/[\s\-_.]+/g, '');
+  if (raw === 'DS49' || raw === '49') return 'DS49';
+  if (raw === 'DS27' || raw === '27') return 'DS27';
+  if (raw === 'DS10' || raw === '10') return 'DS10';
+  return '';
+}
+
+/**
+ * Normaliza un nombre de entidad para comparación flexible.
+ */
+function normalizeEntidad(str) {
+  if (str === undefined || str === null) return '';
+  return str.toString().trim().toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\.+$/g, '')
+    .replace(/\s*ltda\.?\s*$/g, ' ltda')
+    .replace(/\s*spa\.?\s*$/g, ' spa')
+    .replace(/\s*s\.a\.?\s*$/g, ' s.a')
+    .trim();
+}
+
+/**
+ * Endpoint especial para leer proyectos filtrados por programa y entidad.
+ * Uso: ?action=getProjects&programa=DS49&entidad=Nombre%20Entidad
+ */
 function doGet(e) {
   try {
+    const action = e.parameter.action;
+    if (action === 'getProjects') {
+      const rawPrograma = e.parameter.programa || '';
+      const entidad = e.parameter.entidad || '';
+      const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+      const programa = normalizePrograma(rawPrograma);
+      let sheetName;
+      if (programa === 'DS49') {
+        sheetName = '49_py';
+      } else if (programa === 'DS27') {
+        sheetName = '27_py';
+      } else if (programa === 'DS10') {
+        sheetName = '10_py';
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({
+          data: [],
+          debug: 'Programa no reconocido: ' + rawPrograma + '. Se esperaba DS49, DS27 o DS10.'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const sheet = spreadsheet.getSheetByName(sheetName);
+      if (!sheet) {
+        return ContentService.createTextOutput(JSON.stringify({
+          data: [],
+          debug: 'No existe la pestaña ' + sheetName + ' para el programa ' + programa
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const values = sheet.getDataRange().getDisplayValues();
+      if (values.length <= 1) {
+        return ContentService.createTextOutput(JSON.stringify({
+          data: [],
+          debug: 'La pestaña ' + sheetName + ' esta vacia o solo tiene encabezados'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const headers = values[0];
+      const data = [];
+
+      // Buscar la columna que contiene el nombre de la entidad
+      const entidadColIndex = headers.findIndex(h => {
+        const header = h.toString().trim().toLowerCase();
+        return header.includes('entidad') || header.includes('razon social') || header.includes('razón social') || header.includes('nombre');
+      });
+
+      // Si no se encuentra columna de entidad, devolver debug claro
+      if (entidad && entidadColIndex < 0) {
+        return ContentService.createTextOutput(JSON.stringify({
+          data: [],
+          debug: 'No se encontro columna de entidad en ' + sheetName + '. Encabezados: ' + headers.join(' | ')
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const targetEntidad = normalizeEntidad(entidad);
+      let filasEvaluadas = 0;
+      let coincidencias = 0;
+
+      for (let i = 1; i < values.length; i++) {
+        filasEvaluadas++;
+        const obj = {};
+        for (let j = 0; j < headers.length; j++) {
+          obj[headers[j]] = values[i][j];
+        }
+
+        // Filtrar por nombre de entidad si se proporciona
+        if (targetEntidad && entidadColIndex >= 0) {
+          const cellEntidad = normalizeEntidad(values[i][entidadColIndex]);
+          // Coincidencia exacta o parcial
+          if (cellEntidad !== targetEntidad && !cellEntidad.includes(targetEntidad) && !targetEntidad.includes(cellEntidad)) {
+            continue;
+          }
+          coincidencias++;
+        }
+
+        data.push(obj);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+        data: data,
+        debug: 'Programa: ' + programa + ', Pestaña: ' + sheetName + ', Filas evaluadas: ' + filasEvaluadas + ', Coincidencias: ' + coincidencias + ', Entidad buscada: ' + entidad
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Comportamiento por defecto: leer tabla genérica
     const tableName = e.parameter.table;
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(tableName);
-    
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName(tableName);
+
     if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ data: [], serverVersion: getTableVersion(tableName) })).setMimeType(ContentService.MimeType.JSON);
     }
-    
-    // getDisplayValues trae el texto tal cual se ve en el Excel, previniendo errores de zonas horarias
-    const values = sheet.getDataRange().getDisplayValues(); 
+
+    const values = sheet.getDataRange().getDisplayValues();
     if (values.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ data: [], serverVersion: getTableVersion(tableName) })).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
     const headers = values[0];
     const data = [];
-    
+
     for (let i = 1; i < values.length; i++) {
       const obj = {};
       for (let j = 0; j < headers.length; j++) {
@@ -147,9 +337,12 @@ function doGet(e) {
       }
       data.push(obj);
     }
-    
-    return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
-    
+
+    return ContentService.createTextOutput(JSON.stringify({
+      data: data,
+      serverVersion: getTableVersion(tableName)
+    })).setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.message })).setMimeType(ContentService.MimeType.JSON);
   }
