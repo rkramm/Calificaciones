@@ -97,9 +97,43 @@ Cada advertencia consta de dos diálogos `confirm` consecutivos que el usuario d
 - `attemptEvaluatorLogin` restaura el indicador de conexión en todos los casos de error (RUT no registrado, contraseña incorrecta, sin asignaciones, error de carga).
 - Se agregó la función `restoreConnectionStatus()` para centralizar la restauración del indicador a "Conectado a la Nube" / "Modo Local".
 
-## Cambios Recientes - Limpieza de Interfaz Duplicada
+## Cambios Recientes - Restructuración Completa del Layout Evaluador
 
-### 11. Eliminación de Elementos Redundantes en Vista Evaluador
+### 12. Nuevo Layout con Sidebar Izquierdo y Contenido Comprimido
+- **Sidebar izquierdo (140px)**:
+  - Tabs de entidades en columna (vertical)
+  - Todos los tabs visibles sin scroll horizontal
+  - Cada tab ocupa ancho completo del sidebar
+  - Activo resaltado en azul
+  
+- **Área de contenido principal (derecha)**:
+  - Información de entidad comprimida en una línea
+    - Grid: Nombre | RUT | Convenio | Fecha | Programa
+    - Font: 0.75rem, más compacto
+    - Una sola línea con bordes
+  
+  - Tabla de proyectos reducida
+    - Max-height: 100px con scroll interno
+    - Columnas: Código, Nombre, Comuna, Modalidad, Familias
+    - Font: 0.7rem para caber en el espacio
+  
+  - Badges de etapas compactos
+    - Font: 0.7rem, padding: 4px 8px
+    - Border: 1px (antes 2px)
+    - Display inline-block
+  
+  - Tabla de evaluación (principal)
+    - Ocupa todo el espacio disponible (flex: 1)
+    - Font: 0.75rem en todo
+    - Scroll interno cuando sea necesario
+
+- **Layout optimizado para 1366x768**:
+  - Sidebar: 140px (10.25%)
+  - Contenido: ~1226px (89.75%)
+  - Todas las secciones caben sin scroll vertical excepto tabla evaluación
+  - Información visual comprimida pero legible
+
+### 11. Eliminación de Elementos Redundantes en Vista Evaluador (previo)
 - **Problema**: Existían tabs y botones de etapas duplicados:
   - Contenedor `evaluador-coverage-tabs` (innecesario)
   - Contenedor `evaluador-tabs` (generaba botones grandes de etapas)
