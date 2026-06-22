@@ -1803,7 +1803,7 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
                 parsedEtapas = [1];
             }
             return {
-                cobertura: buildCoberturaLabel(a.programa, a.provincia, a.entidadNombre),
+                cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
                 etapas: parsedEtapas.sort((x, y) => x - y),
                 programa: a.programa,
                 provincia: a.provincia,
