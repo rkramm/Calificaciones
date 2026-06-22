@@ -1824,7 +1824,11 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
         if (CLOUD_MODE_ENABLED) {
             backgroundSyncForEvaluator();
         }
-    }, false);
+    }, false).catch(err => {
+        console.error('Error cargando datos del evaluador:', err);
+        alert('Error al cargar los datos locales.\n\nPor favor, recargue la página o contacte al administrador.');
+        restoreConnectionStatus();
+    });
 }
 
 function backgroundSyncForEvaluator() {
@@ -2108,19 +2112,14 @@ function renderProjectsTable(programa, entidadNombre) {
         `;
     }
 
-    body.innerHTML = '<tr><td colspan="6" class="text-center">Cargando proyectos para: ' + entidadNombre + ' (' + programa + ')...</td></tr>';
-    console.log(`📦 Cargando proyectos: programa=${programa}, entidad=${entidadNombre}`);
+    body.innerHTML = `<tr><td colspan="6" class="text-center">Cargando proyectos para: ${entidadNombre} (${programa})...</td></tr>`;
 
     cloudGetProjects(programa, entidadNombre).then(proyectos => {
-        console.log(`✓ Respuesta recibida:`, proyectos);
         if (!Array.isArray(proyectos) || proyectos.length === 0) {
             const cols = programa === 'DS49' ? '6' : '5';
             body.innerHTML = `<tr><td colspan="${cols}" class="text-center">No se encontraron proyectos para "${entidadNombre}" en ${programa}.</td></tr>`;
-            console.warn(`⚠️ Sin proyectos para ${entidadNombre} en ${programa}`);
             return;
         }
-
-        console.log(`✓ Mostrando ${proyectos.length} proyectos`);
         if (programa === 'DS49') {
             body.innerHTML = proyectos.map(p => `
                 <tr>
@@ -2144,9 +2143,9 @@ function renderProjectsTable(programa, entidadNombre) {
             `).join('');
         }
     }).catch(err => {
-        console.error('❌ Error cargando proyectos:', err);
+        console.error('Error cargando proyectos:', err);
         const cols = programa === 'DS49' ? '6' : '5';
-        body.innerHTML = `<tr><td colspan="${cols}" class="text-center">Error al cargar proyectos: ${err.message}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="${cols}" class="text-center">Error al cargar proyectos. Intente nuevamente.</td></tr>`;
     });
 }
 

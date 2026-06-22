@@ -161,7 +161,6 @@ button { font-family: 'Segoe UI', sans-serif; }
 
 /* Sidebar de entidades con tabs verticales */
 #eval-entity-tabs-container .tab-button {
-    display: block;
     width: 100%;
     padding: 4px 2px;
     font-size: 0.6rem;

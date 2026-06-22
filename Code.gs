@@ -289,17 +289,22 @@ function doGet(e) {
         const row = values[i];
 
         // Verificar si hay datos en la fila
-        if (!row || row.length === 0 || !row.some(v => v)) {
+        if (!row || row.length === 0) {
           continue;
         }
 
         filasEvaluadas++;
 
         // Filtrar por nombre de entidad si se proporciona y se encontró columna
-        if (targetEntidad && entidadColIndex >= 0 && row[entidadColIndex]) {
-          const cellEntidad = normalizeEntidad(row[entidadColIndex].toString());
-          // Coincidencia exacta o parcial
-          if (cellEntidad !== targetEntidad && !cellEntidad.includes(targetEntidad) && !targetEntidad.includes(cellEntidad)) {
+        if (targetEntidad && entidadColIndex >= 0) {
+          const cellValue = row[entidadColIndex];
+          if (cellValue) {
+            const cellEntidad = normalizeEntidad(cellValue.toString());
+            // Coincidencia exacta o parcial
+            if (cellEntidad !== targetEntidad && !cellEntidad.includes(targetEntidad) && !targetEntidad.includes(cellEntidad)) {
+              continue;
+            }
+          } else {
             continue;
           }
         }
