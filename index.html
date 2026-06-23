@@ -41,25 +41,30 @@
     <!-- PANTALLA PRINCIPAL -->
     <div id="main-screen" class="container hidden">
         <header class="main-header" style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
-            <!-- IZQUIERDA: Título -->
+            <!-- IZQUIERDA: Título del Sistema -->
             <div style="flex: 0 1 auto;">
+                <div style="font-size: 0.65rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">📱 SISTEMA</div>
                 <h1 id="app-title">Panel de Control</h1>
                 <p id="user-profile" style="margin: 2px 0 0 0; font-size: 0.85rem; color: #666;"></p>
             </div>
 
             <!-- CENTRO: Fecha y Hora -->
             <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 16px; background: rgba(0,0,0,0.05); border-radius: 4px;">
+                <div style="font-size: 0.65rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">⏰ FECHA Y HORA</div>
                 <div style="font-size: 0.9rem; font-weight: 600;"><strong>Hoy:</strong> <span id="header-date-today" style="font-size: 0.9rem;">--/--/----</span></div>
                 <div style="font-size: 0.85rem; color: #666;"><strong>Tiempo:</strong> <span id="header-countdown" class="countdown-clock" style="font-size: 0.9rem; font-weight: 600; color: var(--primary-dark);">--:--:--</span></div>
             </div>
 
-            <!-- DERECHA: Botones -->
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; flex: 0 1 auto;">
-                <button id="btn-eval-pdf" class="btn btn-primary hidden" style="background-color: #6C757D; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;" title="Exportar calificaciones a formato PDF para respaldo">🖨️ PDF</button>
-                <button id="btn-save-scores" class="btn btn-primary hidden" style="background-color: #006BB9; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">💾 Guardar</button>
-                <button id="btn-sync-cloud" class="btn btn-primary" style="background-color: #28A745; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">☁️ Sincronizar</button>
-                <button id="btn-download-cloud" class="btn btn-primary" style="background-color: #17A2B8; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;" title="Descargar asignaciones desde la nube">⬇️ Descargar</button>
-                <button id="btn-logout" class="btn btn-danger" style="padding: 8px 12px; font-size: 0.85rem; font-weight: 600;">Salir</button>
+            <!-- DERECHA: Botones de Acciones -->
+            <div style="display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; justify-content: flex-end; flex: 0 1 auto; flex-direction: column;">
+                <div style="font-size: 0.65rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">🎛️ ACCIONES</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btn-eval-pdf" class="btn btn-primary hidden" style="background-color: #6C757D; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;" title="Exportar calificaciones a formato PDF para respaldo">🖨️ PDF</button>
+                    <button id="btn-save-scores" class="btn btn-primary hidden" style="background-color: #006BB9; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">💾 Guardar</button>
+                    <button id="btn-sync-cloud" class="btn btn-primary" style="background-color: #28A745; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">☁️ Sincronizar</button>
+                    <button id="btn-download-cloud" class="btn btn-primary" style="background-color: #17A2B8; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;" title="Descargar asignaciones desde la nube">⬇️ Descargar</button>
+                    <button id="btn-logout" class="btn btn-danger" style="padding: 8px 12px; font-size: 0.85rem; font-weight: 600;">🚪 Salir</button>
+                </div>
             </div>
         </header>
 
