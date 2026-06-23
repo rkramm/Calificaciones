@@ -1,6 +1,6 @@
 /* ================= CONFIGURACIÓN DE ENTORNO WEB (GITHUB + GOOGLE SCRIPTS) ================= */
 const CLOUD_MODE_ENABLED = true; // ¡Activado para conectar con Google Sheets!
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHAYyY5TukC6TRnMjjSPVPNKsYVvCJqaB2_CnmSmLJEI_EOhMUSzOUP2dYhBVBABANmA/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw2jf_6QkYzdbCDNfm-C8F0rzzJG_lZQbMA4VwV2s5hZQQ7_TjsLLIlWTi9ztckOnmnVQ/exec";
 
 const PROGRAMAS_BASE = ["DS10", "DS27", "DS49"];
 

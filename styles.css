@@ -160,27 +160,35 @@ button { font-family: 'Segoe UI', sans-serif; }
 }
 
 /* Sidebar de entidades con tabs verticales */
+#eval-entity-tabs-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 2px;
+    overflow-y: auto;
+}
+
 #eval-entity-tabs-container .tab-button {
     width: 100%;
-    padding: 4px 2px;
-    font-size: 0.6rem;
+    padding: 6px 3px;
+    font-size: 0.65rem;
     text-align: center;
-    border-radius: 2px;
-    border: 1px solid #D0D5E0;
+    border-radius: 3px;
+    border: 1px solid #999;
     background: #FFF;
     color: var(--primary-dark);
     font-weight: 600;
     cursor: pointer;
     white-space: normal;
     word-break: break-word;
-    line-height: 1.1;
+    line-height: 1.2;
     transition: all 0.2s;
-    min-height: 30px;
+    min-height: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex-wrap: wrap;
 }
 
 #eval-entity-tabs-container .tab-button:hover {
