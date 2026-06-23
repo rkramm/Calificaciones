@@ -932,46 +932,27 @@ function downloadHistoricosFromCloud() {
         return;
     }
     const confirmed = confirmDoubleWarning(
-        'DESCARGAR HISTÓRICOS DESDE LA NUBE',
-        'Esta acción reemplazará los datos locales de históricos y asignaciones históricas por los del servidor.'
+        'DESCARGAR ASIGNACIONES DESDE LA NUBE',
+        'Esta acción reemplazará los datos locales de asignaciones por los del servidor.'
     );
     if (!confirmed) return;
 
-    showProgressBar('Descargando datos históricos desde la Nube...');
+    showProgressBar('Descargando asignaciones desde la Nube...');
 
-    Promise.all([
-        cloudGet('historicos'),
-        cloudGet('asigna_historico')
-    ]).then(([historicos, asignaciones]) => {
-        // Validar que las tablas existan en IndexedDB
-        if (!dbInstance.objectStoreNames.contains('historicos') || !dbInstance.objectStoreNames.contains('asigna_historico')) {
+    cloudGet('asignaciones').then(asignaciones => {
+        // Validar que la tabla exista en IndexedDB
+        if (!dbInstance.objectStoreNames.contains('asignaciones')) {
             hideProgressBar();
-            alert('Error: La base de datos local no tiene las tablas necesarias.\n\nPor favor, recargue la página para inicializar la base de datos.');
+            alert('Error: La base de datos local no tiene la tabla de asignaciones.\n\nPor favor, recargue la página para inicializar la base de datos.');
             return;
         }
 
-        const tx = dbInstance.transaction(['historicos', 'asigna_historico'], 'readwrite');
-        const histStore = tx.objectStore('historicos');
-        const asigStore = tx.objectStore('asigna_historico');
+        const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+        const asigStore = tx.objectStore('asignaciones');
 
-        let histCount = 0;
         let asigCount = 0;
 
-        // Limpiar y guardar históricos
-        histStore.clear().onsuccess = () => {
-            if (Array.isArray(historicos)) {
-                historicos.forEach(r => {
-                    try {
-                        histStore.put(r);
-                        histCount++;
-                    } catch (e) {
-                        console.error('Error guardando registro histórico:', r, e);
-                    }
-                });
-            }
-        };
-
-        // Limpiar y guardar asignaciones históricas
+        // Limpiar y guardar asignaciones actuales
         asigStore.clear().onsuccess = () => {
             if (Array.isArray(asignaciones)) {
                 asignaciones.forEach(a => {
@@ -979,7 +960,7 @@ function downloadHistoricosFromCloud() {
                         asigStore.put(a);
                         asigCount++;
                     } catch (e) {
-                        console.error('Error guardando asignación histórica:', a, e);
+                        console.error('Error guardando asignación:', a, e);
                     }
                 });
             }
@@ -987,7 +968,11 @@ function downloadHistoricosFromCloud() {
 
         tx.oncomplete = () => {
             hideProgressBar();
-            alert(`Datos históricos descargados correctamente.\n\nRegistros guardados: ${histCount}\nAsignaciones guardadas: ${asigCount}\n\nVaya al tab Históricos para visualizarlos.`);
+            alert(`Asignaciones descargadas correctamente.\n\nRegistros guardados: ${asigCount}\n\nPor favor, recargue la página para ver las asignaciones actualizadas.`);
+            // Recargar página para mostrar las nuevas asignaciones
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         };
 
         tx.onerror = (e) => {
@@ -997,8 +982,8 @@ function downloadHistoricosFromCloud() {
         };
     }).catch(err => {
         hideProgressBar();
-        console.error('Error descargando datos históricos:', err);
-        alert('Error de red al descargar datos históricos.\n\nVerifique su conexión a internet e intente nuevamente.\n\nDetalle: ' + err.message);
+        console.error('Error descargando asignaciones:', err);
+        alert('Error de red al descargar asignaciones.\n\nVerifique su conexión a internet e intente nuevamente.\n\nDetalle: ' + err.message);
     });
 }
 /* =============================================================================== */
