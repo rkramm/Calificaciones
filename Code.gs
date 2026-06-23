@@ -65,13 +65,6 @@ function bumpTableVersion(tableName, versionData) {
 
 function doPost(e) {
   try {
-    // CORS headers
-    const headers = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    };
-
     const payload = JSON.parse(e.postData.contents);
     const tableName = payload.table;
     const dataArray = payload.data;
