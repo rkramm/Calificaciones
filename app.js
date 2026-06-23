@@ -1842,8 +1842,23 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
 
         restoreConnectionStatus();
         showPanel('Sistema de Precalificación Técnica');
+
+        // Actualizar nombre del calificador en top bar
+        const calificadorEl = document.getElementById('eval-topbar-calificador');
+        if (calificadorEl) calificadorEl.textContent = currentUser.nombre || currentUser.rut || '---';
+
+        // Agregar funcionalidad al botón Salir
+        const btnLogout = document.getElementById('btn-logout-eval');
+        if (btnLogout) {
+            btnLogout.onclick = () => {
+                if (confirm('¿Está seguro que desea cerrar sesión?')) {
+                    logout();
+                }
+            };
+        }
+
         startCountdownClock();
-        
+
         // Sincronizar en segundo plano para evaluadores (sin bloquear)
         if (CLOUD_MODE_ENABLED) {
             backgroundSyncForEvaluator();

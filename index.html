@@ -378,11 +378,27 @@
 
         <!-- VISTA EVALUADOR CON SIDEBAR -->
         <div id="evaluador-view" class="hidden" style="display: flex; flex-direction: column; height: 100vh; gap: 0;">
-            <!-- TIMING DASHBOARD (TOP) -->
-            <div class="card timing-dashboard" style="padding: 8px 12px; margin: 0; border-radius: 0; background-color: #25306B; color: #FFF;">
-                <div class="time-block" style="flex: 1; min-width: 100px;"><strong style="font-size: 0.75rem;">Hoy:</strong> <span id="txt-date-today" style="font-size: 0.8rem;">--/--/----</span></div>
-                <div class="time-block" style="flex: 1; min-width: 150px;"><strong style="font-size: 0.75rem;">Plazo:</strong> <span id="txt-date-deadline" style="font-size: 0.8rem;">--/--/---- --:--</span></div>
-                <div class="time-block countdown-container" style="flex: 1; min-width: 100px; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 3px;"><strong style="font-size: 0.75rem;">TIEMPO:</strong> <span id="txt-countdown" class="countdown-clock" style="font-size: 0.85rem; color: #FFF;">--:--:--</span></div>
+            <!-- TOP BAR EVALUADOR (NUEVO) -->
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background-color: #25306B; color: #FFF; border-bottom: 2px solid var(--primary-blue); gap: 20px;">
+                <!-- IZQUIERDA: Título y nombre calificador -->
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 0 1 auto;">
+                    <div style="font-size: 1rem; font-weight: 700; letter-spacing: 0.5px;">Sistema de Pre-calificación de Entidades</div>
+                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.9);">Calificador: <span id="eval-topbar-calificador" style="font-weight: 600;">---</span></div>
+                </div>
+
+                <!-- CENTRO: Fecha/Hora y Tiempo restante -->
+                <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; text-align: center; padding: 8px 16px; background: rgba(255,255,255,0.08); border-radius: 4px;">
+                    <div style="font-size: 0.9rem;"><strong>Hoy:</strong> <span id="txt-date-today" style="font-size: 0.9rem;">--/--/----</span></div>
+                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8);"><strong>Tiempo:</strong> <span id="txt-countdown" class="countdown-clock" style="font-size: 0.9rem; color: #FFF; font-weight: 600;">--:--:--</span></div>
+                </div>
+
+                <!-- DERECHA: Botones de acción -->
+                <div style="display: flex; gap: 8px; flex: 0 1 auto;">
+                    <button id="btn-eval-pdf" class="btn btn-primary hidden" style="background-color: #6C757D; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;" title="Exportar calificaciones a formato PDF">🖨️ PDF</button>
+                    <button id="btn-save-scores" class="btn btn-primary hidden" style="background-color: #006BB9; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">💾 Guardar</button>
+                    <button id="btn-download-eval" class="btn btn-primary hidden" style="background-color: #17A2B8; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">⬇️ Descargar</button>
+                    <button id="btn-logout-eval" class="btn btn-primary" style="background-color: #DC3545; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 8px 12px; font-size: 0.85rem;">🚪 Salir</button>
+                </div>
             </div>
 
             <div id="deadline-alert" class="card hidden" style="background-color: #FCE8E6; border-left: 5px solid var(--accent-red); color: #A51D24; font-weight: bold; padding:8px 12px; margin: 0; border-radius: 0;">
