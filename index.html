@@ -378,11 +378,10 @@
 
         <!-- VISTA EVALUADOR CON SIDEBAR -->
         <div id="evaluador-view" class="hidden" style="display: flex; flex-direction: column; height: 100vh; gap: 0;">
-            <!-- TIMING DASHBOARD (TOP) -->
-            <div class="card timing-dashboard" style="padding: 8px 12px; margin: 0; border-radius: 0; background-color: #25306B; color: #FFF;">
-                <div class="time-block" style="flex: 1; min-width: 100px;"><strong style="font-size: 0.75rem;">Hoy:</strong> <span id="txt-date-today" style="font-size: 0.8rem;">--/--/----</span></div>
-                <div class="time-block" style="flex: 1; min-width: 150px;"><strong style="font-size: 0.75rem;">Plazo:</strong> <span id="txt-date-deadline" style="font-size: 0.8rem;">--/--/---- --:--</span></div>
-                <div class="time-block countdown-container" style="flex: 1; min-width: 100px; background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 3px;"><strong style="font-size: 0.75rem;">TIEMPO:</strong> <span id="txt-countdown" class="countdown-clock" style="font-size: 0.85rem; color: #FFF;">--:--:--</span></div>
+            <!-- CENTRO: Fecha/Hora de Hoy y Tiempo Restante -->
+            <div style="display: flex; align-items: center; justify-content: center; padding: 12px 16px; background-color: #25306B; color: #FFF; border-bottom: 2px solid var(--primary-blue); flex-direction: column;">
+                <div style="font-size: 0.9rem;"><strong>Hoy:</strong> <span id="txt-date-today" style="font-size: 0.9rem;">--/--/----</span></div>
+                <div style="font-size: 0.85rem; color: rgba(255,255,255,0.9); margin-top: 4px;"><strong>Tiempo Restante:</strong> <span id="txt-countdown" class="countdown-clock" style="font-size: 0.9rem; color: #FFF; font-weight: 600;">--:--:--</span></div>
             </div>
 
             <div id="deadline-alert" class="card hidden" style="background-color: #FCE8E6; border-left: 5px solid var(--accent-red); color: #A51D24; font-weight: bold; padding:8px 12px; margin: 0; border-radius: 0;">
