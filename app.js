@@ -1473,31 +1473,33 @@ function checkDeadlineStatus() {
 
 function startCountdownClock() {
     if (countdownInterval) clearInterval(countdownInterval);
-    const clock = document.getElementById('txt-countdown');
-    const todayLabel = document.getElementById('txt-date-today');
+
+    // Intentar usar elementos del header, si no existen usar los legacy
+    let clock = document.getElementById('header-countdown') || document.getElementById('txt-countdown');
+    let todayLabel = document.getElementById('header-date-today') || document.getElementById('txt-date-today');
     const deadlineLabel = document.getElementById('txt-date-deadline');
 
     const updateTime = () => {
         const now = new Date();
-        todayLabel.textContent = formatDateTime(now);
+        if (todayLabel) todayLabel.textContent = formatDateTime(now);
     };
     updateTime();
-    
+
     const targetDate = parseSafeDate(savedDeadlineISO);
     if(!targetDate) {
-        deadlineLabel.textContent = "Sin Restricción";
-        clock.textContent = "Ilimitado";
+        if (deadlineLabel) deadlineLabel.textContent = "Sin Restricción";
+        if (clock) clock.textContent = "Ilimitado";
         return;
     }
 
-    deadlineLabel.textContent = formatDateTime(targetDate);
+    if (deadlineLabel) deadlineLabel.textContent = formatDateTime(targetDate);
 
     countdownInterval = setInterval(() => {
         updateTime();
         const diff = targetDate - new Date();
 
         if (diff <= 0) {
-            clock.textContent = "00:00 - PERIODO EXPIRADO";
+            if (clock) clock.textContent = "00:00 - PERIODO EXPIRADO";
             clearInterval(countdownInterval);
             checkDeadlineStatus();
             window.changeStage(currentStage);
@@ -1508,7 +1510,7 @@ function startCountdownClock() {
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        clock.textContent = `${days}D ${hours}H ${mins}M`;
+        if (clock) clock.textContent = `${days}D ${hours}H ${mins}M`;
     }, 1000);
 }
 
