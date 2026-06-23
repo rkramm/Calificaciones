@@ -1966,8 +1966,8 @@ function renderCoverageTabs() {
  * Renderiza las pestañas de entidades, detalles y proyectos asociados a la cobertura activa del evaluador.
  */
 function renderEvaluatorHeaderInfo() {
-    const activeAsig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-    if (!activeAsig) {
+    const allCoverageAsigs = allAsignacionesMapped.filter(a => a.cobertura === currentCoverage);
+    if (!allCoverageAsigs || allCoverageAsigs.length === 0) {
         const tabsEl = document.getElementById('eval-entity-tabs-container');
         const detailsEl = document.getElementById('eval-entity-details');
         const projectsEl = document.getElementById('eval-projects-body');
@@ -1982,12 +1982,11 @@ function renderEvaluatorHeaderInfo() {
 
     // Crear pestañas de entidades basadas en cobertura actual
     // Si hay múltiples entidades en la cobertura, cada una tendrá una pestaña
-    const entitiesInCoverage = allAsignacionesMapped.filter(a => a.cobertura === currentCoverage);
-    const uniqueEntities = [...new Set(entitiesInCoverage.map(a => a.entidadNombre))];
+    const uniqueEntities = [...new Set(allCoverageAsigs.map(a => a.entidadNombre))];
 
     // Si no hay entidad seleccionada, usar la primera
     if (!window.currentSelectedEntity) {
-        window.currentSelectedEntity = activeAsig.entidadNombre;
+        window.currentSelectedEntity = allCoverageAsigs[0].entidadNombre;
     }
 
     // Renderizar pestañas de entidades
@@ -2008,6 +2007,17 @@ function renderEvaluatorHeaderInfo() {
 
     // Buscar datos de la entidad en IndexedDB
     dbGetAll('entidades', (entidades) => {
+        // Buscar la asignación que corresponde a la entidad seleccionada
+        const selectedAsig = allAsignacionesMapped.find(a =>
+            a.cobertura === currentCoverage &&
+            a.entidadNombre === window.currentSelectedEntity
+        );
+
+        if (!selectedAsig) {
+            console.warn('No se encontró asignación para:', {currentCoverage, entidad: window.currentSelectedEntity});
+            return;
+        }
+
         const normalize = (str) => str.toString().trim().toLowerCase().replace(/\s+/g, ' ').replace(/\.+$/g, '').replace(/\s*ltda\.?\s*$/g, ' ltda').replace(/\s*spa\.?\s*$/g, ' spa');
         const target = normalize(window.currentSelectedEntity);
 
@@ -2040,13 +2050,13 @@ function renderEvaluatorHeaderInfo() {
         if (rutEl) rutEl.textContent = entidad.rut || '---';
         if (convenioEl) convenioEl.textContent = convenio || '---';
         if (fechaEl) fechaEl.textContent = fecha || '---';
-        if (programaEl) programaEl.textContent = activeAsig.programa || '---';
+        if (programaEl) programaEl.textContent = selectedAsig.programa || '---';
 
         // Renderizar tabla de proyectos según programa (dentro del callback para asegurar datos listos)
-        renderProjectsTable(activeAsig.programa, window.currentSelectedEntity);
+        renderProjectsTable(selectedAsig.programa, window.currentSelectedEntity);
 
         // Renderizar etapas a calificar
-        renderStagesForEvaluator(activeAsig);
+        renderStagesForEvaluator(selectedAsig);
     });
 }
 
