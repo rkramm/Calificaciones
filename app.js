@@ -2265,9 +2265,21 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
 
                     // Verificar si todos los proyectos son DS10
                     const soloDS10 = todosLosProyectos.every(p => p._programa === 'DS10');
+                    const thead = document.getElementById('eval-projects-head');
 
                     if (soloDS10) {
-                        // Para DS10: solo mostrar Comuna, Modal., Familias, Año (4 columnas)
+                        // Para DS10: cambiar headers a 4 columnas
+                        if (thead) {
+                            thead.innerHTML = `
+                                <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Modal.</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                </tr>
+                            `;
+                        }
+
                         body.innerHTML = todosLosProyectos.map(p => `
                             <tr>
                                 <td>${p.Comuna || p.comuna || ''}</td>
@@ -2277,7 +2289,20 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                             </tr>
                         `).join('');
                     } else {
-                        // Para DS27, DS49 o mezcla: mostrar todas las 6 columnas
+                        // Para DS27, DS49 o mezcla: restaurar headers de 6 columnas
+                        if (thead) {
+                            thead.innerHTML = `
+                                <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Código</th>
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.6rem;">Nombre</th>
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Modal.</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                </tr>
+                            `;
+                        }
+
                         body.innerHTML = todosLosProyectos.map(p => `
                             <tr>
                                 <td>${p.Código || p.codigo || p.Codigo || ''}</td>
