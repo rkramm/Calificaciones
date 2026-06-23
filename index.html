@@ -395,9 +395,9 @@
             <!-- SECCIÓN 3: DOS COLUMNAS COMPACTAS (Entidades + Proyectos) -->
             <div style="display: flex; gap: 0; flex-shrink: 0; padding: 4px 0; background: #F5F7FA; border-bottom: 1px solid #E8EAED; max-height: 140px; overflow-y: auto;">
                 <!-- COLUMNA IZQUIERDA: ENTIDADES (Sidebar inline) -->
-                <div id="eval-sidebar" style="width: 15px; background: #FAFBFC; border-right: 2px solid var(--primary-dark); overflow-y: auto; display: flex; flex-direction: column; padding: 0; transition: width 0.3s ease; flex-shrink: 0; cursor: pointer;" onmouseover="document.getElementById('eval-sidebar').style.width='70px'" onmouseout="document.getElementById('eval-sidebar').style.width='15px'">
-                    <div style="padding: 6px; background: var(--primary-dark); color: #FFF; font-weight: 700; font-size: 0.65rem; text-transform: uppercase; text-align: center; border-bottom: 1px solid #E8EAED; flex-shrink: 0; line-height: 1.2; writing-mode: vertical-rl; text-orientation: mixed;">
-                        E
+                <div id="eval-sidebar" style="width: 50px; background: #FAFBFC; border-right: 2px solid var(--primary-dark); overflow: hidden; display: flex; flex-direction: column; padding: 0; transition: width 0.3s ease; flex-shrink: 0; cursor: pointer;" onmouseover="document.getElementById('eval-sidebar').style.width='90px'; document.getElementById('eval-sidebar').style.overflow='visible';" onmouseout="document.getElementById('eval-sidebar').style.width='50px'; document.getElementById('eval-sidebar').style.overflow='hidden';">
+                    <div style="padding: 8px; background: var(--primary-dark); color: #FFF; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; text-align: center; border-bottom: 1px solid #E8EAED; flex-shrink: 0; line-height: 1.2; white-space: nowrap;">
+                        Ent.
                     </div>
                     <div id="eval-entity-tabs-container" style="display: flex; flex-direction: column; gap: 4px; padding: 4px; overflow-y: auto; flex: 1;">
                         <!-- Tabs de entidades se inyectarán aquí -->

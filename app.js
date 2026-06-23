@@ -369,12 +369,19 @@ async function cloudGet(table) {
 async function cloudGetProjects(programa, entidad = '') {
     try {
         const url = `${GOOGLE_SCRIPT_URL}?action=getProjects&programa=${encodeURIComponent(programa)}&entidad=${encodeURIComponent(entidad)}&t=${Date.now()}`;
+        console.log('📤 Buscando proyectos:', { programa, entidad, url });
         const response = await fetch(url);
-        if (!response.ok) return [];
+        if (!response.ok) {
+            console.error('❌ Error HTTP:', response.status);
+            return [];
+        }
         const payload = await response.json();
-        return Array.isArray(payload) ? payload : (payload.data || []);
+        console.log('📥 Respuesta de proyectos:', payload);
+        const result = Array.isArray(payload) ? payload : (payload.data || []);
+        console.log('✅ Proyectos procesados:', result.length, 'encontrados');
+        return result;
     } catch (error) {
-        console.error('Error leyendo proyectos desde el servidor:', error);
+        console.error('❌ Error leyendo proyectos desde el servidor:', error);
         return [];
     }
 }
