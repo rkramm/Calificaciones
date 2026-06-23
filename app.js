@@ -1044,7 +1044,7 @@ function parseSafeDate(isoString) {
 
 // NUEVA VERSIÓN V22: MÓDULO DE ASIGNACIONES HISTÓRICAS PERSISTENTES
 const DB_NAME = 'SistemaEvaluacionDB_v22';
-const DB_VERSION = 7; // Se agrega store 'asigna_historico' para asignaciones históricas persistentes
+const DB_VERSION = 8; // Fuerza reinicialización de object stores en Chrome
 
 document.addEventListener('DOMContentLoaded', () => {
     initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
