@@ -1787,68 +1787,87 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
     currentRole = 'evaluador';
 
     try {
-        // Descargar asignaciones DIRECTAMENTE del Google Sheet (no desde IndexedDB)
-        const cloudAsignaciones = await cloudGet('asignaciones');
-        console.log('☁️ Asignaciones descargadas del Google Sheet:', cloudAsignaciones?.length || 0);
-        console.log('👤 RUT del usuario actual:', currentUser.rut);
-        console.log('📋 Todas las asignaciones en cloud:', cloudAsignaciones);
+        // OPTIMIZACIÓN: Intenta leer asignaciones de IndexedDB primero (rápido)
+        let userAsignaciones = null;
 
-        if (!cloudAsignaciones || cloudAsignaciones.length === 0) {
-            console.error('❌ No hay asignaciones en el Google Sheet');
-            alert('⚠️ Error: No hay asignaciones en el sistema.\n\nContacte al administrador.');
-            restoreConnectionStatus();
-            return;
-        }
+        dbGetAll('asignaciones', (dbAsignaciones) => {
+            userAsignaciones = dbAsignaciones.filter(a => a.rut === currentUser.rut);
 
-        const userAsignaciones = cloudAsignaciones.filter(a => a.rut === currentUser.rut);
-        console.log('✅ Asignaciones filtradas por RUT:', userAsignaciones.length);
-        console.log('📌 Asignaciones del usuario:', userAsignaciones);
+            if (userAsignaciones && userAsignaciones.length > 0) {
+                // ✅ Usa datos de IndexedDB (instantáneo)
+                loadEvaluatorWithAsignaciones(userAsignaciones);
+            } else {
+                // ❌ No hay datos locales, descarga del cloud
+                cloudGet('asignaciones').then(cloudAsignaciones => {
+                    if (!cloudAsignaciones || cloudAsignaciones.length === 0) {
+                        alert('❌ No hay asignaciones en el sistema.');
+                        restoreConnectionStatus();
+                        return;
+                    }
 
-        if(userAsignaciones.length === 0) {
-            console.error('❌ Asignaciones vacías para RUT:', currentUser.rut);
-            console.error('Total asignaciones en Google Sheet:', cloudAsignaciones?.length || 0);
-            alert('❌ No tiene precalificaciones asignadas en este momento.\n\nContacte al administrador para que le asigne coberturas de evaluación.\n\n(Verifique que su RUT esté incluido en la tabla "asignaciones" del Google Sheet)');
-            restoreConnectionStatus();
-            return;
-        }
+                    userAsignaciones = cloudAsignaciones.filter(a => a.rut === currentUser.rut);
+                    if (userAsignaciones.length === 0) {
+                        alert('❌ No tiene precalificaciones asignadas.');
+                        restoreConnectionStatus();
+                        return;
+                    }
 
-        allAsignacionesMapped = userAsignaciones.map(a => {
-            let parsedEtapas = a.etapas;
-            if (typeof parsedEtapas === 'string') {
-                parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-            } else if (!Array.isArray(parsedEtapas)) {
-                parsedEtapas = [1];
-            }
-            return {
-                cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
-                etapas: parsedEtapas.sort((x, y) => x - y),
-                programa: a.programa,
-                provincia: a.provincia,
-                entidadNombre: a.entidadNombre
-            };
-        }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
-
-        // Cargar scores desde IndexedDB
-        dbGetAll('scores', (scores) => {
-            allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
-
-            currentCoverage = allAsignacionesMapped[0].cobertura;
-            const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-            currentStage = matchingConfig ? matchingConfig.etapas[0] : 1;
-
-            restoreConnectionStatus();
-            showPanel('Sistema de Precalificación Técnica');
-
-            // Sincronizar en segundo plano para evaluadores (sin bloquear)
-            if (CLOUD_MODE_ENABLED) {
-                backgroundSyncForEvaluator();
+                    loadEvaluatorWithAsignaciones(userAsignaciones);
+                }).catch(() => {
+                    alert('❌ Error al conectar. Intente nuevamente.');
+                    restoreConnectionStatus();
+                });
             }
         });
     } catch (error) {
-        console.error('❌ Error al descargar asignaciones:', error);
-        alert('❌ Error al conectar con el servidor.\n\nVerifique su conexión a internet e intente nuevamente.');
+        alert('❌ Error al descargar asignaciones.');
         restoreConnectionStatus();
     }
+}
+
+/**
+ * Carga rápido el panel del evaluador sin esperar proyectos
+ */
+function loadEvaluatorWithAsignaciones(userAsignaciones) {
+    // Mapear asignaciones rápidamente
+    allAsignacionesMapped = userAsignaciones.map(a => {
+        let parsedEtapas = a.etapas;
+        if (typeof parsedEtapas === 'string') {
+            parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+        } else if (!Array.isArray(parsedEtapas)) {
+            parsedEtapas = [1];
+        }
+        return {
+            cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
+            etapas: parsedEtapas.sort((x, y) => x - y),
+            programa: a.programa,
+            provincia: a.provincia,
+            entidadNombre: a.entidadNombre
+        };
+    }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+
+    // Cargar scores desde IndexedDB (rápido)
+    dbGetAll('scores', (scores) => {
+        allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
+
+        currentCoverage = allAsignacionesMapped[0].cobertura;
+        const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+        currentStage = matchingConfig ? matchingConfig.etapas[0] : 1;
+
+        // 🚀 MOSTRAR LA UI INMEDIATAMENTE (sin esperar proyectos)
+        restoreConnectionStatus();
+        showPanel('Sistema de Precalificación Técnica');
+
+        // 🔄 CARGAR PROYECTOS EN SEGUNDO PLANO (no bloquea la UI)
+        setTimeout(() => {
+            renderCoverageTabs();
+        }, 100);
+
+        // Sincronizar en segundo plano para evaluadores (sin bloquear)
+        if (CLOUD_MODE_ENABLED) {
+            backgroundSyncForEvaluator();
+        }
+    });
 }
 
 function backgroundSyncForEvaluator() {
@@ -1958,20 +1977,10 @@ function showPanel(titleText) {
 
 function renderCoverageTabs() {
     const container = document.getElementById('evaluador-coverage-tabs');
-    console.log('🔍 renderCoverageTabs llamado');
-    console.log('📦 allAsignacionesMapped:', allAsignacionesMapped);
-    console.log('📦 allAsignacionesMapped.length:', allAsignacionesMapped?.length || 0);
-
-    if (!container) {
-        console.error('❌ Container evaluador-coverage-tabs no encontrado');
-        return;
-    }
+    if (!container) return;
 
     container.innerHTML = '';
-    // Obtener coberturas ÚNICAS (no duplicadas)
     const uniqueCoberturas = [...new Set(allAsignacionesMapped.map(a => a.cobertura))];
-    console.log('🏷️ Coberturas únicas encontradas:', uniqueCoberturas);
-    console.log('🏷️ Total de coberturas:', uniqueCoberturas.length);
 
     uniqueCoberturas.forEach(cobertura => {
         const btn = document.createElement('button');
@@ -1985,7 +1994,6 @@ function renderCoverageTabs() {
         };
         container.appendChild(btn);
     });
-    console.log('✅ Botones de cobertura renderizados:', uniqueCoberturas.length);
     renderEvaluatorHeaderInfo();
     window.changeStage(currentStage);
 }
@@ -1997,7 +2005,6 @@ function renderCoverageTabs() {
  */
 function renderEvaluatorHeaderInfo() {
     const allCoverageAsigs = allAsignacionesMapped.filter(a => a.cobertura === currentCoverage);
-    console.log('📋 renderEvaluatorHeaderInfo - allCoverageAsigs:', allCoverageAsigs);
 
     if (!allCoverageAsigs || allCoverageAsigs.length === 0) {
         const tabsEl = document.getElementById('eval-entity-tabs-container');
@@ -2015,7 +2022,6 @@ function renderEvaluatorHeaderInfo() {
     // Crear pestañas de entidades basadas en cobertura actual
     // Las ENTIDADES son PRIMARIAS: siempre se muestran
     const uniqueEntities = [...new Set(allCoverageAsigs.map(a => a.entidadNombre))];
-    console.log('👥 Entidades únicas en cobertura:', uniqueEntities);
 
     // Si no hay entidad seleccionada, usar la primera
     if (!window.currentSelectedEntity) {
@@ -2050,7 +2056,6 @@ function renderEvaluatorHeaderInfo() {
         return;
     }
 
-    console.log('📌 Asignaciones para entidad seleccionada:', asignsForEntity);
 
     // Usar la primera para mostrar datos básicos
     const selectedAsig = asignsForEntity[0];
@@ -2164,7 +2169,6 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
         return;
     }
 
-    console.log('📦 renderProjectsTableAllPrograms para:', entidadNombre, 'asignaciones:', asignaciones.length);
     body.innerHTML = '<tr><td colspan="6" class="text-center">Cargando proyectos...</td></tr>';
     if (progressBar) progressBar.classList.remove('hidden');
 
@@ -2175,7 +2179,6 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
     asignaciones.forEach(asig => {
         cloudGetProjects(asig.programa, entidadNombre)
             .then(proyectos => {
-                console.log(`✅ Proyectos cargados para ${asig.programa}:`, proyectos?.length || 0);
                 cargasCompletadas++;
                 if (proyectos && proyectos.length > 0) {
                     todosLosProyectos = todosLosProyectos.concat(
@@ -2184,7 +2187,6 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                 }
             })
             .catch(error => {
-                console.warn(`⚠️ Error al cargar proyectos para ${asig.programa}:`, error);
                 cargasCompletadas++;
             })
             .finally(() => {
@@ -2288,7 +2290,6 @@ function renderProjectsTable(programa, entidadNombre) {
 
 window.changeStage = function(stageNum) {
     currentStage = stageNum;
-    console.log('🔄 changeStage llamado:', stageNum, 'rol:', currentRole);
 
     if (currentRole === 'admin') {
         const container = document.getElementById('admin-tabs');
