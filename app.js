@@ -2016,16 +2016,18 @@ function renderEvaluatorHeaderInfo() {
 
     // Buscar datos de la entidad en IndexedDB
     dbGetAll('entidades', (entidades) => {
-        // Buscar la asignación que corresponde a la entidad seleccionada
-        const selectedAsig = allAsignacionesMapped.find(a =>
-            a.cobertura === currentCoverage &&
+        // Buscar TODAS las asignaciones para la entidad seleccionada (múltiples programas)
+        const asignsForEntity = allAsignacionesMapped.filter(a =>
             a.entidadNombre === window.currentSelectedEntity
         );
 
-        if (!selectedAsig) {
-            console.warn('No se encontró asignación para:', {currentCoverage, entidad: window.currentSelectedEntity});
+        if (!asignsForEntity || asignsForEntity.length === 0) {
+            console.warn('No se encontró asignación para:', {entidad: window.currentSelectedEntity});
             return;
         }
+
+        // Usar la primera para mostrar datos básicos
+        const selectedAsig = asignsForEntity[0];
 
         const normalize = (str) => str.toString().trim().toLowerCase().replace(/\s+/g, ' ').replace(/\.+$/g, '').replace(/\s*ltda\.?\s*$/g, ' ltda').replace(/\s*spa\.?\s*$/g, ' spa');
         const target = normalize(window.currentSelectedEntity);
@@ -2059,12 +2061,14 @@ function renderEvaluatorHeaderInfo() {
         if (rutEl) rutEl.textContent = entidad.rut || '---';
         if (convenioEl) convenioEl.textContent = convenio || '---';
         if (fechaEl) fechaEl.textContent = fecha || '---';
-        if (programaEl) programaEl.textContent = selectedAsig.programa || '---';
+        // Mostrar todos los programas asignados
+        const programas = asignsForEntity.map(a => a.programa).join(', ');
+        if (programaEl) programaEl.textContent = programas || '---';
 
-        // Renderizar tabla de proyectos según programa (dentro del callback para asegurar datos listos)
-        renderProjectsTable(selectedAsig.programa, window.currentSelectedEntity);
+        // Renderizar tabla de proyectos para TODOS los programas asignados a esta entidad
+        renderProjectsTableAllPrograms(asignsForEntity, window.currentSelectedEntity);
 
-        // Renderizar etapas a calificar
+        // Renderizar etapas a calificar (usar la primera asignación)
         renderStagesForEvaluator(selectedAsig);
     });
 }
@@ -2111,6 +2115,59 @@ function renderStagesForEvaluator(activeAsig) {
             window.changeStage(stageNum);
         };
         container.appendChild(badge);
+    });
+}
+
+/**
+ * Renderiza proyectos para TODOS los programas asignados a una entidad
+ */
+function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
+    const body = document.getElementById('eval-projects-body');
+    const progressBar = document.getElementById('eval-progress-bar');
+
+    if (!asignaciones || asignaciones.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center">No hay programas asignados.</td></tr>';
+        return;
+    }
+
+    body.innerHTML = '<tr><td colspan="6" class="text-center">Cargando proyectos...</td></tr>';
+    if (progressBar) progressBar.classList.remove('hidden');
+
+    // Cargar proyectos para todos los programas de la entidad
+    let todosLosProyectos = [];
+    let cargasCompletadas = 0;
+
+    asignaciones.forEach(asig => {
+        cloudGetProjects(asig.programa, entidadNombre).then(proyectos => {
+            cargasCompletadas++;
+            if (proyectos && proyectos.length > 0) {
+                // Agregar el programa a cada proyecto
+                todosLosProyectos = todosLosProyectos.concat(
+                    proyectos.map(p => ({ ...p, _programa: asig.programa }))
+                );
+            }
+
+            // Cuando se completen todas las cargas
+            if (cargasCompletadas === asignaciones.length) {
+                if (progressBar) progressBar.classList.add('hidden');
+
+                if (todosLosProyectos.length === 0) {
+                    body.innerHTML = `<tr><td colspan="5" class="text-center">No se encontraron proyectos para "${entidadNombre}".</td></tr>`;
+                    return;
+                }
+
+                // Renderizar todos los proyectos
+                body.innerHTML = todosLosProyectos.map(p => `
+                    <tr>
+                        <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
+                        <td>${p.Comuna || p.comuna || ''}</td>
+                        <td>${p.Modalidad || p.modalidad || ''}</td>
+                        <td>${p['N°familias'] || p.Nfamilias || p.familias || ''}</td>
+                        <td>${p.Año || p.ano || p.anio || ''}</td>
+                    </tr>
+                `).join('');
+            }
+        });
     });
 }
 
