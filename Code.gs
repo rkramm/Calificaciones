@@ -1,6 +1,15 @@
 const SPREADSHEET_ID = '1apPfP7Y3ancW166QGEvh07kESYjuV8sP-Wd14cnQjjo';
 const VERSION_SHEET_NAME = '__version__';
 
+// Manejar CORS preflight requests (Chrome y navegadores modernos)
+function doOptions(e) {
+  return ContentService.createTextOutput('')
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
 /**
  * Obtiene o crea la hoja de versiones y retorna un objeto { tabla: version }.
  */
@@ -56,6 +65,13 @@ function bumpTableVersion(tableName, versionData) {
 
 function doPost(e) {
   try {
+    // CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    };
+
     const payload = JSON.parse(e.postData.contents);
     const tableName = payload.table;
     const dataArray = payload.data;
@@ -229,6 +245,8 @@ function normalizeEntidad(str) {
  */
 function doGet(e) {
   try {
+    // Permitir CORS para cualquier origen
+    const output = {};
     const action = e.parameter.action;
     if (action === 'getProjects') {
       const rawPrograma = e.parameter.programa || '';

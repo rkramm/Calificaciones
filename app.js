@@ -1,6 +1,6 @@
 /* ================= CONFIGURACIÓN DE ENTORNO WEB (GITHUB + GOOGLE SCRIPTS) ================= */
 const CLOUD_MODE_ENABLED = true; // ¡Activado para conectar con Google Sheets!
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVObGXiXiNHbVYr-E5eY6wfjYZSzF7yaG9-pxZ8E6nVbzVyGHkFC2NMgcANBu-oDQldg/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHAYyY5TukC6TRnMjjSPVPNKsYVvCJqaB2_CnmSmLJEI_EOhMUSzOUP2dYhBVBABANmA/exec";
 
 const PROGRAMAS_BASE = ["DS10", "DS27", "DS49"];
 
@@ -1932,15 +1932,17 @@ function showPanel(titleText) {
 function renderCoverageTabs() {
     const container = document.getElementById('evaluador-coverage-tabs');
     container.innerHTML = '';
-    allAsignacionesMapped.forEach(asig => {
+    // Obtener coberturas ÚNICAS (no duplicadas)
+    const uniqueCoberturas = [...new Set(allAsignacionesMapped.map(a => a.cobertura))];
+    uniqueCoberturas.forEach(cobertura => {
         const btn = document.createElement('button');
-        btn.className = `tab-button ${currentCoverage === asig.cobertura ? 'active' : ''}`;
-        btn.textContent = asig.cobertura;
-        btn.onclick = () => { 
-            currentCoverage = asig.cobertura; 
+        btn.className = `tab-button ${currentCoverage === cobertura ? 'active' : ''}`;
+        btn.textContent = cobertura;
+        btn.onclick = () => {
+            currentCoverage = cobertura;
             const conf = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
             currentStage = conf ? conf.etapas[0] : 1;
-            renderCoverageTabs(); 
+            renderCoverageTabs();
         };
         container.appendChild(btn);
     });
