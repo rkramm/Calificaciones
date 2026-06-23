@@ -1956,10 +1956,15 @@ function renderCoverageTabs() {
 function renderEvaluatorHeaderInfo() {
     const activeAsig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
     if (!activeAsig) {
-        document.getElementById('eval-entity-tabs-container').innerHTML = '';
-        document.getElementById('eval-entity-details').innerHTML = '<div style="padding: 16px; color: #999; text-align: center;">Seleccione una cobertura para ver la entidad.</div>';
-        document.getElementById('eval-projects-body').innerHTML = '<tr><td colspan="5" class="text-center">Seleccione una cobertura para ver los proyectos.</td></tr>';
-        document.getElementById('eval-stages-container').innerHTML = '';
+        const tabsEl = document.getElementById('eval-entity-tabs-container');
+        const detailsEl = document.getElementById('eval-entity-details');
+        const projectsEl = document.getElementById('eval-projects-body');
+        const stagesEl = document.getElementById('eval-stages-container');
+
+        if (tabsEl) tabsEl.innerHTML = '';
+        if (detailsEl) detailsEl.innerHTML = '<div style="padding: 16px; color: #999; text-align: center;">Seleccione una cobertura para ver la entidad.</div>';
+        if (projectsEl) projectsEl.innerHTML = '<tr><td colspan="5" class="text-center">Seleccione una cobertura para ver los proyectos.</td></tr>';
+        if (stagesEl) stagesEl.innerHTML = '';
         return;
     }
 
@@ -2013,11 +2018,17 @@ function renderEvaluatorHeaderInfo() {
         const fecha = getField(entidad, ['fecha', 'Fecha', 'FECHA', 'Fecha Convenio Marco', 'FechaConvenioMarco', 'fecha_convenio']);
 
         // Mostrar detalles de la entidad
-        document.getElementById('eval-entity-name').textContent = entidad.nombre || window.currentSelectedEntity || 'Sin Entidad';
-        document.getElementById('eval-entity-rut').textContent = entidad.rut || '---';
-        document.getElementById('eval-entity-convenio').textContent = convenio || '---';
-        document.getElementById('eval-entity-fecha').textContent = fecha || '---';
-        document.getElementById('eval-entity-programa').textContent = activeAsig.programa || '---';
+        const nameEl = document.getElementById('eval-entity-name');
+        const rutEl = document.getElementById('eval-entity-rut');
+        const convenioEl = document.getElementById('eval-entity-convenio');
+        const fechaEl = document.getElementById('eval-entity-fecha');
+        const programaEl = document.getElementById('eval-entity-programa');
+
+        if (nameEl) nameEl.textContent = entidad.nombre || window.currentSelectedEntity || 'Sin Entidad';
+        if (rutEl) rutEl.textContent = entidad.rut || '---';
+        if (convenioEl) convenioEl.textContent = convenio || '---';
+        if (fechaEl) fechaEl.textContent = fecha || '---';
+        if (programaEl) programaEl.textContent = activeAsig.programa || '---';
     });
 
     // Renderizar tabla de proyectos según programa
