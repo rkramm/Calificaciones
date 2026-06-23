@@ -1794,14 +1794,20 @@ function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
 
     // Cargar asignaciones y scores del evaluador en paralelo
     getMultipleStores(['asignaciones', 'scores'], ([asignaciones, scores]) => {
+        console.log('📊 Todas las asignaciones en DB:', asignaciones.length);
+        console.log('👤 RUT del usuario actual:', currentUser.rut);
+        console.log('📋 Asignaciones totales:', asignaciones);
+
         const userAsignaciones = asignaciones.filter(a => a.rut === currentUser.rut);
-        
+        console.log('✅ Asignaciones filtradas por RUT:', userAsignaciones.length);
+        console.log('📌 Asignaciones del usuario:', userAsignaciones);
+
         if(userAsignaciones.length === 0) {
             alert('No tiene precalificaciones asignadas en este momento.\n\nContacte al administrador para que le asigne coberturas de evaluación.');
             restoreConnectionStatus();
             return;
         }
-        
+
         allAsignacionesMapped = userAsignaciones.map(a => {
             let parsedEtapas = a.etapas;
             if (typeof parsedEtapas === 'string') {
