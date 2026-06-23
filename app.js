@@ -2965,15 +2965,33 @@ function openAuditModal(rut, nombre, cobertura, stageNum) {
     });
 }
 
-function populateAdminMatrix() {
+async function populateAdminMatrix() {
     pendingAsignacionesStaging = []; adminTemporaryEntidades = [];
-    // Forzar sincronización desde la nube para el admin
+
+    try {
+        // IMPORTANTE: Descargar ASIGNACIONES directamente del Google Sheet para asegurar datos actuales
+        console.log('📥 Descargando asignaciones desde Google Sheet...');
+        const cloudAsignaciones = await cloudGet('asignaciones');
+        console.log('✅ Asignaciones desde cloud:', cloudAsignaciones?.length || 0);
+
+        // Guardar en IndexedDB para caché local
+        if (cloudAsignaciones && cloudAsignaciones.length > 0) {
+            const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+            const store = tx.objectStore('asignaciones');
+            cloudAsignaciones.forEach(a => store.put(a));
+            console.log('💾 Asignaciones guardadas en IndexedDB');
+        }
+    } catch (error) {
+        console.warn('⚠️ Error descargando asignaciones desde cloud, usando caché local:', error);
+    }
+
+    // Cargar evaluadores y entidades desde IndexedDB
     getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
         const colEvaluadores = document.getElementById('col-evaluadores');
         if (colEvaluadores) {
             colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
         }
-        
+
         renderEvaluadoresTable(evaluadores);
         adminTemporaryEntidades = entidades;
         renderEntidadesAgregadas();
@@ -2983,7 +3001,7 @@ function populateAdminMatrix() {
         const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
         renderAdminProgramsColumn();
         fillAnioSelectors();
-        
+
         // Mostrar mensaje de éxito
         console.log(`✅ Admin Matrix cargado: ${evaluadores.length} evaluadores, ${entidades.length} entidades`);
     }, CLOUD_MODE_ENABLED);
