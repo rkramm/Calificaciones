@@ -932,35 +932,54 @@ function downloadHistoricosFromCloud() {
         return;
     }
     const confirmed = confirmDoubleWarning(
-        'DESCARGAR ASIGNACIONES DESDE LA NUBE',
-        'Esta acción reemplazará los datos locales de asignaciones por los del servidor.'
+        'DESCARGAR PRECALIFICACIONES DESDE LA NUBE',
+        'Esta acción descargará todos los históricos y asignaciones históricas del servidor a la base de datos local.'
     );
     if (!confirmed) return;
 
-    showProgressBar('Descargando asignaciones desde la Nube...');
+    showProgressBar('Descargando precalificaciones desde la Nube...');
 
-    cloudGet('asignaciones').then(asignaciones => {
-        // Validar que la tabla exista en IndexedDB
-        if (!dbInstance.objectStoreNames.contains('asignaciones')) {
+    Promise.all([
+        cloudGet('historicos'),
+        cloudGet('asigna_historico')
+    ]).then(([historicos, asignacionesHistoricas]) => {
+        // Validar que las tablas existan en IndexedDB
+        if (!dbInstance.objectStoreNames.contains('historicos') || !dbInstance.objectStoreNames.contains('asigna_historico')) {
             hideProgressBar();
-            alert('Error: La base de datos local no tiene la tabla de asignaciones.\n\nPor favor, recargue la página para inicializar la base de datos.');
+            alert('Error: La base de datos local no tiene las tablas necesarias.\n\nPor favor, recargue la página para inicializar la base de datos.');
             return;
         }
 
-        const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
-        const asigStore = tx.objectStore('asignaciones');
+        const tx = dbInstance.transaction(['historicos', 'asigna_historico'], 'readwrite');
+        const histStore = tx.objectStore('historicos');
+        const asigHistStore = tx.objectStore('asigna_historico');
 
-        let asigCount = 0;
+        let histCount = 0;
+        let asigHistCount = 0;
 
-        // Limpiar y guardar asignaciones actuales
-        asigStore.clear().onsuccess = () => {
-            if (Array.isArray(asignaciones)) {
-                asignaciones.forEach(a => {
+        // Guardar históricos
+        histStore.clear().onsuccess = () => {
+            if (Array.isArray(historicos)) {
+                historicos.forEach(h => {
                     try {
-                        asigStore.put(a);
-                        asigCount++;
+                        histStore.put(h);
+                        histCount++;
                     } catch (e) {
-                        console.error('Error guardando asignación:', a, e);
+                        console.error('Error guardando histórico:', h, e);
+                    }
+                });
+            }
+        };
+
+        // Guardar asignaciones históricas
+        asigHistStore.clear().onsuccess = () => {
+            if (Array.isArray(asignacionesHistoricas)) {
+                asignacionesHistoricas.forEach(a => {
+                    try {
+                        asigHistStore.put(a);
+                        asigHistCount++;
+                    } catch (e) {
+                        console.error('Error guardando asignación histórica:', a, e);
                     }
                 });
             }
@@ -968,11 +987,7 @@ function downloadHistoricosFromCloud() {
 
         tx.oncomplete = () => {
             hideProgressBar();
-            alert(`Asignaciones descargadas correctamente.\n\nRegistros guardados: ${asigCount}\n\nPor favor, recargue la página para ver las asignaciones actualizadas.`);
-            // Recargar página para mostrar las nuevas asignaciones
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            alert(`Precalificaciones descargadas correctamente.\n\nHistóricos: ${histCount}\nAsignaciones Históricas: ${asigHistCount}`);
         };
 
         tx.onerror = (e) => {
@@ -982,8 +997,8 @@ function downloadHistoricosFromCloud() {
         };
     }).catch(err => {
         hideProgressBar();
-        console.error('Error descargando asignaciones:', err);
-        alert('Error de red al descargar asignaciones.\n\nVerifique su conexión a internet e intente nuevamente.\n\nDetalle: ' + err.message);
+        console.error('Error descargando precalificaciones:', err);
+        alert('Error de red al descargar precalificaciones.\n\nVerifique su conexión a internet e intente nuevamente.\n\nDetalle: ' + err.message);
     });
 }
 /* =============================================================================== */
