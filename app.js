@@ -1936,6 +1936,7 @@ function showPanel(titleText) {
         toggleElement('admin-view', true);
         toggleElement('evaluador-view', false);
         toggleElement('btn-sync-cloud', true);
+        toggleElement('btn-download-cloud', true);
         toggleElement('btn-save-scores', false);
         toggleElement('btn-eval-pdf', false);
         if (countdownInterval) clearInterval(countdownInterval);
@@ -1946,6 +1947,7 @@ function showPanel(titleText) {
         toggleElement('admin-view', false);
         toggleElement('evaluador-view', true);
         toggleElement('btn-sync-cloud', false);
+        toggleElement('btn-download-cloud', false);
         toggleElement('btn-save-scores', true);
         toggleElement('btn-eval-pdf', true);
         checkDeadlineStatus();
@@ -2005,7 +2007,7 @@ function renderEvaluatorHeaderInfo() {
 
         if (tabsEl) tabsEl.innerHTML = '';
         if (detailsEl) detailsEl.innerHTML = '<div style="padding: 16px; color: #999; text-align: center;">Seleccione una cobertura para ver la entidad.</div>';
-        if (projectsEl) projectsEl.innerHTML = '<tr><td colspan="5" class="text-center">Seleccione una cobertura para ver los proyectos.</td></tr>';
+        if (projectsEl) projectsEl.innerHTML = '<tr><td colspan="6" class="text-center">Seleccione una cobertura para ver los proyectos.</td></tr>';
         if (stagesEl) stagesEl.innerHTML = '';
         return;
     }
@@ -2158,7 +2160,7 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
     if (!body) return;
 
     if (!asignaciones || asignaciones.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="text-center">No hay programas asignados.</td></tr>';
+        body.innerHTML = '<tr><td colspan="6" class="text-center">No hay programas asignados.</td></tr>';
         return;
     }
 
@@ -2191,12 +2193,13 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                     if (progressBar) progressBar.classList.add('hidden');
 
                     if (todosLosProyectos.length === 0) {
-                        body.innerHTML = `<tr><td colspan="5" class="text-center">Sin proyectos asignados para "${entidadNombre}".</td></tr>`;
+                        body.innerHTML = `<tr><td colspan="6" class="text-center">Sin proyectos asignados para "${entidadNombre}".</td></tr>`;
                         return;
                     }
 
                     body.innerHTML = todosLosProyectos.map(p => `
                         <tr>
+                            <td>${p.Código || p.codigo || p.Codigo || ''}</td>
                             <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
                             <td>${p.Comuna || p.comuna || ''}</td>
                             <td>${p.Modalidad || p.modalidad || ''}</td>
@@ -2263,28 +2266,17 @@ function renderProjectsTable(programa, entidadNombre) {
             body.innerHTML = `<tr><td colspan="${cols}" class="text-center">No se encontraron proyectos para "${entidadNombre}" en ${programa}.</td></tr>`;
             return;
         }
-        if (programa === 'DS49') {
-            body.innerHTML = proyectos.map(p => `
-                <tr>
-                    <td>${p['Codigo proyecto'] || p.codigo_proyecto || p.Codigo || ''}</td>
-                    <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
-                    <td>${p.Comuna || p.comuna || ''}</td>
-                    <td>${p.Modalidad || p.modalidad || ''}</td>
-                    <td>${p['N°familias'] || p.Nfamilias || p.familias || ''}</td>
-                    <td>${p.Año || p.ano || p.anio || ''}</td>
-                </tr>
-            `).join('');
-        } else {
-            body.innerHTML = proyectos.map(p => `
-                <tr>
-                    <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
-                    <td>${p.Comuna || p.comuna || ''}</td>
-                    <td>${p.Modalidad || p.modalidad || ''}</td>
-                    <td>${p.Familias || p.familias || ''}</td>
-                    <td>${p.Año || p.ano || p.anio || ''}</td>
-                </tr>
-            `).join('');
-        }
+        // Para todos los programas: Código, Nombre, Comuna, Modalidad, Familias, Año
+        body.innerHTML = proyectos.map(p => `
+            <tr>
+                <td>${p.Código || p.codigo || p.Codigo || p['Codigo proyecto'] || p.codigo_proyecto || ''}</td>
+                <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
+                <td>${p.Comuna || p.comuna || ''}</td>
+                <td>${p.Modalidad || p.modalidad || ''}</td>
+                <td>${p['N°familias'] || p.Nfamilias || p.familias || p.Familias || ''}</td>
+                <td>${p.Año || p.ano || p.anio || ''}</td>
+            </tr>
+        `).join('');
     }).catch(err => {
         console.error('Error cargando proyectos:', err);
         // Ocultar barra de progreso
