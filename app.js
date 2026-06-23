@@ -940,10 +940,19 @@ function downloadHistoricosFromCloud() {
     showProgressBar('Descargando asignaciones desde la Nube...');
 
     cloudGet('asignaciones').then(asignaciones => {
+        console.log('📥 Datos recibidos del servidor:', asignaciones);
+
         // Validar que la tabla exista en IndexedDB
         if (!dbInstance.objectStoreNames.contains('asignaciones')) {
             hideProgressBar();
             alert('Error: La base de datos local no tiene la tabla de asignaciones.\n\nPor favor, recargue la página para inicializar la base de datos.');
+            return;
+        }
+
+        if (!asignaciones || asignaciones.length === 0) {
+            hideProgressBar();
+            alert('⚠️ ADVERTENCIA: No se encontraron asignaciones en el servidor.\n\nVerifique que la tabla "asignaciones" tenga datos en el Google Sheet.');
+            console.warn('Asignaciones vacías o null:', asignaciones);
             return;
         }
 
@@ -955,6 +964,7 @@ function downloadHistoricosFromCloud() {
         // Limpiar y guardar asignaciones
         asigStore.clear().onsuccess = () => {
             if (Array.isArray(asignaciones)) {
+                console.log('💾 Guardando', asignaciones.length, 'asignaciones en IndexedDB');
                 asignaciones.forEach(a => {
                     try {
                         asigStore.put(a);
@@ -968,6 +978,7 @@ function downloadHistoricosFromCloud() {
 
         tx.oncomplete = () => {
             hideProgressBar();
+            console.log('✅ Transacción completada con', asigCount, 'registros');
             alert(`Asignaciones descargadas correctamente.\n\nRegistros guardados: ${asigCount}`);
         };
 
