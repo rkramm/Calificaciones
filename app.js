@@ -1245,27 +1245,33 @@ function setupEventListeners() {
     const inputRestoreBackup = document.getElementById('input-restore-backup');
     if (inputRestoreBackup) inputRestoreBackup.addEventListener('change', handleRestoreBackupJSON);
 
-    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
-    if (btnToggleSidebar) btnToggleSidebar.addEventListener('click', toggleEvalSidebar);
+    const btnToggleTopPanel = document.getElementById('btn-toggle-top-panel');
+    if (btnToggleTopPanel) btnToggleTopPanel.addEventListener('click', toggleEvalTopPanel);
 }
 
 /**
  * Toggle para colapsar/expandir sidebar de entidades
  */
-function toggleEvalSidebar() {
-    const sidebar = document.getElementById('eval-sidebar');
-    const btn = document.getElementById('btn-toggle-sidebar');
+function toggleEvalTopPanel() {
+    const topPanel = document.getElementById('eval-top-panel');
+    const entityTabs = document.getElementById('eval-entity-tabs-container');
+    const projectsSection = document.getElementById('eval-projects-section');
+    const btn = document.getElementById('btn-toggle-top-panel');
 
-    if (!sidebar || !btn) return;
+    if (!topPanel || !entityTabs || !projectsSection || !btn) return;
 
-    if (sidebar.classList.contains('eval-sidebar-expanded')) {
-        sidebar.classList.remove('eval-sidebar-expanded');
-        sidebar.classList.add('eval-sidebar-collapsed');
-        btn.textContent = '▶';
+    if (topPanel.classList.contains('eval-top-panel-expanded')) {
+        topPanel.classList.remove('eval-top-panel-expanded');
+        topPanel.classList.add('eval-top-panel-collapsed');
+        entityTabs.style.display = 'none';
+        projectsSection.style.display = 'none';
+        btn.textContent = '▼';
     } else {
-        sidebar.classList.remove('eval-sidebar-collapsed');
-        sidebar.classList.add('eval-sidebar-expanded');
-        btn.textContent = '◀';
+        topPanel.classList.remove('eval-top-panel-collapsed');
+        topPanel.classList.add('eval-top-panel-expanded');
+        entityTabs.style.display = 'flex';
+        projectsSection.style.display = 'block';
+        btn.textContent = '▲';
     }
 }
 
@@ -2166,6 +2172,8 @@ function renderCoverageTabs() {
         btn.textContent = cobertura;
         btn.onclick = () => {
             currentCoverage = cobertura;
+            const badgeEl = document.getElementById('eval-programa-badge');
+            if (badgeEl) badgeEl.textContent = currentCoverage;
             const conf = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
             currentStage = (conf && conf.etapas && conf.etapas.length > 0) ? conf.etapas[0] : 1;
             // Resetear entidad seleccionada para que se auto-seleccione la primera del nuevo programa
@@ -2251,6 +2259,12 @@ function renderEvaluatorHeaderInfo() {
     if (programaEl) {
         const programas = asignsForEntity.map(a => a.programa).join(', ');
         programaEl.textContent = programas || '---';
+    }
+
+    // Actualizar badge de cobertura
+    const badgeEl = document.getElementById('eval-programa-badge');
+    if (badgeEl) {
+        badgeEl.textContent = currentCoverage || 'DS10';
     }
 
     // Intentar buscar datos adicionales en IndexedDB EN SEGUNDO PLANO (sin bloquear)

@@ -371,12 +371,21 @@ button { font-family: 'Segoe UI', sans-serif; }
     .login-header h2 { font-size: 1.4rem; }
 }
 
-/* ================= SIDEBAR COLAPSABLE ================= */
-.eval-sidebar-expanded {
-    width: 220px !important;
+/* ================= PANEL COLAPSABLE SUPERIOR ================= */
+#eval-top-panel {
+    transition: max-height 0.3s ease !important;
 }
 
-.eval-sidebar-collapsed {
-    width: 0 !important;
-    visibility: hidden !important;
+.eval-top-panel-expanded {
+    max-height: 45% !important;
+}
+
+.eval-top-panel-collapsed {
+    max-height: 4.8rem !important;
+    overflow: hidden !important;
+}
+
+.eval-top-panel-collapsed #eval-info-card {
+    border: none !important;
+    padding: 8px 12px !important;
 }
