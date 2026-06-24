@@ -1069,9 +1069,24 @@ function downloadHistoricosFromCloud() {
         }
 
         if (!asignaciones || asignaciones.length === 0) {
-            hideProgressBar();
-            alert('⚠️ No se encontraron asignaciones en Google Sheets.\n\nSe están usando datos locales si están disponibles.\n\nVerifique que la tabla "asignaciones" tenga datos.');
-            console.warn('Asignaciones vacías o null:', asignaciones);
+            // Limpiar asignaciones locales si no hay en Google Sheets
+            const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+            const asigStore = tx.objectStore('asignaciones');
+            asigStore.clear();
+
+            tx.oncomplete = () => {
+                hideProgressBar();
+                console.warn('⚠️ No hay asignaciones en Google Sheets. Base de datos local limpiada.');
+                alert('⚠️ No se encontraron asignaciones en Google Sheets.\n\nLa aplicación está lista pero sin datos.\n\nVerifique que la tabla "asignaciones" tenga datos en el datasheet.');
+                renderMonitoringTable();
+                populateAdminMatrix();
+            };
+
+            tx.onerror = (e) => {
+                hideProgressBar();
+                console.error('Error limpiando asignaciones locales:', e.target.error);
+                alert('Error al limpiar la base de datos local.\n\nDetalle: ' + (e.target.error ? e.target.error.message : 'Error desconocido'));
+            };
             return;
         }
 
