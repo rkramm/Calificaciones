@@ -2147,32 +2147,85 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
         };
     }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
 
-    // Cargar scores desde IndexedDB (rápido)
-    dbGetAll('scores', (scores) => {
-        allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
+    // 🔄 PRIORIDAD 1: DESCARGAR SCORES DE GOOGLE SHEETS (con timeout agresivo)
+    console.log(`📥 Intentando descargar scores para ${currentUser.rut} desde Google Sheets...`);
 
-        currentCoverage = allAsignacionesMapped[0].cobertura;
-        const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-        currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
-
-        // 🚀 MOSTRAR LA UI INMEDIATAMENTE (sin esperar proyectos)
-        restoreConnectionStatus();
-        showPanel('Sistema de Precalificación Técnica');
-
-        // 🔄 CARGAR PROYECTOS EN SEGUNDO PLANO (no bloquea la UI)
+    const scoresTimeoutPromise = new Promise((resolve) => {
         setTimeout(() => {
-            renderCoverageTabs();
-        }, 100);
+            console.warn('⏱️ Timeout descargando scores (10s), usando caché local');
+            resolve(null);
+        }, 10000);
+    });
 
-        // 📥 SINCRONIZAR ASIGNACIONES DESDE EL SERVIDOR (en background con progreso visual)
-        if (CLOUD_MODE_ENABLED) {
-            setTimeout(() => {
-                syncAsignacionesFromCloud();
-            }, 500);
-
-            // Sincronizar scores en segundo plano
-            backgroundSyncForEvaluator();
+    Promise.race([cloudGet('scores'), scoresTimeoutPromise]).then(cloudScores => {
+        // Filtrar scores del evaluador desde Google Sheets
+        let userScoresFromCloud = [];
+        if (cloudScores && Array.isArray(cloudScores)) {
+            userScoresFromCloud = cloudScores.filter(s => s.rutEvaluador === currentUser.rut);
+            console.log(`✅ Descargados ${userScoresFromCloud.length} scores de Google Sheets para ${currentUser.rut}`);
+        } else {
+            console.log(`ℹ️ Sin scores en Google Sheets, usando IndexedDB`);
         }
+
+        // Si hay scores en Google Sheets, usarlos; si no, leer de IndexedDB
+        if (userScoresFromCloud.length > 0) {
+            allMemoryScores = userScoresFromCloud;
+            // Guardar en IndexedDB también como caché
+            const tx = dbInstance.transaction(['scores'], 'readwrite');
+            userScoresFromCloud.forEach(s => tx.objectStore('scores').put(s));
+            continueLoadingEvaluator();
+        } else {
+            // Fallback a IndexedDB
+            dbGetAll('scores', (dbScores) => {
+                allMemoryScores = dbScores.filter(r => r.rutEvaluador === currentUser.rut);
+                continueLoadingEvaluator();
+            });
+        }
+
+        function continueLoadingEvaluator() {
+            currentCoverage = allAsignacionesMapped[0].cobertura;
+            const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+            currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
+
+            // 🚀 MOSTRAR LA UI CON SCORES CARGADOS
+            restoreConnectionStatus();
+            showPanel('Sistema de Precalificación Técnica');
+
+            // 🔄 CARGAR PROYECTOS EN SEGUNDO PLANO
+            setTimeout(() => {
+                renderCoverageTabs();
+            }, 100);
+
+            // 📥 SINCRONIZAR ASIGNACIONES EN BACKGROUND
+            if (CLOUD_MODE_ENABLED) {
+                setTimeout(() => {
+                    syncAsignacionesFromCloud();
+                }, 500);
+            }
+        }
+    }).catch(err => {
+        console.error('❌ Error descargando scores:', err);
+        // Fallback completo a IndexedDB
+        dbGetAll('scores', (dbScores) => {
+            allMemoryScores = dbScores.filter(r => r.rutEvaluador === currentUser.rut);
+
+            currentCoverage = allAsignacionesMapped[0].cobertura;
+            const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+            currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
+
+            restoreConnectionStatus();
+            showPanel('Sistema de Precalificación Técnica');
+
+            setTimeout(() => {
+                renderCoverageTabs();
+            }, 100);
+
+            if (CLOUD_MODE_ENABLED) {
+                setTimeout(() => {
+                    syncAsignacionesFromCloud();
+                }, 500);
+            }
+        });
     });
 }
 
