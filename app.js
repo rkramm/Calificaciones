@@ -1386,21 +1386,27 @@ window.deleteAsignacionWithOptions = function(rut, nombre, cobertura, stageNum, 
     if (choice === '1') {
         // Eliminar solo la etapa
         dbGetAll('asignaciones', (asignaciones) => {
-            const asig = asignaciones.find(a => a.id === idAsig);
+            const asig = asignaciones.find(a => a.idAsig === idAsig);
             if (!asig) {
                 alert('No se encontró la asignación');
                 return;
             }
 
             // Eliminar la etapa del array de etapas
-            if (asig.etapas && Array.isArray(asig.etapas)) {
-                asig.etapas = asig.etapas.filter(e => e !== stageNum);
+            let etapasArray = asig.etapas;
+            if (typeof etapasArray === 'string') {
+                etapasArray = etapasArray.split(',').map(Number);
+            }
+
+            if (Array.isArray(etapasArray)) {
+                etapasArray = etapasArray.filter(e => e !== stageNum);
+                asig.etapas = etapasArray.join(','); // Guardar como string
 
                 const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
                 tx.objectStore('asignaciones').put(asig);
                 tx.oncomplete = () => {
                     alert(`✅ Etapa ${stageNum} eliminada de la asignación`);
-                    syncAsignacionesToGoogleSheets([asig]);
+                    syncAsignacionesToGoogleSheets(asig);
                     renderMonitoringTable();
                     populateAdminMatrix();
                 };
@@ -1410,14 +1416,22 @@ window.deleteAsignacionWithOptions = function(rut, nombre, cobertura, stageNum, 
         // Eliminar toda la asignación
         if (!confirm(`¿Está seguro de eliminar TODA la asignación de ${nombre} en ${cobertura}?`)) return;
 
-        const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
-        tx.objectStore('asignaciones').delete(idAsig);
-        tx.oncomplete = () => {
-            alert(`✅ Asignación de ${nombre} eliminada completamente`);
-            deleteAsignacionFromGoogleSheets(rut, cobertura);
-            renderMonitoringTable();
-            populateAdminMatrix();
-        };
+        dbGetAll('asignaciones', (asignaciones) => {
+            const asig = asignaciones.find(a => a.idAsig === idAsig);
+            if (!asig) {
+                alert('No se encontró la asignación');
+                return;
+            }
+
+            const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+            tx.objectStore('asignaciones').delete(idAsig);
+            tx.oncomplete = () => {
+                alert(`✅ Asignación de ${nombre} eliminada completamente`);
+                deleteAsignacionFromGoogleSheets(asig);
+                renderMonitoringTable();
+                populateAdminMatrix();
+            };
+        });
     } else {
         alert('Opción no válida');
     }
@@ -1426,32 +1440,35 @@ window.deleteAsignacionWithOptions = function(rut, nombre, cobertura, stageNum, 
 /**
  * Sincroniza asignaciones modificadas con Google Sheets
  */
-async function syncAsignacionesToGoogleSheets(asignaciones) {
+async function syncAsignacionesToGoogleSheets(asignacion) {
     try {
-        const result = await cloudSave('asignaciones', asignaciones, 'update');
+        const result = await cloudSave('asignaciones', [asignacion], 'update');
         if (result.success) {
             console.log('✅ Asignaciones sincronizadas con Google Sheets');
         } else {
             console.error('Error al sincronizar:', result.error);
+            alert('⚠️ Error al sincronizar con Google Sheets: ' + (result.error || 'Error desconocido'));
         }
     } catch (error) {
         console.error('Error en sincronización:', error);
+        alert('⚠️ Error en sincronización: ' + error.message);
     }
 }
 
 /**
  * Elimina una asignación de Google Sheets
  */
-async function deleteAsignacionFromGoogleSheets(rut, cobertura) {
+async function deleteAsignacionFromGoogleSheets(asignacion) {
     try {
+        // Enviar la asignación marcada para eliminación
         const result = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({
-                action: 'deleteAsignacion',
+                action: 'deleteRow',
                 table: 'asignaciones',
-                rut: rut,
-                cobertura: cobertura,
+                keyField: 'idAsig',
+                keyValue: asignacion.idAsig,
                 clientVersion: serverVersions['asignaciones'] || 0,
                 mode: 'prod'
             })
@@ -1461,9 +1478,11 @@ async function deleteAsignacionFromGoogleSheets(rut, cobertura) {
             console.log('✅ Asignación eliminada de Google Sheets');
         } else {
             console.error('Error al eliminar:', response.error);
+            alert('⚠️ Error al eliminar de Google Sheets: ' + (response.error || 'Error desconocido'));
         }
     } catch (error) {
         console.error('Error en eliminación:', error);
+        alert('⚠️ Error en eliminación: ' + error.message);
     }
 }
 
