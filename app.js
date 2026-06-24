@@ -3288,6 +3288,10 @@ function renderEvaluatorView() {
     document.getElementById('table-stage-footer-label').textContent = `PRECALIFICACIÓN ETAPA ${currentStage}`;
 
     const tbody = document.getElementById('evaluation-rows');
+    if (!tbody) {
+        console.error('❌ tbody evaluation-rows no encontrado');
+        return;
+    }
 
     // Usar DEFAULT_ITEMS si no hay ítems cargados desde la BD
     const itemsToUse = (dbItems && dbItems.length > 0) ? dbItems : DEFAULT_ITEMS;
