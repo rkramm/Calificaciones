@@ -3289,14 +3289,11 @@ function renderEvaluatorView() {
 
     const tbody = document.getElementById('evaluation-rows');
 
-    // Si no hay ítems cargados, usar DEFAULT_ITEMS
-    if (dbItems.length === 0) {
-        console.log('📌 Usando criterios por defecto...');
-        dbItems = DEFAULT_ITEMS;
-    }
+    // Usar DEFAULT_ITEMS si no hay ítems cargados desde la BD
+    const itemsToUse = (dbItems && dbItems.length > 0) ? dbItems : DEFAULT_ITEMS;
 
     // Obtener todos los ítems de la etapa actual, ordenados por id
-    const stageItems = dbItems
+    const stageItems = itemsToUse
         .filter(i => parseInt(i.stage, 10) === parseInt(currentStage, 10))
         .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
