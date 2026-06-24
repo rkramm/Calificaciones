@@ -2268,6 +2268,7 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                     // Detectar tipo de programa
                     const soloDS10 = todosLosProyectos.every(p => p._programa === 'DS10');
                     const soloDS27 = todosLosProyectos.every(p => p._programa === 'DS27');
+                    const soloDS49 = todosLosProyectos.every(p => p._programa === 'DS49');
                     const thead = document.getElementById('eval-projects-head');
 
                     if (soloDS10) {
@@ -2314,8 +2315,31 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                                 <td>${p.Año || p.ano || p.anio || ''}</td>
                             </tr>
                         `).join('');
+                    } else if (soloDS49) {
+                        // Para DS49: 5 columnas (Codigo Proyecto, Nombre, Comuna, Tipología, N°Familias, Año)
+                        if (thead) {
+                            thead.innerHTML = `
+                                <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Código</th>
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.6rem;">Nombre</th>
+                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Tipología</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                </tr>
+                            `;
+                        }
+
+                        body.innerHTML = todosLosProyectos.map(p => `
+                            <tr>
+                                <td>${p['Codigo Proyecto'] || p.codigo || p.Codigo || ''}</td>
+                                <td>${p['Nombre del proy'] || p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
+                                <td>${p.Comuna || p.comuna || ''}</td>
+                                <td>${p.Tipología || p.tipologia || p.Tipologia || ''}</td>
+                                <td>${p.Año || p.ano || p.anio || ''}</td>
+                            </tr>
+                        `).join('');
                     } else {
-                        // Para DS49 o mezcla: 6 columnas (Código, Nombre, Comuna, Modal., Familias, Año)
+                        // Para mezcla: 6 columnas (Código, Nombre, Comuna, Modal., Familias, Año)
                         if (thead) {
                             thead.innerHTML = `
                                 <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
