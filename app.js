@@ -2238,22 +2238,41 @@ function backgroundSyncForEvaluator() {
         });
     };
 
-    // Sincronizar scores en segundo plano sin mostrar barra de progreso
-    dbGetAll('scores', (localScores) => {
-        syncStore('scores', localScores).then(updatedScores => {
-            if (updatedScores.length !== localScores.length) {
-                // Actualizar IndexedDB con datos del servidor
+    // Cargar scores del usuario desde Google Sheets en segundo plano
+    console.log(`📥 Descargando scores para ${currentUser.rut}...`);
+    cloudGet('scores').then(cloudScores => {
+        if (cloudScores && Array.isArray(cloudScores)) {
+            // Filtrar scores del usuario actual
+            const userScores = cloudScores.filter(s => s.rutEvaluador === currentUser.rut);
+
+            if (userScores.length > 0) {
+                console.log(`✅ Se encontraron ${userScores.length} scores para ${currentUser.rut}`);
+
+                // Guardar scores en IndexedDB
                 const tx = dbInstance.transaction(['scores'], 'readwrite');
                 const store = tx.objectStore('scores');
-                updatedScores.forEach(s => store.put(s));
-                
-                // Actualizar memoria
-                allMemoryScores = updatedScores.filter(r => r.rutEvaluador === currentUser.rut);
+                userScores.forEach(s => store.put(s));
+
+                tx.oncomplete = () => {
+                    allMemoryScores = userScores;
+                    loadScoresFromActiveContext();
+                    renderEvaluatorView();
+                    showToast('✅ Puntuaciones cargadas', 'success');
+                };
+            } else {
+                console.log(`⚠️ No hay scores para ${currentUser.rut}`);
+                allMemoryScores = [];
                 loadScoresFromActiveContext();
                 renderEvaluatorView();
             }
-        }).catch(err => {
-            console.log('Sincronización en segundo plano falló, usando datos locales:', err);
+        }
+    }).catch(err => {
+        console.log('Error descargando scores desde Google Sheets, usando datos locales:', err);
+        // Usar datos locales como fallback
+        dbGetAll('scores', (localScores) => {
+            allMemoryScores = localScores.filter(r => r.rutEvaluador === currentUser.rut);
+            loadScoresFromActiveContext();
+            renderEvaluatorView();
         });
     });
 }
@@ -3611,20 +3630,12 @@ function saveAdminItems() {
 
 function saveEvaluatorScores(callback) {
     if (deadlineExpired) {
-        alert('El plazo para evaluar ha expirado. No se pueden guardar cambios.');
+        showToast('El plazo para evaluar ha expirado.', 'error');
         if (callback) callback(false);
         return;
     }
 
-    // Doble advertencia antes de enviar calificaciones al servidor
-    const confirmed = confirmDoubleWarning(
-        'GUARDAR CALIFICACIONES EN EL SERVIDOR',
-        `Se enviarán las calificaciones del evaluador ${currentUser.nombre} (${currentUser.rut}) al servidor compartido.`
-    );
-    if (!confirmed) {
-        if (callback) callback(false);
-        return;
-    }
+    showToast('Guardando...', 'info');
 
     dbGetAll('scores', (allDbScores) => {
         const tx = dbInstance.transaction(['scores'], 'readwrite');
@@ -3659,37 +3670,86 @@ function saveEvaluatorScores(callback) {
         });
 
         tx.oncomplete = () => {
-            hasUnsavedEvaluatorChanges = false; // Restablecer la bandera de cambios sin guardar
+            hasUnsavedEvaluatorChanges = false;
             // Una vez guardado localmente, sincronizar solo la tabla de scores.
             syncSingleStoreToCloud('scores', (success) => {
                 dbGetAll('scores', (scores) => {
                     allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
-                    loadScoresFromActiveContext(); 
+                    loadScoresFromActiveContext();
                     renderEvaluatorView();
-                    
-                    const btn = document.getElementById('btn-save-scores');
-                    if (btn) {
-                        const originalText = btn.textContent;
-                        if (success) {
-                            btn.textContent = "¡Guardado y Sincronizado!";
-                            btn.style.backgroundColor = "var(--color-bueno)";
-                            btn.style.color = "#000";
-                        } else {
-                            btn.textContent = "Guardado Local (Fallo Sincronización)";
-                            btn.style.backgroundColor = "var(--color-aceptable)";
-                            btn.style.color = "#000";
-                        }
-                        setTimeout(() => {
-                            btn.textContent = originalText;
-                            btn.style.backgroundColor = "";
-                            btn.style.color = "";
-                        }, 3000);
+
+                    if (success) {
+                        showToast('✅ Guardado correctamente', 'success');
+                    } else {
+                        showToast('⚠️ Guardado local (sin sincronización)', 'warning');
                     }
                     if (callback) callback(success);
                 });
             });
         };
     });
+}
+
+/**
+ * Muestra un toast/notificación sin bloquear la interfaz
+ */
+function showToast(message, type = 'info') {
+    // Crear elemento toast si no existe
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; font-family: "Segoe UI", sans-serif;';
+        document.body.appendChild(toastContainer);
+    }
+
+    const toast = document.createElement('div');
+    const colors = {
+        success: { bg: '#D4EDDA', border: '#28A745', text: '#155724' },
+        error: { bg: '#F8D7DA', border: '#DC3545', text: '#721C24' },
+        warning: { bg: '#FFF3CD', border: '#FFC107', text: '#856404' },
+        info: { bg: '#D1ECF1', border: '#17A2B8', text: '#0C5460' }
+    };
+
+    const color = colors[type] || colors.info;
+    toast.style.cssText = `
+        background: ${color.bg};
+        border-left: 4px solid ${color.border};
+        color: ${color.text};
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 300px;
+        word-wrap: break-word;
+    `;
+    toast.textContent = message;
+
+    toastContainer.appendChild(toast);
+
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Agregar estilos de animación
+if (!document.getElementById('toast-styles')) {
+    const style = document.createElement('style');
+    style.id = 'toast-styles';
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 function loadScoresFromActiveContext() {
