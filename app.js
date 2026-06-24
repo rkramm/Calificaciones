@@ -3913,6 +3913,9 @@ function loadScoresFromActiveContext() {
 }
 
 function renderEvaluatorView() {
+    console.log(`📋 renderEvaluatorView() iniciando - Etapa: ${currentStage}, Cobertura: ${currentCoverage}`);
+    console.log(`   - dbScores:`, dbScores);
+
     const titleLabel = document.getElementById('table-stage-title');
     const descLabel = document.getElementById('table-stage-desc');
 
@@ -3928,6 +3931,7 @@ function renderEvaluatorView() {
         console.error('❌ tbody evaluation-rows no encontrado');
         return;
     }
+    console.log(`   - tbody encontrado, renderizando...`);
 
     // Usar DEFAULT_ITEMS si no hay ítems cargados desde la BD
     const itemsToUse = (dbItems && dbItems.length > 0) ? dbItems : DEFAULT_ITEMS;
