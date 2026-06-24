@@ -346,9 +346,9 @@ const serverVersions = {};
 
 async function cloudGet(table) {
     try {
-        // Agregar timeout de 30 segundos (Google Sheets puede ser lento)
+        // Timeout agresivo: 15 segundos (mucho más rápido que 30)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         // Agregamos &t=Date.now() para forzar al navegador a ignorar el caché y obtener la info fresca real
         const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}&t=${Date.now()}`, {
@@ -372,7 +372,7 @@ async function cloudGet(table) {
     } catch (error) {
         console.error(`Error leyendo tabla ${table} desde el servidor:`, error);
         if (error.name === 'AbortError') {
-            console.error(`⏱️ Timeout: Google Sheets tardó más de 30 segundos para ${table}`);
+            console.error(`⏱️ Timeout: Google Sheets tardó más de 15 segundos para ${table}`);
         }
         return null;
     }
@@ -2184,15 +2184,29 @@ function syncAsignacionesFromCloud() {
         progressBar.style.width = progress + '%';
     }, 200);
 
+    // Timeout de seguridad: cerrar modal después de 20 segundos sin importar qué pase
+    const safetyTimeout = setTimeout(() => {
+        clearInterval(progressInterval);
+        if (!modal.classList.contains('hidden')) {
+            console.warn('⚠️ Timeout de seguridad en sincronización - cerrando modal');
+            progressBar.style.width = '100%';
+            statusText.textContent = '⚠️ Tiempo agotado (usando datos locales)';
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 1500);
+        }
+    }, 20000);
+
     // Descargar asignaciones del Google Sheet
     cloudGet('asignaciones').then(cloudAsignaciones => {
+        clearTimeout(safetyTimeout);
         clearInterval(progressInterval);
         progress = 95;
         progressBar.style.width = progress + '%';
-        statusText.textContent = 'Guardando datos localmente...';
 
-        // Guardar en IndexedDB
-        if (cloudAsignaciones && cloudAsignaciones.length > 0) {
+        // Guardar en IndexedDB SI hay datos
+        if (cloudAsignaciones && Array.isArray(cloudAsignaciones) && cloudAsignaciones.length > 0) {
+            statusText.textContent = 'Guardando datos localmente...';
             const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
             const store = tx.objectStore('asignaciones');
             cloudAsignaciones.forEach(a => store.put(a));
@@ -2201,22 +2215,29 @@ function syncAsignacionesFromCloud() {
                 progress = 100;
                 progressBar.style.width = progress + '%';
                 statusText.textContent = '✅ Sincronización completa';
-
-                // Cerrar modal después de 1 segundo
                 setTimeout(() => {
                     modal.classList.add('hidden');
                 }, 1000);
             };
+        } else {
+            // Datos nulos o vacíos - usar caché local
+            progress = 100;
+            progressBar.style.width = progress + '%';
+            statusText.textContent = '✅ Usando datos locales';
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 1000);
         }
     }).catch(error => {
+        clearTimeout(safetyTimeout);
         clearInterval(progressInterval);
         progressBar.style.width = '100%';
-        statusText.textContent = '⚠️ Error en sincronización (usando caché local)';
+        statusText.textContent = '⚠️ Conexión lenta (usando caché local)';
 
-        // Cerrar modal después de 2 segundos
+        // Cerrar modal después de 1.5 segundos
         setTimeout(() => {
             modal.classList.add('hidden');
-        }, 2000);
+        }, 1500);
     });
 }
 
