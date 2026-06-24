@@ -3889,15 +3889,25 @@ function loadScoresFromActiveContext() {
     const filteredScores = allMemoryScores.filter(r => r.cobertura === currentCoverage && r.stage === currentStage);
 
     console.log(`🔍 loadScoresFromActiveContext:`);
-    console.log(`   - Cobertura actual: ${currentCoverage}`);
-    console.log(`   - Etapa actual: ${currentStage}`);
+    console.log(`   - Cobertura actual: "${currentCoverage}"`);
+    console.log(`   - Etapa actual: ${currentStage} (tipo: ${typeof currentStage})`);
     console.log(`   - Total scores en memoria: ${allMemoryScores.length}`);
+
+    // Debug: mostrar qué coberturas y etapas existen
+    const uniqueCoberturasStages = new Set(allMemoryScores.map(r => `${r.cobertura}|stage:${r.stage}`));
+    console.log(`   - Combinaciones cobertura+stage en memoria:`, Array.from(uniqueCoberturasStages).slice(0, 5));
+
     console.log(`   - Scores filtrados: ${filteredScores.length}`);
 
     filteredScores.forEach(r => {
         dbScores[r.itemId] = r.score;
-        console.log(`   📌 itemId: "${r.itemId}" (tipo: ${typeof r.itemId}) = score: ${r.score}`);
+        console.log(`   📌 itemId: "${r.itemId}" = score: ${r.score}`);
     });
+
+    if (filteredScores.length === 0 && allMemoryScores.length > 0) {
+        console.warn(`   ⚠️ NO hay scores que coincidan con cobertura="${currentCoverage}" + stage=${currentStage}`);
+        console.log(`   📋 Primeros 5 scores en memoria:`, allMemoryScores.slice(0, 5).map(r => ({ cobertura: r.cobertura, stage: r.stage, itemId: r.itemId })));
+    }
 
     console.log(`   📊 dbScores final:`, dbScores);
 }
