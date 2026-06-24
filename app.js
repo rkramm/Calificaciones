@@ -537,6 +537,61 @@ function syncSingleStoreToCloud(storeName, callback, options = {}) {
 }
 
 /* NUEVA FUNCIÓN DE SINCRONIZACIÓN MASIVA MANUAL */
+/**
+ * Sincroniza DESDE Google Sheets - descarga datos actualizados
+ */
+function syncFromCloud() {
+    if (!CLOUD_MODE_ENABLED) {
+        alert('El modo nube está desactivado.');
+        return;
+    }
+
+    showProgressBar('Descargando datos desde Google Sheets...');
+    updateProgressBar(10);
+
+    const storeNames = ['entidades', 'evaluadores', 'asignaciones'];
+    let completed = 0;
+
+    Promise.all(storeNames.map(store => cloudGet(store))).then(results => {
+        updateProgressBar(50);
+        document.getElementById('progress-title').textContent = 'Guardando datos localmente...';
+
+        const tx = dbInstance.transaction(storeNames, 'readwrite');
+
+        results.forEach((data, idx) => {
+            const storeName = storeNames[idx];
+            if (data && Array.isArray(data) && data.length > 0) {
+                const store = tx.objectStore(storeName);
+                store.clear().onsuccess = () => {
+                    data.forEach(item => store.put(item));
+                };
+            }
+        });
+
+        tx.oncomplete = () => {
+            updateProgressBar(80);
+            document.getElementById('progress-title').textContent = 'Actualizando panel...';
+
+            // Recargar datos en el panel
+            setTimeout(() => {
+                populateAdminMatrix();
+                renderMonitoringTable();
+                hideProgressBar();
+                alert('✅ Datos descargados y sincronizados correctamente desde Google Sheets.');
+            }, 500);
+        };
+
+        tx.onerror = () => {
+            hideProgressBar();
+            alert('Error al guardar datos locales.');
+        };
+    }).catch(error => {
+        hideProgressBar();
+        console.error('Error descargando datos desde Google Sheets:', error);
+        alert('Error de conexión al descargar datos desde Google Sheets.');
+    });
+}
+
 function syncAllToCloud() {
     if (!CLOUD_MODE_ENABLED) {
         alert('El modo nube está desactivado.');
@@ -1044,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setupEventListeners() {
     document.getElementById('btn-login').addEventListener('click', handleLogin);
-    document.getElementById('btn-sync-cloud').addEventListener('click', syncAllToCloud);
+    document.getElementById('btn-sync-cloud').addEventListener('click', syncFromCloud);
     document.getElementById('btn-download-cloud').addEventListener('click', downloadHistoricosFromCloud);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
     document.getElementById('btn-save-items').addEventListener('click', saveAdminItems);
@@ -3146,23 +3201,47 @@ async function populateAdminMatrix() {
     pendingAsignacionesStaging = []; adminTemporaryEntidades = [];
 
     try {
-        // IMPORTANTE: Descargar ASIGNACIONES directamente del Google Sheet para asegurar datos actuales
-        console.log('📥 Descargando asignaciones desde Google Sheet...');
-        const cloudAsignaciones = await cloudGet('asignaciones');
-        console.log('✅ Asignaciones desde cloud:', cloudAsignaciones?.length || 0);
+        // IMPORTANTE: Descargar datos directamente del Google Sheet para asegurar datos actuales
+        console.log('📥 Descargando datos desde Google Sheet...');
+        const [cloudAsignaciones, cloudEvaluadores, cloudEntidades] = await Promise.all([
+            cloudGet('asignaciones'),
+            cloudGet('evaluadores'),
+            cloudGet('entidades')
+        ]);
+        console.log('✅ Datos desde cloud:', {
+            asignaciones: cloudAsignaciones?.length || 0,
+            evaluadores: cloudEvaluadores?.length || 0,
+            entidades: cloudEntidades?.length || 0
+        });
 
         // Guardar en IndexedDB para caché local
+        const tx = dbInstance.transaction(['asignaciones', 'evaluadores', 'entidades'], 'readwrite');
+
         if (cloudAsignaciones && cloudAsignaciones.length > 0) {
-            const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
-            const store = tx.objectStore('asignaciones');
-            cloudAsignaciones.forEach(a => store.put(a));
+            const aStore = tx.objectStore('asignaciones');
+            aStore.clear();
+            cloudAsignaciones.forEach(a => aStore.put(a));
             console.log('💾 Asignaciones guardadas en IndexedDB');
         }
+
+        if (cloudEvaluadores && cloudEvaluadores.length > 0) {
+            const eStore = tx.objectStore('evaluadores');
+            eStore.clear();
+            cloudEvaluadores.forEach(e => eStore.put(e));
+            console.log('💾 Evaluadores guardados en IndexedDB');
+        }
+
+        if (cloudEntidades && cloudEntidades.length > 0) {
+            const entStore = tx.objectStore('entidades');
+            entStore.clear();
+            cloudEntidades.forEach(ent => entStore.put(ent));
+            console.log('💾 Entidades guardadas en IndexedDB');
+        }
     } catch (error) {
-        console.warn('⚠️ Error descargando asignaciones desde cloud, usando caché local:', error);
+        console.warn('⚠️ Error descargando datos desde cloud, usando caché local:', error);
     }
 
-    // Cargar evaluadores y entidades desde IndexedDB
+    // Cargar evaluadores y entidades desde IndexedDB (ya actualizados)
     getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
         const colEvaluadores = document.getElementById('col-evaluadores');
         if (colEvaluadores) {
