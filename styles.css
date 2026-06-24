@@ -390,6 +390,16 @@ button { font-family: 'Segoe UI', sans-serif; }
     padding: 8px 12px !important;
 }
 
+/* ================= OCULTAR SCROLLBAR ENTIDADES ================= */
+#eval-entity-tabs-container {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+
+#eval-entity-tabs-container::-webkit-scrollbar {
+    display: none !important;
+}
+
 /* ================= RESPONSIVIDAD VISTA EVALUADOR ================= */
 @media (max-width: 1024px) {
     #eval-entities-header {
