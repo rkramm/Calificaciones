@@ -2161,7 +2161,14 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
 
             console.log(`✅ Descargados ${userScoresFromCloud.length} scores para ${currentUser.rut}`);
             if (userScoresFromCloud.length > 0) {
-                console.log(`📋 Primeros 3 scores:`, userScoresFromCloud.slice(0, 3));
+                console.log(`📋 Primeros 3 scores COMPLETOS:`, userScoresFromCloud.slice(0, 3));
+                console.log(`   📌 Ejemplo score[0]:`, {
+                    cobertura: userScoresFromCloud[0].cobertura,
+                    stage: userScoresFromCloud[0].stage,
+                    itemId: userScoresFromCloud[0].itemId,
+                    score: userScoresFromCloud[0].score,
+                    stageType: typeof userScoresFromCloud[0].stage
+                });
             }
         } else {
             console.log(`ℹ️ Sin scores en Google Sheets (null o no es array), usando IndexedDB`);
