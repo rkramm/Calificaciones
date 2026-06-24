@@ -538,6 +538,33 @@ function syncSingleStoreToCloud(storeName, callback, options = {}) {
 
 /* NUEVA FUNCIÓN DE SINCRONIZACIÓN MASIVA MANUAL */
 /**
+ * Normaliza asignaciones descargadas desde Google Sheets
+ * Asegura que etapas sea siempre un string, no un objeto Java
+ */
+function normalizeAsignaciones(asignaciones) {
+    if (!asignaciones || !Array.isArray(asignaciones)) return asignaciones;
+
+    return asignaciones.map(asig => {
+        // Si etapas es un string y parece un objeto Java, intenta extraer números
+        if (typeof asig.etapas === 'string' && asig.etapas.includes('[Ljava.lang.Object')) {
+            // Fallback a etapas default
+            console.warn('⚠️ Asignación con etapas inválidas:', asig.idAsig, asig.etapas);
+            asig.etapas = '1,2,3,4,5,6';
+        }
+        // Si etapas es un array, convertir a string
+        else if (Array.isArray(asig.etapas)) {
+            asig.etapas = asig.etapas.join(',');
+        }
+        // Si no es string ni array, usar default
+        else if (typeof asig.etapas !== 'string') {
+            console.warn('⚠️ Etapas inválidas para:', asig.idAsig);
+            asig.etapas = '1,2,3,4,5,6';
+        }
+        return asig;
+    });
+}
+
+/**
  * Sincroniza DESDE Google Sheets - descarga datos actualizados
  */
 function syncFromCloud() {
@@ -561,6 +588,10 @@ function syncFromCloud() {
         results.forEach((data, idx) => {
             const storeName = storeNames[idx];
             if (data && Array.isArray(data) && data.length > 0) {
+                // Normalizar asignaciones
+                if (storeName === 'asignaciones') {
+                    data = normalizeAsignaciones(data);
+                }
                 const store = tx.objectStore(storeName);
                 store.clear().onsuccess = () => {
                     data.forEach(item => store.put(item));
@@ -2686,7 +2717,9 @@ function executeCommitAsignacion() {
         allToSave.forEach(p => {
             p.ruts.forEach(rut => {
                 p.coberturas.forEach(c => {
-                    store.put({ idAsig: `${rut}_${c.programa}_${c.provincia.replace(/\s+/g, '')}_${c.entidadId || 'none'}`, rut, programa: c.programa, provincia: c.provincia, entidadId: c.entidadId, entidadNombre: c.entidadNombre, etapas: p.etapas });
+                    // Convertir etapas a string para que Google Sheets no las guarde como objetos Java
+                    const etapasStr = Array.isArray(p.etapas) ? p.etapas.join(',') : p.etapas;
+                    store.put({ idAsig: `${rut}_${c.programa}_${c.provincia.replace(/\s+/g, '')}_${c.entidadId || 'none'}`, rut, programa: c.programa, provincia: c.provincia, entidadId: c.entidadId, entidadNombre: c.entidadNombre, etapas: etapasStr });
                 });
             });
         });
@@ -3220,9 +3253,11 @@ async function populateAdminMatrix() {
                 const tx = dbInstance.transaction(['asignaciones', 'evaluadores', 'entidades'], 'readwrite');
 
                 if (cloudAsignaciones && cloudAsignaciones.length > 0) {
+                    // Normalizar asignaciones antes de guardar
+                    const normalizedAsignaciones = normalizeAsignaciones(cloudAsignaciones);
                     const aStore = tx.objectStore('asignaciones');
                     aStore.clear();
-                    cloudAsignaciones.forEach(a => aStore.put(a));
+                    normalizedAsignaciones.forEach(a => aStore.put(a));
                     console.log('💾 Asignaciones guardadas en IndexedDB');
                 }
 
