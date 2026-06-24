@@ -2069,37 +2069,52 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
     currentRole = 'evaluador';
 
     try {
-        // OPTIMIZACIÓN: Intenta leer asignaciones de IndexedDB primero (rápido)
-        let userAsignaciones = null;
-
-        dbGetAll('asignaciones', (dbAsignaciones) => {
-            userAsignaciones = dbAsignaciones.filter(a => a.rut === currentUser.rut);
-
-            if (userAsignaciones && userAsignaciones.length > 0) {
-                // ✅ Usa datos de IndexedDB (instantáneo)
-                loadEvaluatorWithAsignaciones(userAsignaciones);
-            } else {
-                // ❌ No hay datos locales, descarga del cloud
-                cloudGet('asignaciones').then(cloudAsignaciones => {
-                    if (!cloudAsignaciones || cloudAsignaciones.length === 0) {
+        // 🔄 PRIORIDAD 1: Descargar asignaciones FRESCAS de Google Sheets
+        cloudGet('asignaciones').then(cloudAsignaciones => {
+            if (!cloudAsignaciones || cloudAsignaciones.length === 0) {
+                // Si Google Sheets está vacío, intentar con datos locales
+                dbGetAll('asignaciones', (dbAsignaciones) => {
+                    const userAsignaciones = dbAsignaciones.filter(a => a.rut === currentUser.rut);
+                    if (userAsignaciones.length === 0) {
                         alert('❌ No hay asignaciones en el sistema.');
                         restoreConnectionStatus();
                         return;
                     }
-
-                    userAsignaciones = cloudAsignaciones.filter(a => a.rut === currentUser.rut);
-                    if (userAsignaciones.length === 0) {
-                        alert('❌ No tiene precalificaciones asignadas.');
-                        restoreConnectionStatus();
-                        return;
-                    }
-
                     loadEvaluatorWithAsignaciones(userAsignaciones);
-                }).catch(() => {
-                    alert('❌ Error al conectar. Intente nuevamente.');
-                    restoreConnectionStatus();
                 });
+                return;
             }
+
+            // ✅ Guardar datos frescos en IndexedDB
+            const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+            cloudAsignaciones.forEach(a => tx.objectStore('asignaciones').put(a));
+
+            tx.oncomplete = () => {
+                // Filtrar asignaciones del evaluador actual
+                const userAsignaciones = cloudAsignaciones.filter(a => a.rut === currentUser.rut);
+
+                if (userAsignaciones.length === 0) {
+                    alert('❌ No tiene precalificaciones asignadas.');
+                    restoreConnectionStatus();
+                    return;
+                }
+
+                // 🚀 Cargar con datos FRESCOS de Google Sheets
+                loadEvaluatorWithAsignaciones(userAsignaciones);
+            };
+        }).catch(() => {
+            // ⚠️ Si hay error de conexión, fallback a datos locales
+            console.warn('⚠️ Error al conectar con Google Sheets, usando caché local');
+            dbGetAll('asignaciones', (dbAsignaciones) => {
+                const userAsignaciones = dbAsignaciones.filter(a => a.rut === currentUser.rut);
+                if (userAsignaciones.length === 0) {
+                    alert('❌ Error de conexión. No hay asignaciones locales.');
+                    restoreConnectionStatus();
+                    return;
+                }
+                console.log('✅ Usando asignaciones del caché local');
+                loadEvaluatorWithAsignaciones(userAsignaciones);
+            });
         });
     } catch (error) {
         alert('❌ Error al descargar asignaciones.');
