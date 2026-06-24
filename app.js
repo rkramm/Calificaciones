@@ -2661,6 +2661,7 @@ function executeCommitAsignacion() {
 }
 
 function renderMonitoringTable() {
+    // SIEMPRE sincronizar desde Google Sheets (forceCloud = true) - la nube es la fuente de verdad
     getMultipleStores(['asignaciones', 'evaluadores', 'scores'], ([asignaciones, evaluadores, scores]) => {
         const tbody = document.getElementById('admin-monitoring-rows');
         if (asignaciones.length === 0) { 
@@ -2698,7 +2699,7 @@ function renderMonitoringTable() {
             });
         });
         setupMonitoringHeaders(); drawMonitoringTable(); renderMonitoringCharts(); renderReportes();
-    });
+    }, true);
 }
 
 function setupMonitoringHeaders() {
@@ -3055,7 +3056,8 @@ window.editEvaluador = function(rut) {
 };
 
 window.removeEvaluador = function(rut) {
-    dbGetAll('asignaciones', (asignaciones) => {
+    // Sincronizar desde Google Sheets para verificar asignaciones actuales
+    getMultipleStores(['asignaciones'], ([asignaciones]) => {
         const isAssigned = asignaciones.some(a => a.rut === rut);
         if (isAssigned) {
             alert('No se puede eliminar este evaluador porque tiene asignaciones activas.');
@@ -3065,7 +3067,7 @@ window.removeEvaluador = function(rut) {
         const tx = dbInstance.transaction(['evaluadores'], 'readwrite');
         tx.objectStore('evaluadores').delete(rut);
         tx.oncomplete = () => populateAdminMatrix();
-    });
+    }, true);
 };
 
 function drawMonitoringTable() {
