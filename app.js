@@ -2176,24 +2176,39 @@ function renderEvaluatorHeaderInfo() {
     // Renderizar tabla de proyectos EN SEGUNDO PLANO (son opcionales)
     renderProjectsTableAllPrograms(asignsForEntity, window.currentSelectedEntity);
 
-    // Renderizar etapas a calificar
-    renderStagesForEvaluator(selectedAsig);
+    // Renderizar etapas a calificar (TODAS las asignadas para esta entidad)
+    renderStagesForEvaluator(asignsForEntity);
 }
 
 /**
  * Renderiza las etapas a calificar para el evaluador
  */
-function renderStagesForEvaluator(activeAsig) {
+function renderStagesForEvaluator(asignaciones) {
     const container = document.getElementById('eval-stages-container');
-    if (!activeAsig) {
+    if (!asignaciones || (Array.isArray(asignaciones) && asignaciones.length === 0)) {
         container.innerHTML = '<div style="color: #999; font-size: 0.85rem;">No hay etapas asignadas.</div>';
         return;
     }
 
-    const etapas = activeAsig.etapas && Array.isArray(activeAsig.etapas) ? activeAsig.etapas : [1];
+    // Combinar TODAS las etapas únicas de TODAS las asignaciones
+    const etapasSet = new Set();
+    if (Array.isArray(asignaciones)) {
+        asignaciones.forEach(asig => {
+            if (asig.etapas && Array.isArray(asig.etapas)) {
+                asig.etapas.forEach(e => etapasSet.add(e));
+            }
+        });
+    }
+
+    const etapas = Array.from(etapasSet).sort((a, b) => a - b);
+    if (etapas.length === 0) {
+        container.innerHTML = '<div style="color: #999; font-size: 0.85rem;">No hay etapas asignadas.</div>';
+        return;
+    }
+
     container.innerHTML = '';
 
-    etapas.sort((a, b) => a - b).forEach(stageNum => {
+    etapas.forEach(stageNum => {
         const badge = document.createElement('div');
         badge.style.cssText = `
             background: var(--bg-stage-${stageNum});
