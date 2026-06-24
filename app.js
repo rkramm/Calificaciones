@@ -2082,9 +2082,10 @@ function showPanel(titleText) {
         toggleElement('btn-save-scores', false);
         toggleElement('btn-eval-pdf', false);
         if (countdownInterval) clearInterval(countdownInterval);
-        populateAdminMatrix();
-        window.changeStage(1);
-        checkAsignacionesHistoricasConflict();
+        populateAdminMatrix().then(() => {
+            window.changeStage(1);
+            checkAsignacionesHistoricasConflict();
+        });
     } else {
         toggleElement('admin-view', false);
         toggleElement('evaluador-view', true);
@@ -3200,67 +3201,106 @@ function openAuditModal(rut, nombre, cobertura, stageNum) {
 async function populateAdminMatrix() {
     pendingAsignacionesStaging = []; adminTemporaryEntidades = [];
 
-    try {
-        // IMPORTANTE: Descargar datos directamente del Google Sheet para asegurar datos actuales
-        console.log('📥 Descargando datos desde Google Sheet...');
-        const [cloudAsignaciones, cloudEvaluadores, cloudEntidades] = await Promise.all([
-            cloudGet('asignaciones'),
-            cloudGet('evaluadores'),
-            cloudGet('entidades')
-        ]);
-        console.log('✅ Datos desde cloud:', {
-            asignaciones: cloudAsignaciones?.length || 0,
-            evaluadores: cloudEvaluadores?.length || 0,
-            entidades: cloudEntidades?.length || 0
-        });
+    return new Promise((resolve) => {
+        try {
+            // IMPORTANTE: Descargar datos directamente del Google Sheet para asegurar datos actuales
+            console.log('📥 Descargando datos desde Google Sheet...');
+            Promise.all([
+                cloudGet('asignaciones'),
+                cloudGet('evaluadores'),
+                cloudGet('entidades')
+            ]).then(([cloudAsignaciones, cloudEvaluadores, cloudEntidades]) => {
+                console.log('✅ Datos desde cloud:', {
+                    asignaciones: cloudAsignaciones?.length || 0,
+                    evaluadores: cloudEvaluadores?.length || 0,
+                    entidades: cloudEntidades?.length || 0
+                });
 
-        // Guardar en IndexedDB para caché local
-        const tx = dbInstance.transaction(['asignaciones', 'evaluadores', 'entidades'], 'readwrite');
+                // Guardar en IndexedDB para caché local
+                const tx = dbInstance.transaction(['asignaciones', 'evaluadores', 'entidades'], 'readwrite');
 
-        if (cloudAsignaciones && cloudAsignaciones.length > 0) {
-            const aStore = tx.objectStore('asignaciones');
-            aStore.clear();
-            cloudAsignaciones.forEach(a => aStore.put(a));
-            console.log('💾 Asignaciones guardadas en IndexedDB');
+                if (cloudAsignaciones && cloudAsignaciones.length > 0) {
+                    const aStore = tx.objectStore('asignaciones');
+                    aStore.clear();
+                    cloudAsignaciones.forEach(a => aStore.put(a));
+                    console.log('💾 Asignaciones guardadas en IndexedDB');
+                }
+
+                if (cloudEvaluadores && cloudEvaluadores.length > 0) {
+                    const eStore = tx.objectStore('evaluadores');
+                    eStore.clear();
+                    cloudEvaluadores.forEach(e => eStore.put(e));
+                    console.log('💾 Evaluadores guardados en IndexedDB');
+                }
+
+                if (cloudEntidades && cloudEntidades.length > 0) {
+                    const entStore = tx.objectStore('entidades');
+                    entStore.clear();
+                    cloudEntidades.forEach(ent => entStore.put(ent));
+                    console.log('💾 Entidades guardadas en IndexedDB');
+                }
+
+                tx.oncomplete = () => {
+                    console.log('✅ Transacción IndexedDB completada');
+                    // Cargar evaluadores y entidades desde IndexedDB (ya actualizados)
+                    getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
+                        const colEvaluadores = document.getElementById('col-evaluadores');
+                        if (colEvaluadores) {
+                            colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+                        }
+
+                        renderEvaluadoresTable(evaluadores);
+                        adminTemporaryEntidades = entidades;
+                        renderEntidadesAgregadas();
+                        document.getElementById('chk-toggle-all-stages').checked = false;
+                        document.querySelectorAll('.asig-etapa-chk').forEach(c => c.checked = false);
+                        adminSelectedProvincia = ""; adminTemporaryLogisticaMap = {};
+                        const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
+                        renderAdminProgramsColumn();
+                        fillAnioSelectors();
+
+                        // Mostrar mensaje de éxito
+                        console.log(`✅ Admin Matrix cargado: ${evaluadores.length} evaluadores, ${entidades.length} entidades`);
+
+                        // Ahora renderizar tabla de monitoreo con datos sincronizados
+                        renderMonitoringTable();
+
+                        resolve();
+                    });
+                };
+
+                tx.onerror = () => {
+                    console.error('❌ Error en transacción IndexedDB:', tx.error);
+                    resolve();
+                };
+            }).catch(error => {
+                console.warn('⚠️ Error descargando datos desde cloud, usando caché local:', error);
+                // Cargar desde caché local si falla la nube
+                getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
+                    const colEvaluadores = document.getElementById('col-evaluadores');
+                    if (colEvaluadores) {
+                        colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+                    }
+
+                    renderEvaluadoresTable(evaluadores);
+                    adminTemporaryEntidades = entidades;
+                    renderEntidadesAgregadas();
+                    document.getElementById('chk-toggle-all-stages').checked = false;
+                    document.querySelectorAll('.asig-etapa-chk').forEach(c => c.checked = false);
+                    adminSelectedProvincia = ""; adminTemporaryLogisticaMap = {};
+                    const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
+                    renderAdminProgramsColumn();
+                    fillAnioSelectors();
+
+                    renderMonitoringTable();
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.warn('⚠️ Error general:', error);
+            resolve();
         }
-
-        if (cloudEvaluadores && cloudEvaluadores.length > 0) {
-            const eStore = tx.objectStore('evaluadores');
-            eStore.clear();
-            cloudEvaluadores.forEach(e => eStore.put(e));
-            console.log('💾 Evaluadores guardados en IndexedDB');
-        }
-
-        if (cloudEntidades && cloudEntidades.length > 0) {
-            const entStore = tx.objectStore('entidades');
-            entStore.clear();
-            cloudEntidades.forEach(ent => entStore.put(ent));
-            console.log('💾 Entidades guardadas en IndexedDB');
-        }
-    } catch (error) {
-        console.warn('⚠️ Error descargando datos desde cloud, usando caché local:', error);
-    }
-
-    // Cargar evaluadores y entidades desde IndexedDB (ya actualizados)
-    getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
-        const colEvaluadores = document.getElementById('col-evaluadores');
-        if (colEvaluadores) {
-            colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
-        }
-
-        renderEvaluadoresTable(evaluadores);
-        adminTemporaryEntidades = entidades;
-        renderEntidadesAgregadas();
-        document.getElementById('chk-toggle-all-stages').checked = false;
-        document.querySelectorAll('.asig-etapa-chk').forEach(c => c.checked = false);
-        adminSelectedProvincia = ""; adminTemporaryLogisticaMap = {};
-        const lb = document.getElementById('asig-provincia-listbox'); if(lb) lb.selectedIndex = -1;
-        renderAdminProgramsColumn();
-        fillAnioSelectors();
-
-        // Mostrar mensaje de éxito
-        console.log(`✅ Admin Matrix cargado: ${evaluadores.length} evaluadores, ${entidades.length} entidades`);
-    }, CLOUD_MODE_ENABLED);
+    });
 }
 
 function fillAnioSelectors() {
