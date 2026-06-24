@@ -3488,7 +3488,7 @@ function renderEvaluatorView() {
                 <td class="cell-index bold-text">${item.id}</td>
                 <td class="cell-desc">${item.text}</td>
                 <td colspan="3" class="cell-score-input">
-                    <input type="number" class="score-input" data-id="${item.id}" min="0" max="100" value="${score}" ${deadlineExpired ? 'disabled' : ''} placeholder="0">
+                    <input type="number" class="score-input" data-id="${item.id}" min="0" max="100" value="${score}" ${deadlineExpired ? 'disabled' : ''} placeholder="0" inputmode="numeric">
                 </td>
             </tr>
         `;
@@ -3500,6 +3500,40 @@ function renderEvaluatorView() {
     });
 
     calculateLiveScore();
+    updateProgressIndicator();
+}
+
+/**
+ * Actualiza el indicador de progreso de etapas
+ */
+function updateProgressIndicator() {
+    const progressSection = document.getElementById('eval-progress-section');
+    const progressCounter = document.getElementById('eval-progress-counter');
+    const progressBar = document.getElementById('eval-progress-bar');
+
+    if (!progressSection || !progressCounter || !progressBar) return;
+
+    // Obtener todas las etapas asignadas al evaluador actual
+    let allAssignedStages = new Set();
+    allAsignacionesMapped.forEach(asig => {
+        if (asig.etapas && Array.isArray(asig.etapas)) {
+            asig.etapas.forEach(e => allAssignedStages.add(e));
+        }
+    });
+
+    const totalStages = allAssignedStages.size;
+    const stagesArray = Array.from(allAssignedStages).sort((a, b) => a - b);
+    const currentStageIndex = stagesArray.indexOf(currentStage) + 1;
+
+    // Mostrar/ocultar sección de progreso
+    if (totalStages > 1) {
+        progressSection.style.display = 'block';
+        const percentage = (currentStageIndex / totalStages) * 100;
+        progressCounter.textContent = `Etapa ${currentStageIndex} de ${totalStages}`;
+        progressBar.style.width = percentage + '%';
+    } else {
+        progressSection.style.display = 'none';
+    }
 }
 
 function setEvaluationStatus(cell, score) {

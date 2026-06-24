@@ -437,9 +437,19 @@
                         </div>
                 </div>
 
+                <div id="eval-progress-section" style="background: white; border: 1px solid #E8EAED; border-radius: 4px; padding: 8px; flex-shrink: 0; display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <div style="font-size: 0.8rem; font-weight: 600; color: var(--primary-dark);">Progreso de Calificación</div>
+                        <div id="eval-progress-counter" style="font-size: 0.9rem; font-weight: 700; color: var(--primary-blue);">Etapa 1 de 6</div>
+                    </div>
+                    <div style="width: 100%; background: #E8EAED; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div id="eval-progress-bar" style="background: linear-gradient(90deg, var(--primary-blue) 0%, var(--primary-dark) 100%); height: 100%; width: 16.67%; transition: width 0.3s ease; border-radius: 4px;"></div>
+                    </div>
+                </div>
+
                 <div class="table-responsive card table-scroll-container" id="table-card-container" style="flex: 1; padding:0; background-color: white; border-radius: 4px; border: 1px solid #E8EAED; margin: 0; overflow-y: auto;">
                     <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); padding: 6px 8px; background: #F5F7FA; border-bottom: 1px solid #E8EAED; position: sticky; top: 0; z-index: 5;">📋 TABLA DE CALIFICACIÓN</div>
-                    <table class="evaluation-table" title="Tabla de Calificaciones" style="background-color: white; font-size: 0.75rem;">
+                    <table class="evaluation-table" title="Tabla de Calificaciones" style="background-color: white; font-size: 0.95rem;">
                         <colgroup>
                             <col style="width: 2%;">
                             <col style="width: 70%;">
