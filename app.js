@@ -2230,6 +2230,33 @@ function syncAsignacionesFromCloud() {
                 progress = 100;
                 progressBar.style.width = progress + '%';
                 statusText.textContent = '✅ Sincronización completa';
+
+                // 🔄 ACTUALIZAR allAsignacionesMapped con datos frescos
+                const userAsignaciones = cloudAsignaciones.filter(a => a.rut === currentUser.rut);
+                if (userAsignaciones.length > 0) {
+                    allAsignacionesMapped = userAsignaciones.map(a => {
+                        let parsedEtapas = a.etapas;
+                        if (typeof parsedEtapas === 'string') {
+                            parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+                        } else if (!Array.isArray(parsedEtapas)) {
+                            parsedEtapas = [1];
+                        }
+                        if (!Array.isArray(parsedEtapas) || parsedEtapas.length === 0) {
+                            parsedEtapas = [1];
+                        }
+                        return {
+                            cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
+                            etapas: parsedEtapas.sort((x, y) => x - y),
+                            programa: a.programa,
+                            provincia: a.provincia,
+                            entidadNombre: a.entidadNombre
+                        };
+                    }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+
+                    // Re-renderizar las pestañas de cobertura con datos actualizados
+                    renderCoverageTabs();
+                }
+
                 setTimeout(() => {
                     modal.classList.add('hidden');
                 }, 1000);
@@ -2257,59 +2284,47 @@ function syncAsignacionesFromCloud() {
 }
 
 function backgroundSyncForEvaluator() {
-    // Sincronizar solo scores del evaluador actual en segundo plano
-    const syncStore = (storeName, localData) => {
-        return cloudGet(storeName).then(remoteData => {
-            if (!remoteData || !Array.isArray(remoteData)) return localData;
-            
-            // Para scores, filtrar solo los del evaluador actual
-            if (storeName === 'scores') {
-                const myScores = remoteData.filter(r => r.rutEvaluador === currentUser.rut);
-                // Combinar con datos locales que no estén en el servidor
-                const remoteIds = new Set(myScores.map(s => s.idTx));
-                const localOnly = localData.filter(s => !remoteIds.has(s.idTx));
-                return [...myScores, ...localOnly];
-            }
-            return remoteData;
-        });
-    };
-
     // Cargar scores del usuario desde Google Sheets en segundo plano
     console.log(`📥 Descargando scores para ${currentUser.rut}...`);
+
     cloudGet('scores').then(cloudScores => {
         if (cloudScores && Array.isArray(cloudScores)) {
-            // Filtrar scores del usuario actual
-            const userScores = cloudScores.filter(s => s.rutEvaluador === currentUser.rut);
+            // Filtrar scores del usuario actual desde Google Sheets
+            const serverScores = cloudScores.filter(s => s.rutEvaluador === currentUser.rut);
+            console.log(`✅ Se encontraron ${serverScores.length} scores en Google Sheets para ${currentUser.rut}`);
 
-            if (userScores.length > 0) {
-                console.log(`✅ Se encontraron ${userScores.length} scores para ${currentUser.rut}`);
+            // Obtener scores locales actuales (ya cargados en allMemoryScores)
+            const localScores = allMemoryScores || [];
 
-                // Guardar scores en IndexedDB
-                const tx = dbInstance.transaction(['scores'], 'readwrite');
-                const store = tx.objectStore('scores');
-                userScores.forEach(s => store.put(s));
+            // Combinar: primero los del servidor, luego los locales que no están en el servidor
+            const serverIds = new Set(serverScores.map(s => s.idTx));
+            const localOnlyScores = localScores.filter(s => !serverIds.has(s.idTx));
+            const combinedScores = [...serverScores, ...localOnlyScores];
 
-                tx.oncomplete = () => {
-                    allMemoryScores = userScores;
-                    loadScoresFromActiveContext();
-                    renderEvaluatorView();
-                    showToast('✅ Puntuaciones cargadas', 'success');
-                };
-            } else {
-                console.log(`⚠️ No hay scores para ${currentUser.rut}`);
-                allMemoryScores = [];
+            // Guardar combinación en IndexedDB
+            const tx = dbInstance.transaction(['scores'], 'readwrite');
+            const store = tx.objectStore('scores');
+            combinedScores.forEach(s => store.put(s));
+
+            tx.oncomplete = () => {
+                allMemoryScores = combinedScores;
                 loadScoresFromActiveContext();
                 renderEvaluatorView();
-            }
-        }
-    }).catch(err => {
-        console.log('Error descargando scores desde Google Sheets, usando datos locales:', err);
-        // Usar datos locales como fallback
-        dbGetAll('scores', (localScores) => {
-            allMemoryScores = localScores.filter(r => r.rutEvaluador === currentUser.rut);
+                console.log(`✅ Scores sincronizados: ${combinedScores.length} registros totales`);
+                showToast('✅ Puntuaciones sincronizadas', 'success');
+            };
+        } else {
+            console.log(`⚠️ No hay scores en Google Sheets para ${currentUser.rut}`);
+            // Mantener scores locales sin cambios
             loadScoresFromActiveContext();
             renderEvaluatorView();
-        });
+        }
+    }).catch(err => {
+        console.log('⚠️ Error descargando scores desde Google Sheets, usando caché local:', err);
+        // Ya tenemos scores en allMemoryScores desde loadEvaluatorWithAsignaciones
+        // Solo re-renderizar si es necesario
+        loadScoresFromActiveContext();
+        renderEvaluatorView();
     });
 }
 
@@ -3707,7 +3722,7 @@ function saveEvaluatorScores(callback) {
 
         tx.oncomplete = () => {
             hasUnsavedEvaluatorChanges = false;
-            // Una vez guardado localmente, sincronizar solo la tabla de scores.
+            // Una vez guardado localmente, sincronizar solo la tabla de scores (sin doble aviso).
             syncSingleStoreToCloud('scores', (success) => {
                 dbGetAll('scores', (scores) => {
                     allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
@@ -3721,7 +3736,7 @@ function saveEvaluatorScores(callback) {
                     }
                     if (callback) callback(success);
                 });
-            });
+            }, { skipWarning: true });
         };
     });
 }
