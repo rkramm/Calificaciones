@@ -346,9 +346,22 @@ const serverVersions = {};
 
 async function cloudGet(table) {
     try {
+        // Agregar timeout de 15 segundos
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         // Agregamos &t=Date.now() para forzar al navegador a ignorar el caché y obtener la info fresca real
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}&t=${Date.now()}`);
-        if (!response.ok) return null;
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?table=${table}&t=${Date.now()}`, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            console.error(`Error HTTP al obtener ${table}:`, response.status);
+            return null;
+        }
+
         const payload = await response.json();
         if (payload && typeof payload.serverVersion === 'number') {
             serverVersions[table] = payload.serverVersion;
@@ -356,6 +369,9 @@ async function cloudGet(table) {
         return Array.isArray(payload) ? payload : (payload.data || []);
     } catch (error) {
         console.error(`Error leyendo tabla ${table} desde el servidor:`, error);
+        if (error.name === 'AbortError') {
+            console.error(`⏱️ Timeout: Google Sheets tardó más de 15 segundos para ${table}`);
+        }
         return null;
     }
 }
@@ -1025,8 +1041,21 @@ function downloadHistoricosFromCloud() {
 
     showProgressBar('Descargando asignaciones desde la Nube...');
 
-    cloudGet('asignaciones').then(asignaciones => {
+    const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => {
+            resolve(null);
+        }, 20000); // 20 segundos de timeout
+    });
+
+    Promise.race([cloudGet('asignaciones'), timeoutPromise]).then(asignaciones => {
         console.log('📥 Datos recibidos del servidor:', asignaciones);
+
+        if (asignaciones === null) {
+            hideProgressBar();
+            alert('⏱️ TIMEOUT: Google Sheets tardó demasiado en responder.\n\nVerifique su conexión a internet o intente nuevamente.\n\nSe está usando el caché local si está disponible.');
+            console.warn('Timeout descargando asignaciones');
+            return;
+        }
 
         // Validar que la tabla exista en IndexedDB
         if (!dbInstance.objectStoreNames.contains('asignaciones')) {
@@ -1037,7 +1066,7 @@ function downloadHistoricosFromCloud() {
 
         if (!asignaciones || asignaciones.length === 0) {
             hideProgressBar();
-            alert('⚠️ ADVERTENCIA: No se encontraron asignaciones en el servidor.\n\nVerifique que la tabla "asignaciones" tenga datos en el Google Sheet.');
+            alert('⚠️ No se encontraron asignaciones en Google Sheets.\n\nSe están usando datos locales si están disponibles.\n\nVerifique que la tabla "asignaciones" tenga datos.');
             console.warn('Asignaciones vacías o null:', asignaciones);
             return;
         }
@@ -1065,7 +1094,9 @@ function downloadHistoricosFromCloud() {
         tx.oncomplete = () => {
             hideProgressBar();
             console.log('✅ Transacción completada con', asigCount, 'registros');
-            alert(`Asignaciones descargadas correctamente.\n\nRegistros guardados: ${asigCount}`);
+            alert(`✅ Asignaciones descargadas correctamente.\n\nRegistros guardados: ${asigCount}`);
+            renderMonitoringTable();
+            populateAdminMatrix();
         };
 
         tx.onerror = (e) => {
@@ -1076,7 +1107,7 @@ function downloadHistoricosFromCloud() {
     }).catch(err => {
         hideProgressBar();
         console.error('Error descargando asignaciones:', err);
-        alert('Error de red al descargar asignaciones.\n\nVerifique su conexión a internet e intente nuevamente.\n\nDetalle: ' + err.message);
+        alert('Error al descargar asignaciones.\n\nVerifique su conexión a internet.\n\nDetalle: ' + err.message);
     });
 }
 /* =============================================================================== */
