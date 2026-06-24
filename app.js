@@ -2297,27 +2297,49 @@ function renderStagesForEvaluator(asignaciones) {
 
     etapas.forEach(stageNum => {
         const badge = document.createElement('div');
-        badge.style.cssText = `
-            background: var(--bg-stage-${stageNum});
-            border: 1px solid var(--primary-dark);
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-weight: 600;
-            font-size: 0.7rem;
-            color: var(--primary-dark);
+        const isActive = currentStage === stageNum;
+
+        const baseStyle = `
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.8rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             display: inline-block;
             white-space: nowrap;
         `;
+
+        const activeStyle = `
+            background: var(--primary-dark);
+            color: #FFF;
+            border: 2px solid var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(0, 107, 185, 0.3);
+            transform: scale(1.05);
+        `;
+
+        const inactiveStyle = `
+            background: var(--bg-stage-${stageNum});
+            color: var(--primary-dark);
+            border: 2px solid #E8EAED;
+        `;
+
+        badge.style.cssText = baseStyle + (isActive ? activeStyle : inactiveStyle);
         badge.textContent = `Etapa ${stageNum}`;
+
         badge.onmouseover = () => {
-            badge.style.transform = 'translateY(-1px)';
-            badge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+            if (!isActive) {
+                badge.style.transform = 'translateY(-2px)';
+                badge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                badge.style.borderColor = '#CCC';
+            }
         };
         badge.onmouseout = () => {
-            badge.style.transform = 'translateY(0)';
-            badge.style.boxShadow = 'none';
+            if (!isActive) {
+                badge.style.transform = 'translateY(0)';
+                badge.style.boxShadow = 'none';
+                badge.style.borderColor = '#E8EAED';
+            }
         };
         badge.onclick = () => {
             currentStage = stageNum;
@@ -3500,40 +3522,6 @@ function renderEvaluatorView() {
     });
 
     calculateLiveScore();
-    updateProgressIndicator();
-}
-
-/**
- * Actualiza el indicador de progreso de etapas
- */
-function updateProgressIndicator() {
-    const progressSection = document.getElementById('eval-progress-section');
-    const progressCounter = document.getElementById('eval-progress-counter');
-    const progressBar = document.getElementById('eval-progress-bar');
-
-    if (!progressSection || !progressCounter || !progressBar) return;
-
-    // Obtener todas las etapas asignadas al evaluador actual
-    let allAssignedStages = new Set();
-    allAsignacionesMapped.forEach(asig => {
-        if (asig.etapas && Array.isArray(asig.etapas)) {
-            asig.etapas.forEach(e => allAssignedStages.add(e));
-        }
-    });
-
-    const totalStages = allAssignedStages.size;
-    const stagesArray = Array.from(allAssignedStages).sort((a, b) => a - b);
-    const currentStageIndex = stagesArray.indexOf(currentStage) + 1;
-
-    // Mostrar/ocultar sección de progreso
-    if (totalStages > 1) {
-        progressSection.style.display = 'block';
-        const percentage = (currentStageIndex / totalStages) * 100;
-        progressCounter.textContent = `Etapa ${currentStageIndex} de ${totalStages}`;
-        progressBar.style.width = percentage + '%';
-    } else {
-        progressSection.style.display = 'none';
-    }
 }
 
 function setEvaluationStatus(cell, score) {
