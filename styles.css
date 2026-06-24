@@ -400,6 +400,69 @@ button { font-family: 'Segoe UI', sans-serif; }
     display: none !important;
 }
 
+/* ================= TABLA PROYECTOS DS49 - DISEÑO MODERNO ================= */
+#eval-projects-section table {
+    background: white;
+    border-collapse: collapse;
+}
+
+#eval-projects-section thead {
+    background-color: #F4F7FB;
+    border-bottom: 1px solid #E8EAED;
+}
+
+#eval-projects-section th {
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333333;
+    border: none;
+    height: 32px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+#eval-projects-section th:nth-child(5),
+#eval-projects-section th:nth-child(6) {
+    text-align: right;
+}
+
+#eval-projects-section tbody tr {
+    border-bottom: 1px solid #F0F0F0;
+    transition: background-color 0.2s ease;
+    height: 32px;
+}
+
+#eval-projects-section tbody tr:hover {
+    background-color: #F9FAFB;
+}
+
+#eval-projects-section td {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #333333;
+    border: none;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#eval-projects-section td:nth-child(2) {
+    font-weight: 500;
+    color: #25306B;
+}
+
+#eval-projects-section td:nth-child(5),
+#eval-projects-section td:nth-child(6) {
+    text-align: right;
+}
+
+#eval-projects-section tbody tr:first-child {
+    border-top: 1px solid #E8EAED;
+}
+
 /* ================= RESPONSIVIDAD VISTA EVALUADOR ================= */
 @media (max-width: 1024px) {
     #eval-entities-header {
