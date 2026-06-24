@@ -1416,21 +1416,29 @@ window.deleteAsignacionWithOptions = function(rut, nombre, cobertura, stageNum, 
         // Eliminar toda la asignación
         if (!confirm(`¿Está seguro de eliminar TODA la asignación de ${nombre} en ${cobertura}?`)) return;
 
-        // Eliminar localmente primero
-        const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
-        tx.objectStore('asignaciones').delete(idAsig);
-        tx.oncomplete = () => {
-            console.log(`✅ Asignación ${idAsig} eliminada localmente`);
-            alert(`✅ Asignación de ${nombre} eliminada completamente`);
+        dbGetAll('asignaciones', (asignaciones) => {
+            const asig = asignaciones.find(a => a.idAsig === idAsig);
+            if (!asig) {
+                alert('No se encontró la asignación');
+                return;
+            }
 
-            // Eliminar de Google Sheets de forma asincrónica (sin bloquear)
-            deleteAsignacionFromGoogleSheets(rut, cobertura).catch(err => {
-                console.error('⚠️ Error al sincronizar con Google Sheets:', err);
-            });
+            // Eliminar la asignación completa
+            const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+            tx.objectStore('asignaciones').delete(idAsig);
+            tx.oncomplete = () => {
+                console.log(`✅ Asignación ${idAsig} eliminada localmente`);
+                alert(`✅ Asignación de ${nombre} eliminada completamente`);
 
-            renderMonitoringTable();
-            populateAdminMatrix();
-        };
+                // Eliminar de Google Sheets de forma asincrónica (sin bloquear)
+                deleteAsignacionFromGoogleSheets(rut, cobertura).catch(err => {
+                    console.error('⚠️ Error al sincronizar con Google Sheets:', err);
+                });
+
+                renderMonitoringTable();
+                populateAdminMatrix();
+            };
+        });
     } else {
         alert('Opción no válida');
     }
