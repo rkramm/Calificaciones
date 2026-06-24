@@ -1377,6 +1377,96 @@ window.deleteAsignacion = function(idAsig) {
     tx.oncomplete = () => { renderMonitoringTable(); populateAdminMatrix(); };
 };
 
+window.deleteAsignacionWithOptions = function(rut, nombre, cobertura, stageNum, idAsig) {
+    const message = `¿Qué desea eliminar?\n\nEntidad: ${nombre}\nCobertura: ${cobertura}\n\n1. Solo eliminar Etapa ${stageNum}\n2. Eliminar toda la asignación de esta entidad\n\nSeleccione una opción (1 o 2):`;
+    const choice = prompt(message, '1');
+
+    if (!choice) return;
+
+    if (choice === '1') {
+        // Eliminar solo la etapa
+        dbGetAll('asignaciones', (asignaciones) => {
+            const asig = asignaciones.find(a => a.id === idAsig);
+            if (!asig) {
+                alert('No se encontró la asignación');
+                return;
+            }
+
+            // Eliminar la etapa del array de etapas
+            if (asig.etapas && Array.isArray(asig.etapas)) {
+                asig.etapas = asig.etapas.filter(e => e !== stageNum);
+
+                const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+                tx.objectStore('asignaciones').put(asig);
+                tx.oncomplete = () => {
+                    alert(`✅ Etapa ${stageNum} eliminada de la asignación`);
+                    syncAsignacionesToGoogleSheets([asig]);
+                    renderMonitoringTable();
+                    populateAdminMatrix();
+                };
+            }
+        });
+    } else if (choice === '2') {
+        // Eliminar toda la asignación
+        if (!confirm(`¿Está seguro de eliminar TODA la asignación de ${nombre} en ${cobertura}?`)) return;
+
+        const tx = dbInstance.transaction(['asignaciones'], 'readwrite');
+        tx.objectStore('asignaciones').delete(idAsig);
+        tx.oncomplete = () => {
+            alert(`✅ Asignación de ${nombre} eliminada completamente`);
+            deleteAsignacionFromGoogleSheets(rut, cobertura);
+            renderMonitoringTable();
+            populateAdminMatrix();
+        };
+    } else {
+        alert('Opción no válida');
+    }
+};
+
+/**
+ * Sincroniza asignaciones modificadas con Google Sheets
+ */
+async function syncAsignacionesToGoogleSheets(asignaciones) {
+    try {
+        const result = await cloudSave('asignaciones', asignaciones, 'update');
+        if (result.success) {
+            console.log('✅ Asignaciones sincronizadas con Google Sheets');
+        } else {
+            console.error('Error al sincronizar:', result.error);
+        }
+    } catch (error) {
+        console.error('Error en sincronización:', error);
+    }
+}
+
+/**
+ * Elimina una asignación de Google Sheets
+ */
+async function deleteAsignacionFromGoogleSheets(rut, cobertura) {
+    try {
+        const result = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'deleteAsignacion',
+                table: 'asignaciones',
+                rut: rut,
+                cobertura: cobertura,
+                clientVersion: serverVersions['asignaciones'] || 0,
+                mode: 'prod'
+            })
+        });
+        const response = await result.json();
+        if (response.success) {
+            console.log('✅ Asignación eliminada de Google Sheets');
+        } else {
+            console.error('Error al eliminar:', response.error);
+        }
+    } catch (error) {
+        console.error('Error en eliminación:', error);
+    }
+}
+
 function setupAdminTabs() {
     const tabs = document.querySelectorAll('.admin-main-tab');
     tabs.forEach(tab => {
@@ -3267,7 +3357,7 @@ function drawMonitoringTable() {
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center">No se encontraron registros.</td></tr>';
     } else {
-        tbody.innerHTML = filtered.map(item => `<tr><td><b>${item.evaluadorLabel}</b></td><td style="color:var(--primary-blue); font-weight:600;">${item.coberturaLabel}</td><td class="text-center">Etapa ${item.stageNum}</td><td class="text-center">${item.haEvaluado ? '<span class="badge-evaluado" style="background-color:var(--color-bueno);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">EVALUADO</span>' : '<span class="badge-no-evaluado" style="background-color:var(--color-malo);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">NO EVALUADO</span>'}</td><td class="text-center"><b>${item.average}</b></td><td class="text-center"><button class="btn btn-primary" style="padding:3px 6px; font-size:0.78rem;" onclick="openAuditModal('${item.rut}','${item.nombre}','${item.coberturaLabel}',${item.stageNum})">Ver Detalle</button><button class="btn btn-danger" style="padding:3px 6px; font-size:0.78rem; margin-left:4px;" onclick="deleteAsignacion('${item.idAsig}')">Borrar</button></td></tr>`).join('');
+        tbody.innerHTML = filtered.map(item => `<tr><td><b>${item.evaluadorLabel}</b></td><td style="color:var(--primary-blue); font-weight:600;">${item.coberturaLabel}</td><td class="text-center">Etapa ${item.stageNum}</td><td class="text-center">${item.haEvaluado ? '<span class="badge-evaluado" style="background-color:var(--color-bueno);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">EVALUADO</span>' : '<span class="badge-no-evaluado" style="background-color:var(--color-malo);color:white;padding:2px 6px;border-radius:4px;font-size:0.8rem;">NO EVALUADO</span>'}</td><td class="text-center"><b>${item.average}</b></td><td class="text-center"><button class="btn btn-primary" style="padding:3px 6px; font-size:0.78rem;" onclick="openAuditModal('${item.rut}','${item.nombre}','${item.coberturaLabel}',${item.stageNum})">Ver Detalle</button><button class="btn btn-danger" style="padding:3px 6px; font-size:0.78rem; margin-left:4px;" onclick="deleteAsignacionWithOptions('${item.rut}','${item.nombre}','${item.coberturaLabel}',${item.stageNum},'${item.idAsig}')">Borrar</button></td></tr>`).join('');
     }
 }
 
