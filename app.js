@@ -2485,7 +2485,7 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                             </tr>
                         `).join('');
                     } else if (soloDS49) {
-                        // Para DS49: 5 columnas (Codigo Proyecto, Nombre, Comuna, Tipología, N°Familias, Año)
+                        // Para DS49: 6 columnas (Codigo Proyecto, Nombre, Comuna, Tipología, N°Familias, Año)
                         if (thead) {
                             thead.innerHTML = `
                                 <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
@@ -2493,6 +2493,7 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                                     <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.6rem;">Nombre</th>
                                     <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
                                     <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Tipología</th>
+                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
                                     <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
                                 </tr>
                             `;
@@ -2504,6 +2505,7 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                                 <td>${p['Nombre Proyecto'] || p['Nombre del proy'] || p.nombre_proyecto || p.Nombre || ''}</td>
                                 <td>${p.COMUNA || p.Comuna || p.comuna || ''}</td>
                                 <td>${p.Tipología || p.tipologia || p.Tipologia || ''}</td>
+                                <td>${p.Familias || p['N°familias'] || p.Nfamilias || p.familias || ''}</td>
                                 <td>${p.año || p.Año || p.ano || p.anio || ''}</td>
                             </tr>
                         `).join('');
