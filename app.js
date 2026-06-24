@@ -2054,6 +2054,8 @@ function renderCoverageTabs() {
             currentCoverage = cobertura;
             const conf = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
             currentStage = conf ? conf.etapas[0] : 1;
+            // Resetear entidad seleccionada para que se auto-seleccione la primera del nuevo programa
+            window.currentSelectedEntity = null;
             renderCoverageTabs();
         };
         container.appendChild(btn);
