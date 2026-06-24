@@ -389,3 +389,97 @@ button { font-family: 'Segoe UI', sans-serif; }
     border: none !important;
     padding: 8px 12px !important;
 }
+
+/* ================= RESPONSIVIDAD VISTA EVALUADOR ================= */
+@media (max-width: 1024px) {
+    #eval-entities-header {
+        width: 180px !important;
+    }
+
+    #eval-info-card {
+        font-size: 0.65rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #eval-top-panel {
+        flex-direction: column !important;
+    }
+
+    #eval-entities-header {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 2px solid var(--primary-dark) !important;
+    }
+
+    #eval-entities-header > div:first-child {
+        height: 3.2rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    #eval-info-card {
+        flex-direction: column !important;
+        gap: 8px !important;
+        font-size: 0.65rem !important;
+        padding: 6px !important;
+    }
+
+    #eval-info-card > div {
+        width: 100% !important;
+    }
+
+    #eval-programa-badge {
+        padding: 10px 12px !important;
+        font-size: 1.1rem !important;
+        min-width: 60px !important;
+    }
+
+    #eval-projects-section {
+        height: 200px !important;
+        font-size: 0.6rem !important;
+    }
+
+    .evaluation-table {
+        font-size: 0.6rem !important;
+    }
+
+    .evaluation-table th, .evaluation-table td {
+        padding: 2px 3px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #eval-entities-header > div:first-child {
+        height: 2.8rem !important;
+        font-size: 0.65rem !important;
+    }
+
+    #btn-toggle-top-panel {
+        font-size: 1rem !important;
+        right: 6px !important;
+        top: 6px !important;
+    }
+
+    #eval-info-card {
+        flex-direction: column !important;
+        gap: 6px !important;
+        font-size: 0.6rem !important;
+        padding: 4px !important;
+    }
+
+    #eval-programa-badge {
+        padding: 8px 10px !important;
+        font-size: 1rem !important;
+        min-width: 50px !important;
+    }
+
+    #eval-projects-section {
+        height: 150px !important;
+        font-size: 0.55rem !important;
+    }
+
+    #eval-entity-tabs-container .tab-button {
+        font-size: 0.65rem !important;
+        padding: 4px 6px !important;
+    }
+}
