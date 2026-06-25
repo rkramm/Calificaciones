@@ -2222,8 +2222,22 @@ function handleLogin() {
                 return;
             }
             
-            // Verificar contraseña con bcrypt (comparar contra hash)
-            const passwordValid = dcodeIO.bcrypt.compareSync(passInput, remoteClave.valor);
+            // Verificar contraseña - compatible con plaintext y bcrypt
+            let passwordValid = false;
+
+            // Si empieza con $2a$ o $2b$, es un hash bcrypt
+            if (remoteClave.valor && (remoteClave.valor.startsWith('$2a$') || remoteClave.valor.startsWith('$2b$'))) {
+                // Es un hash bcrypt, usar compareSync
+                try {
+                    passwordValid = dcodeIO.bcrypt.compareSync(passInput, remoteClave.valor);
+                } catch (e) {
+                    console.error('Error comparando bcrypt:', e);
+                    passwordValid = false;
+                }
+            } else {
+                // Es plaintext (transitorio hasta implementar bcrypt en GAS)
+                passwordValid = passInput === remoteClave.valor;
+            }
 
             if (!passwordValid) {
                 // RATE LIMITING: Registrar intento fallido
