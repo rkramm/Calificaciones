@@ -3005,6 +3005,10 @@ function renderEvaluatorHeaderInfo() {
             btn.style.padding = '6px 10px';
             btn.onclick = () => {
                 window.currentSelectedEntity = entidadNombre;
+                // Descargar datos actualizados de Google Sheets cuando se cambia de entidad
+                if (CLOUD_MODE_ENABLED && currentUser) {
+                    refreshScoresFromServer();
+                }
                 renderEvaluatorHeaderInfo();
             };
             tabsContainer.appendChild(btn);
@@ -4300,13 +4304,9 @@ function saveEvaluatorScores(callback, options = {}) {
             const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut);
             oldRecords.forEach(r => store.delete(r.idTx));
 
-            // 2. Insertamos solo los scores de la cobertura y entidad seleccionadas (NO todas las coberturas)
-            // Esto evita guardar datos viejos de otras entidades que no fueron modificados
-            const memoryRecordsToSave = allMemoryScores.filter(r =>
-                r.rutEvaluador === currentUser.rut &&
-                r.cobertura === currentCoverage &&
-                r.entidad === window.currentSelectedEntity
-            );
+            // 2. Insertamos la foto actualizada en memoria, que YA contiene las modificaciones de TODAS las etapas y coberturas
+            // Se guardan todos los scores del usuario (no solo la entidad actual) para no perder datos
+            const memoryRecordsToSave = allMemoryScores.filter(r => r.rutEvaluador === currentUser.rut);
 
             memoryRecordsToSave.forEach(memScore => {
                 const stableId = `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
