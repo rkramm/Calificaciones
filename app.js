@@ -2617,24 +2617,12 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
                     scoreType: typeof userScoresFromCloud[0].score
                 });
             }
-        } else {
-            console.log(`ℹ️ Sin scores en Google Sheets (null o no es array), usando IndexedDB`);
         }
 
-        // Si hay scores en Google Sheets, usarlos; si no, leer de IndexedDB
-        if (userScoresFromCloud.length > 0) {
-            allMemoryScores = userScoresFromCloud;
-            // Guardar en IndexedDB también como caché
-            const tx = dbInstance.transaction(['scores'], 'readwrite');
-            userScoresFromCloud.forEach(s => tx.objectStore('scores').put(s));
-            continueLoadingEvaluator();
-        } else {
-            // Fallback a IndexedDB
-            dbGetAll('scores', (dbScores) => {
-                allMemoryScores = dbScores.filter(r => r.rutEvaluador === currentUser.rut);
-                continueLoadingEvaluator();
-            });
-        }
+        // Google Sheets es la ÚNICA fuente de datos
+        // Si Google Sheets está vacío, allMemoryScores está vacío (no usar IndexedDB como fallback)
+        allMemoryScores = userScoresFromCloud;
+        continueLoadingEvaluator();
 
         function continueLoadingEvaluator() {
             currentCoverage = allAsignacionesMapped[0].cobertura;
@@ -2658,28 +2646,26 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
             }
         }
     }).catch(err => {
-        console.error('❌ Error descargando scores:', err);
-        // Fallback completo a IndexedDB
-        dbGetAll('scores', (dbScores) => {
-            allMemoryScores = dbScores.filter(r => r.rutEvaluador === currentUser.rut);
+        console.error('❌ Error descargando scores desde Google Sheets:', err);
+        // Sin fallback a IndexedDB - Google Sheets es la única fuente
+        allMemoryScores = [];
 
-            currentCoverage = allAsignacionesMapped[0].cobertura;
-            const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-            currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
+        currentCoverage = allAsignacionesMapped[0].cobertura;
+        const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+        currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
 
-            restoreConnectionStatus();
-            showPanel('Sistema de Precalificación Técnica');
+        restoreConnectionStatus();
+        showPanel('Sistema de Precalificación Técnica');
 
+        setTimeout(() => {
+            renderCoverageTabs();
+        }, 100);
+
+        if (CLOUD_MODE_ENABLED) {
             setTimeout(() => {
-                renderCoverageTabs();
-            }, 100);
-
-            if (CLOUD_MODE_ENABLED) {
-                setTimeout(() => {
-                    syncAsignacionesFromCloud();
-                }, 500);
-            }
-        });
+                syncAsignacionesFromCloud();
+            }, 500);
+        }
     });
 }
 
@@ -4293,27 +4279,18 @@ function saveEvaluatorScores(callback, options = {}) {
             showToast('Guardando...', 'info');
         }
 
-        dbGetAll('scores', (allDbScores) => {
-            const tx = dbInstance.transaction(['scores'], 'readwrite');
-            const store = tx.objectStore('scores');
-            const horaEnvio = formatDateTime(new Date());
-
-            // 1. Borramos todas las calificaciones anteriores de TODAS las coberturas para el evaluador actual
-            const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut);
-            oldRecords.forEach(r => store.delete(r.idTx));
-
-            // 2. Insertamos la foto actualizada en memoria, que YA contiene las modificaciones de TODAS las etapas y coberturas
-            // Se guardan todos los scores del usuario (no solo la entidad actual) para no perder datos
-            const memoryRecordsToSave = allMemoryScores.filter(r => r.rutEvaluador === currentUser.rut);
-
-            memoryRecordsToSave.forEach(memScore => {
-                const stableId = `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
+        // Google Sheets es la ÚNICA fuente de datos
+        // Filtrar: solo guardar scores con valor > 0 (scores con 0 = no evaluado)
+        const horaEnvio = formatDateTime(new Date());
+        const recordsToSave = allMemoryScores
+            .filter(r => r.rutEvaluador === currentUser.rut && parseInt(r.score, 10) > 0)
+            .map(memScore => {
                 const activeAsig = allAsignacionesMapped.find(a =>
                     a.cobertura === memScore.cobertura && a.entidadNombre === memScore.entidad
                 ) || allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
 
-                store.put({
-                    idTx: stableId,
+                return {
+                    idTx: `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`,
                     timestampId: Date.now().toString(),
                     rutEvaluador: currentUser.rut,
                     nombreEvaluador: memScore.nombreEvaluador || currentUser.nombre,
@@ -4325,29 +4302,50 @@ function saveEvaluatorScores(callback, options = {}) {
                     itemId: memScore.itemId,
                     score: memScore.score,
                     hora: horaEnvio
-                });
+                };
             });
 
-            tx.oncomplete = () => {
-                hasUnsavedEvaluatorChanges = false;
-                // Una vez guardado localmente, sincronizar solo la tabla de scores (sin doble aviso).
-                syncSingleStoreToCloud('scores', (success) => {
-                    dbGetAll('scores', (scores) => {
-                        allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
-                        loadScoresFromActiveContext();
-                        renderEvaluatorView();
+        // Guardar DIRECTAMENTE en Google Sheets (no en IndexedDB)
+        // Primero descargar todos los scores actuales de Google Sheets
+        cloudGet('scores').then(allGoogleScores => {
+            // Filtrar: mantener scores de OTROS evaluadores
+            const otherUsersScores = (allGoogleScores || []).filter(s => s.rutEvaluador !== currentUser.rut);
 
-                        if (!silent) {
-                            if (success) {
-                                showToast('✅ Guardado correctamente', 'success');
-                            } else {
-                                showToast('⚠️ Guardado local (sin sincronización)', 'warning');
-                            }
-                        }
-                        if (callback) callback(success);
-                    });
-                }, { skipWarning: true });
-            };
+            // Combinar: otros evaluadores + mis scores nuevos
+            const finalScores = [...otherUsersScores, ...recordsToSave];
+
+            // Guardar todo en Google Sheets (usar overwrite para reemplazar completamente)
+            cloudSave('scores', finalScores, 'overwrite').then((success) => {
+                hasUnsavedEvaluatorChanges = false;
+
+                if (!silent) {
+                    if (success) {
+                        showToast('✅ Guardado correctamente', 'success');
+                    } else {
+                        showToast('❌ Error al guardar', 'error');
+                    }
+                }
+
+                // Recargar desde Google Sheets (fuente de verdad)
+                cloudGet('scores').then(freshScores => {
+                    const myScores = (freshScores || []).filter(s => s.rutEvaluador === currentUser.rut).map(s => ({
+                        ...s,
+                        stage: parseInt(s.stage, 10),
+                        score: parseInt(s.score, 10)
+                    }));
+                    allMemoryScores = myScores;
+                    loadScoresFromActiveContext();
+                    renderEvaluatorView();
+                    if (callback) callback(success);
+                }).catch(err => {
+                    console.error('Error recargando scores:', err);
+                    if (callback) callback(false);
+                });
+            });
+        }).catch(err => {
+            console.error('Error descargando scores:', err);
+            showToast('❌ Error de conexión', 'error');
+            if (callback) callback(false);
         });
     }
 }
