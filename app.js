@@ -4904,7 +4904,17 @@ function exportEvaluatorPDF() {
     printContainer.innerHTML = contentHtml;
     document.body.appendChild(printContainer);
 
-    window.print();
+    // Configurar opciones de html2pdf
+    const opt = {
+        margin: [0.5, 0.5, 0.5, 0.5],
+        filename: `Respaldo_Precalificaciones_${currentUser.rut}_${new Date().getTime()}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { format: 'letter', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(printContainer).save();
 
     document.body.removeChild(printContainer);
 }
