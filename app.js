@@ -1423,8 +1423,55 @@ document.addEventListener('DOMContentLoaded', () => {
     initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
 });
 
+// Agregar textos de ayuda (tooltips) a elementos interactivos
+function setupHelpTexts() {
+    // Textos para botones
+    const helpTexts = {
+        'btn-eval-pdf': 'Exportar calificaciones a PDF para respaldo. Se guardará automáticamente primero.',
+        'btn-save-scores': 'Guardar todas las calificaciones en el servidor',
+        'btn-sync-cloud': 'Sincronizar cambios con el servidor',
+        'btn-download-cloud': 'Descargar datos del servidor',
+        'btn-logout': 'Cerrar sesión y volver a login',
+        'btn-save-items': 'Guardar cambios en items',
+        'btn-open-asignacion-modal': 'Crear nueva asignación',
+        'btn-export-reportes': 'Exportar reportes consolidados a Excel',
+        'btn-export-backup': 'Descargar respaldo completo de datos',
+        'btn-open-evaluador-modal': 'Agregar nuevo evaluador al sistema'
+    };
+
+    Object.entries(helpTexts).forEach(([id, text]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.title = text;
+            element.setAttribute('aria-label', text);
+        }
+    });
+
+    // Textos para inputs
+    const inputHelps = {
+        'username': 'Ingrese su RUT sin puntos ni guión (ej: 123456789)',
+        'password': 'Contraseña proporcionada por el administrador',
+        'cfg-deadline': 'Fecha y hora máxima para realizar calificaciones',
+        'ev-nombre': 'Nombre completo del evaluador',
+        'ev-rut': 'RUT sin puntos ni guión',
+        'ev-area': 'Área o departamento al que pertenece',
+        'ev-clave': 'Contraseña para acceso al sistema'
+    };
+
+    Object.entries(inputHelps).forEach(([id, text]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.title = text;
+            element.placeholder = element.placeholder || text;
+        }
+    });
+}
+
 function setupEventListeners() {
     // TODOS los listeners registrados aquí se limpian automáticamente en logout
+
+    // Agregar textos de ayuda
+    setupHelpTexts();
 
     addManagedListener(document.getElementById('btn-login'), 'click', handleLogin);
 
@@ -3319,6 +3366,14 @@ window.changeStage = function(stageNum) {
             const btn = document.createElement('button');
             btn.className = `tab-button ${currentStage === i ? 'active' : ''}`;
             btn.textContent = `Etapa ${i}`;
+
+            // Agregar tooltip con descripción de la etapa
+            const stageInfo = STAGES_METADATA[i];
+            if (stageInfo) {
+                btn.title = stageInfo.title;
+                btn.setAttribute('data-tooltip', stageInfo.desc);
+            }
+
             if (currentStage === i) {
                 btn.style.backgroundColor = `var(--bg-stage-${i})`;
                 btn.style.color = '#000';
@@ -5022,6 +5077,13 @@ function applyConflictResolution(added, removed, modified, remoteData) {
 
 /* ================= EXPORTACIÓN A PDF DEL EVALUADOR ================= */
 function exportEvaluatorPDF() {
+    // Guardar automáticamente antes de exportar
+    saveEvaluatorScores(() => {
+        continuarExportPDF();
+    });
+}
+
+function continuarExportPDF() {
     const exportDate = formatDateTime(new Date());
     const printContainer = document.createElement('div');
     printContainer.id = 'pdf-print-container';
@@ -5151,7 +5213,22 @@ function exportEvaluatorPDF() {
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    html2pdf().set(opt).from(printContainer).save();
+    // Mostrar barra de progreso
+    showProgressBar('Generando PDF...');
+
+    // Generar PDF con progreso
+    html2pdf()
+        .set(opt)
+        .from(printContainer)
+        .toPdf()
+        .get('pdf')
+        .save();
+
+    // Ocultar progreso después de guardar
+    setTimeout(() => {
+        hideProgressBar();
+        notificationSystem.show('pdf-export', '✅ PDF exportado correctamente', 'success', 3);
+    }, 500);
 
     document.body.removeChild(printContainer);
 }
