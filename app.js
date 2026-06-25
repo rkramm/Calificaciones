@@ -3005,10 +3005,8 @@ function renderEvaluatorHeaderInfo() {
             btn.style.padding = '6px 10px';
             btn.onclick = () => {
                 window.currentSelectedEntity = entidadNombre;
-                // Descargar datos actualizados de Google Sheets cuando se cambia de entidad
-                if (CLOUD_MODE_ENABLED && currentUser) {
-                    refreshScoresFromServer();
-                }
+                // NO descargar de Google Sheets al cambiar de entidad (causa pérdida de datos ingresados)
+                // Los datos se descargan solo al login inicial
                 renderEvaluatorHeaderInfo();
             };
             tabsContainer.appendChild(btn);
