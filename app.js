@@ -4276,8 +4276,10 @@ function saveEvaluatorScores(callback, options = {}) {
         
         memoryRecordsToSave.forEach(memScore => {
             const stableId = `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
-            const activeAsig = allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
-            
+            const activeAsig = allAsignacionesMapped.find(a =>
+                a.cobertura === memScore.cobertura && a.entidadNombre === memScore.entidad
+            ) || allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
+
             store.put({
                 idTx: stableId,
                 timestampId: Date.now().toString(),
@@ -4459,7 +4461,7 @@ function renderEvaluatorView() {
     tbody.innerHTML = rowsHtml.join('');
 
     document.querySelectorAll('.score-input').forEach(input => {
-        input.addEventListener('input', () => { hasUnsavedEvaluatorChanges = true; calculateLiveScore(); });
+        addManagedListener(input, 'input', () => { hasUnsavedEvaluatorChanges = true; calculateLiveScore(); });
     });
 
     calculateLiveScore();
