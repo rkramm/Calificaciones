@@ -56,52 +56,16 @@ html { scroll-behavior: smooth; }
 .text-center { text-align: center; }
 .bold-text { font-weight: bold; }
 
-/* ================= TOOLTIPS PERSONALIZADOS ================= */
-[data-tooltip] {
-    position: relative;
+/* ================= TOOLTIPS - USO DE TITLE NATIVO ================= */
+/* Los tooltips de etapas usan el atributo title nativo del navegador */
+/* que funciona incluso con overflow: hidden */
+button[title] {
     cursor: help;
 }
 
-[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 10px 14px;
-    background-color: #333;
-    color: #fff;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    white-space: normal;
-    max-width: 280px;
-    z-index: 1000;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    line-height: 1.4;
-    text-align: center;
-}
-
-[data-tooltip]::before {
-    content: '';
-    position: absolute;
-    bottom: 120%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: #333;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
-    z-index: 1000;
-}
-
-[data-tooltip]:hover::after,
-[data-tooltip]:hover::before {
-    opacity: 1;
-    visibility: visible;
+/* Estilo opcional para botones con tooltip */
+.tab-button[title]:hover {
+    text-decoration: underline dotted;
 }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

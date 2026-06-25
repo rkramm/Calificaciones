@@ -3390,14 +3390,15 @@ window.changeStage = function(stageNum) {
             const btn = document.createElement('button');
             btn.className = `tab-button ${currentStage === i ? 'active' : ''}`;
 
-            // Agregar tooltip con descripción de la etapa
+            // Agregar tooltip nativo del navegador con descripción de la etapa
             const stageInfo = STAGES_METADATA[i];
             if (stageInfo) {
                 // Mostrar nombre de etapa + descripción en tooltip
                 btn.textContent = `${stageInfo.short}`;
-                btn.title = `${stageInfo.title}\n\n${stageInfo.desc}`;
-                btn.setAttribute('data-tooltip', stageInfo.desc);
+                // Tooltip nativo - usa saltos de línea simples
+                btn.title = `${stageInfo.title} - ${stageInfo.desc}`;
                 btn.style.whiteSpace = 'normal';
+                btn.style.cursor = 'help';
             } else {
                 btn.textContent = `Etapa ${i}`;
             }
