@@ -4799,28 +4799,36 @@ function exportEvaluatorPDF() {
     printContainer.id = 'pdf-print-container';
 
     let contentHtml = `
-        <table style="width: 100%; margin-bottom: 20px; font-size: 0.75rem;">
-            <tr>
-                <td style="width: 40%; padding: 4px; border: 1px solid #000;"><strong>NOMBRE DE LA ENTIDAD:</strong></td>
-                <td style="width: 60%; padding: 4px; border: 1px solid #000; background: #F5F5F5;">VIGOITDIA</td>
-            </tr>
-            <tr>
-                <td style="width: 40%; padding: 4px; border: 1px solid #000;"><strong>RUT:</strong></td>
-                <td style="width: 60%; padding: 4px; border: 1px solid #000; background: #F5F5F5;"></td>
-            </tr>
-            <tr>
-                <td style="width: 40%; padding: 4px; border: 1px solid #000;"><strong>Evaluador:</strong> ${currentUser.nombre}</td>
-                <td style="width: 60%; padding: 4px; border: 1px solid #000; background: #F5F5F5;"><strong>Fecha de calificación:</strong> ${exportDate}</td>
-            </tr>
-        </table>
-
-        <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 0.9rem;">
+        <div style="text-align: center; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem;">
             RESPALDO DE PRECALIFICACIONES POR ETAPA
         </div>
     `;
 
+    // Agrupar asignaciones por entidad
+    const entidadesMap = {};
     allAsignacionesMapped.forEach(asig => {
-        asig.etapas.forEach(stg => {
+        const entidad = asig.entidadNombre || "Sin especificar";
+        if (!entidadesMap[entidad]) {
+            entidadesMap[entidad] = [];
+        }
+        entidadesMap[entidad].push(asig);
+    });
+
+    // Procesar cada entidad
+    Object.keys(entidadesMap).forEach((nombreEntidad, entidadIdx) => {
+        const entidadAsignaciones = entidadesMap[nombreEntidad];
+
+        // Encabezado de entidad separado y destacado
+        contentHtml += `
+            <div style="page-break-inside: avoid; margin-top: 20px; margin-bottom: 10px; padding: 10px; background: linear-gradient(135deg, #25306B 0%, #006BB9 100%); color: white; border-radius: 4px; border-left: 8px solid #FFC107;">
+                <div style="font-size: 1rem; font-weight: bold; margin-bottom: 4px;">🏢 ENTIDAD: ${nombreEntidad}</div>
+                <div style="font-size: 0.8rem;">Evaluador: ${currentUser.nombre} | Fecha: ${exportDate}</div>
+            </div>
+        `;
+
+        // Procesar todas las etapas de esta entidad
+        entidadAsignaciones.forEach(asig => {
+            asig.etapas.forEach(stg => {
             const stageRecords = allMemoryScores.filter(r => r.cobertura === asig.cobertura && r.stage === stg);
             let lastEvalDate = "Sin registro";
             let maxTs = 0;
@@ -4898,6 +4906,7 @@ function exportEvaluatorPDF() {
                     </tfoot>
                 </table>
             `;
+            });
         });
     });
 
