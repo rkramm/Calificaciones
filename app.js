@@ -3412,6 +3412,19 @@ function renderProjectsTable(programa, entidadNombre) {
 window.changeStage = function(stageNum) {
     currentStage = stageNum;
 
+    // Limpiar listeners de tabla anterior para evitar conflictos
+    const oldTbody = document.getElementById('evaluation-rows');
+    if (oldTbody) {
+        oldTbody.querySelectorAll('.score-input').forEach(input => {
+            // Remover listeners registrados en managedListeners
+            const found = managedListeners.findIndex(l => l.element === input && l.event === 'input');
+            if (found >= 0) {
+                input.removeEventListener(managedListeners[found].event, managedListeners[found].handler);
+                managedListeners.splice(found, 1);
+            }
+        });
+    }
+
     if (currentRole === 'admin') {
         const container = document.getElementById('admin-tabs');
         if (!container) {
@@ -4429,6 +4442,9 @@ function renderEvaluatorView() {
         return;
     }
     console.log(`   - tbody encontrado, renderizando...`);
+
+    // Limpiar tabla anterior para evitar inputs fantasma de etapas previas
+    tbody.innerHTML = '';
 
     // Usar DEFAULT_ITEMS si no hay ítems cargados desde la BD
     const itemsToUse = (dbItems && dbItems.length > 0) ? dbItems : DEFAULT_ITEMS;
