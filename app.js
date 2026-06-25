@@ -184,12 +184,36 @@ const DEFAULT_ITEMS = [
 ];
 
 const STAGES_METADATA = {
-    1: { title: "ETAPA 1. ORGANIZACIÓN DE LA DEMANDA / DIAGNÓSTICO TÉCNICO Y/O SOCIAL", desc: "Comprende: diagnóstico del estado de la situación de las familias y/o su necesidad habitacional,..." },
-    2: { title: "ETAPA 2. ELABORACIÓN Y PRESENTACIÓN DE PROYECTOS", desc: "Comprende: desarrollo integral de los diseños arquitectónicos, de loteos, de especialidades técnicas e ingeniería estructural; cubicaciones, presupuestos detallados y especificaciones técnicas normativas..." },
-    3: { title: "ETAPA 3. GESTIÓN LEGAL", desc: "Comprende: apoyo jurídico para el desarrollo y ejecución del proyecto, asesoría legal para la regularización de inmuebles, asesoría para la recepción de las obras y la elaboración..." },
-    4: { title: "ETAPA 4. GESTIÓN TÉCNICA Y ADMINISTRATIVA DE PROYECTOS", desc: "Comprende: realización de actividades de seguimiento del proyecto en todas sus etapas, relación y coordinación con entidades públicas y privadas..." },
-    5: { title: "ETAPA 5. ACOMPAÑAMIENTO SOCIAL DURANTE LA EJECUCIÓN DEL PROYECTO", desc: "Comprende: Entrega de información a las familias sobre avance y desarrollo del proyecto durante su ejecución, coordinar visitas programadas de las familias a las obras..." },
-    6: { title: "ETAPA 6. ASESORÍA TÉCNICA Y SOCIAL PARA LA POST ENTREGA", desc: "Comprende: realización de reuniones o talleres de capacitación para abordar el uso y cuidado de las viviendas, información y vinculación con redes comunitarias..." }
+    1: {
+        title: "Organización de la demanda y Diagnóstico Técnico y Social",
+        short: "Etapa 1",
+        desc: "Comprende: diagnóstico del estado de la situación de las familias y/o su necesidad habitacional, organización de la demanda, identificación de necesidades técnicas y sociales."
+    },
+    2: {
+        title: "Elaboración y presentación del proyecto",
+        short: "Etapa 2",
+        desc: "Comprende: desarrollo integral de los diseños arquitectónicos, de loteos, de especialidades técnicas e ingeniería estructural; cubicaciones, presupuestos detallados y especificaciones técnicas normativas."
+    },
+    3: {
+        title: "Gestión Legal",
+        short: "Etapa 3",
+        desc: "Comprende: apoyo jurídico para el desarrollo y ejecución del proyecto, asesoría legal para la regularización de inmuebles, trámites de inscripción y recepción de obras."
+    },
+    4: {
+        title: "Gestión técnica y administrativa",
+        short: "Etapa 4",
+        desc: "Comprende: realización de actividades de seguimiento del proyecto en todas sus etapas, supervisión técnica, relación y coordinación con entidades públicas y privadas."
+    },
+    5: {
+        title: "PHS",
+        short: "Etapa 5",
+        desc: "Acompañamiento Social: Entrega de información a las familias sobre avance y desarrollo del proyecto, coordinar visitas programadas, apoyo social durante ejecución."
+    },
+    6: {
+        title: "Post Venta",
+        short: "Etapa 6",
+        desc: "Asesoría Técnica y Social: realización de reuniones o talleres de capacitación sobre uso y cuidado de viviendas, información y vinculación con redes comunitarias."
+    }
 };
 
 let currentUser = null, currentRole = null, currentStage = 1, currentCoverage = "", deadlineExpired = false;
@@ -3365,13 +3389,17 @@ window.changeStage = function(stageNum) {
         etapasDisponibles.forEach(i => {
             const btn = document.createElement('button');
             btn.className = `tab-button ${currentStage === i ? 'active' : ''}`;
-            btn.textContent = `Etapa ${i}`;
 
             // Agregar tooltip con descripción de la etapa
             const stageInfo = STAGES_METADATA[i];
             if (stageInfo) {
-                btn.title = stageInfo.title;
+                // Mostrar nombre de etapa + descripción en tooltip
+                btn.textContent = `${stageInfo.short}`;
+                btn.title = `${stageInfo.title}\n\n${stageInfo.desc}`;
                 btn.setAttribute('data-tooltip', stageInfo.desc);
+                btn.style.whiteSpace = 'normal';
+            } else {
+                btn.textContent = `Etapa ${i}`;
             }
 
             if (currentStage === i) {
