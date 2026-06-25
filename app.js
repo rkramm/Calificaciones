@@ -16,6 +16,24 @@ let csrfToken = null;
 let csrfTokenTimestamp = null;
 const CSRF_TOKEN_EXPIRY_MS = 3600000; // 1 hora
 
+// Sistema de gestión de event listeners (prevenir memory leaks)
+const managedListeners = [];
+
+function addManagedListener(element, event, handler, options = false) {
+    if (!element) return;
+    element.addEventListener(event, handler, options);
+    managedListeners.push({ element, event, handler, options });
+}
+
+function cleanupAllListeners() {
+    managedListeners.forEach(({ element, event, handler, options }) => {
+        if (element) {
+            element.removeEventListener(event, handler, options);
+        }
+    });
+    managedListeners.length = 0; // Limpiar array
+}
+
 function generateCSRFToken() {
     // Generar token único usando timestamp + random
     const random = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -2726,6 +2744,9 @@ function performLogout() {
 
     // Invalidar CSRF token al logout
     invalidateCSRFToken();
+
+    // Limpiar todos los event listeners para prevenir memory leaks
+    cleanupAllListeners();
 
     toggleElement('main-screen', false);
     toggleElement('login-container', true);
