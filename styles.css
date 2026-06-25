@@ -412,13 +412,13 @@ button { font-family: 'Segoe UI', sans-serif; }
 }
 
 #eval-projects-section th {
-    padding: 8px 12px;
+    padding: 4px 12px !important;
     text-align: left;
-    font-size: 12px;
+    font-size: 11px !important;
     font-weight: 600;
     color: #333333;
     border: none;
-    height: 32px;
+    height: 24px !important;
     vertical-align: middle;
     white-space: nowrap;
 }
@@ -431,7 +431,7 @@ button { font-family: 'Segoe UI', sans-serif; }
 #eval-projects-section tbody tr {
     border-bottom: 1px solid #F0F0F0;
     transition: background-color 0.2s ease;
-    height: 32px;
+    height: 24px !important;
 }
 
 #eval-projects-section tbody tr:hover {
@@ -439,14 +439,15 @@ button { font-family: 'Segoe UI', sans-serif; }
 }
 
 #eval-projects-section td {
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 3px 12px !important;
+    font-size: 11px !important;
     color: #333333;
     border: none;
     vertical-align: middle;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    height: 24px !important;
 }
 
 #eval-projects-section td:nth-child(2) {
@@ -555,4 +556,16 @@ button { font-family: 'Segoe UI', sans-serif; }
         font-size: 0.65rem !important;
         padding: 4px 6px !important;
     }
+}
+
+/* Reducir espacio vertical entre filas en un 40% */
+#evaluation-rows tr {
+    height: auto !important;
+}
+
+#evaluation-rows tr td {
+    padding: 0px 12px !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    line-height: 1.2 !important;
 }

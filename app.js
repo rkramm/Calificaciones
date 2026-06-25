@@ -2770,10 +2770,10 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                         if (thead) {
                             thead.innerHTML = `
                                 <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Modal.</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 30%;">📍 Comuna</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 20%;">🏘️ Modal.</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 25%;">👥 Fam.</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; white-space: nowrap; font-size: 11px !important; width: 25%;">📅 Año</th>
                                 </tr>
                             `;
                         }
@@ -2791,11 +2791,11 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                         if (thead) {
                             thead.innerHTML = `
                                 <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Código</th>
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.6rem;">Nombre</th>
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 10%;">📋 Código</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 11px !important; width: 45%;">🏢 Nombre</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 20%;">📍 Comuna</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 12%;">👥 Fam.</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; white-space: nowrap; font-size: 11px !important; width: 13%;">📅 Año</th>
                                 </tr>
                             `;
                         }
@@ -2814,12 +2814,12 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                         if (thead) {
                             thead.innerHTML = `
                                 <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Código</th>
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.6rem;">Nombre</th>
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Tipología</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 8%;">📋 Código</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 11px !important; width: 35%;">🏢 Nombre</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 15%;">📍 Comuna</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 15%;">🏘️ Tipología</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 12%;">👥 Fam.</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; white-space: nowrap; font-size: 11px !important; width: 15%;">📅 Año</th>
                                 </tr>
                             `;
                         }
@@ -2848,12 +2848,12 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                         if (thead) {
                             thead.innerHTML = `
                                 <tr style="background-color: #F5F7FA; color:var(--primary-dark); font-weight: 600; border-bottom: 1px solid #E8EAED;">
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Código</th>
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 0.6rem;">Nombre</th>
-                                    <th style="padding: 2px 3px; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Comuna</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Modal.</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 0.6rem;">Fam.</th>
-                                    <th style="padding: 2px 3px; text-align: center; border: none; white-space: nowrap; font-size: 0.6rem;">Año</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 8%;">📋 Código</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; font-size: 11px !important; width: 35%;">🏢 Nombre</th>
+                                    <th style="padding: 4px 12px !important; text-align: left; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 15%;">📍 Comuna</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 12%;">🏘️ Modal.</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; border-right: 1px solid #E8EAED; white-space: nowrap; font-size: 11px !important; width: 12%;">👥 Fam.</th>
+                                    <th style="padding: 4px 12px !important; text-align: center; border: none; white-space: nowrap; font-size: 11px !important; width: 18%;">📅 Año</th>
                                 </tr>
                             `;
                         }
@@ -3968,11 +3968,11 @@ function renderEvaluatorView() {
             console.log(`📋 Item: "${item.id}" (tipo: ${typeof item.id}) → score: ${score} (de dbScores: ${dbScores[item.id]})`);
         }
         return `
-            <tr>
-                <td class="cell-index bold-text">${item.id}</td>
-                <td class="cell-desc">${item.text}</td>
-                <td colspan="3" class="cell-score-input">
-                    <input type="number" class="score-input" data-id="${item.id}" min="0" max="100" value="${score}" ${deadlineExpired ? 'disabled' : ''} placeholder="0" inputmode="numeric">
+            <tr style="height: 30px !important; padding: 0 !important; margin: 0 !important;">
+                <td class="cell-index bold-text" style="padding: 1px 12px !important; margin: 0 !important; line-height: 1 !important; height: 30px !important; font-size: 0.95rem !important;">${item.id}</td>
+                <td class="cell-desc" style="padding: 1px 12px !important; margin: 0 !important; line-height: 1 !important; height: 30px !important; font-size: 0.9rem !important;">${item.text}</td>
+                <td colspan="3" class="cell-score-input" style="padding: 1px 12px !important; margin: 0 !important; line-height: 1 !important; height: 30px !important;">
+                    <input type="number" class="score-input" data-id="${item.id}" min="0" max="100" value="${score}" ${deadlineExpired ? 'disabled' : ''} placeholder="0" inputmode="numeric" style="height: 28px !important; padding: 2px !important; font-size: 0.9rem !important;">
                 </td>
             </tr>
         `;
