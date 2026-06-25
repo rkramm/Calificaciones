@@ -11,6 +11,36 @@ const SECURITY_CONFIG = CONFIG?.SECURITY ?? {
     PASSWORD_MIN_LENGTH: 6
 };
 
+// Sistema de CSRF tokens
+let csrfToken = null;
+let csrfTokenTimestamp = null;
+const CSRF_TOKEN_EXPIRY_MS = 3600000; // 1 hora
+
+function generateCSRFToken() {
+    // Generar token único usando timestamp + random
+    const random = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const timestamp = Date.now().toString(36);
+    csrfToken = btoa(`${timestamp}.${random}`).replace(/[+/=]/g, c => ({'+': '-', '/': '_', '=': ''}[c]));
+    csrfTokenTimestamp = Date.now();
+    return csrfToken;
+}
+
+function validateCSRFToken(token) {
+    if (!csrfToken || !token) return false;
+    if (token !== csrfToken) return false;
+    // Verificar que no ha expirado
+    if (Date.now() - csrfTokenTimestamp > CSRF_TOKEN_EXPIRY_MS) {
+        csrfToken = null;
+        return false;
+    }
+    return true;
+}
+
+function invalidateCSRFToken() {
+    csrfToken = null;
+    csrfTokenTimestamp = null;
+}
+
 // Helper seguro para renderizar texto sin riesgo de XSS
 function escapeHTML(text) {
     const map = {
@@ -31,6 +61,39 @@ function createSafeElement(tag, text, className = '') {
     el.textContent = text;
     if (className) el.className = className;
     return el;
+}
+
+// Renderizar HTML seguro (para strings seguros/constantes, no datos de usuario)
+function renderSafeHTML(htmlString) {
+    const div = document.createElement('div');
+    div.innerHTML = htmlString;
+    return div.firstChild;
+}
+
+// Renderizar tabla segura con datos potencialmente peligrosos
+function createTableRow(data, isHeader = false) {
+    const tr = document.createElement('tr');
+    if (isHeader) tr.style.backgroundColor = 'var(--primary-dark)';
+    if (isHeader) tr.style.color = '#FFF';
+
+    data.forEach(cellContent => {
+        const cell = document.createElement(isHeader ? 'th' : 'td');
+        cell.textContent = String(cellContent || ''); // textContent es seguro contra XSS
+        tr.appendChild(cell);
+    });
+    return tr;
+}
+
+// Renderizar mensaje seguro en tabla
+function createTableMessage(message, colspan = 6, isError = false) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.setAttribute('colspan', colspan);
+    td.className = 'text-center';
+    if (isError) td.style.color = '#d32f2f';
+    td.textContent = message; // Seguro contra XSS
+    tr.appendChild(td);
+    return tr;
 }
 
 const PROGRAMAS_BASE = ["DS10", "DS27", "DS49"];
@@ -508,7 +571,8 @@ async function cloudSave(table, dataArray, mode = 'incremental', options = {}) {
             table,
             data: dataArray,
             mode,
-            clientVersion
+            clientVersion,
+            csrfToken: csrfToken // Incluir CSRF token en POST
         };
         if (options.forceVersion) {
             body.forceVersion = true;
@@ -2146,7 +2210,10 @@ function handleLogin() {
 
             // Éxito: limpiar intentos fallidos
             delete loginAttempts[userInput];
-            
+
+            // Generar CSRF token para esta sesión
+            generateCSRFToken();
+
             currentUser = { nombre: "Administrador", rut: "admin" };
             currentRole = 'admin';
             restoreConnectionStatus();
@@ -2274,6 +2341,10 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
 
     // Éxito: limpiar intentos fallidos
     delete loginAttempts[userInput];
+
+    // Generar CSRF token para esta sesión
+    generateCSRFToken();
+
     currentUser = evResult;
     currentRole = 'evaluador';
 
@@ -2649,8 +2720,13 @@ function handleLogout() {
 }
 
 function performLogout() {
-    currentUser = null; currentRole = null;
+    currentUser = null;
+    currentRole = null;
     hasUnsavedEvaluatorChanges = false;
+
+    // Invalidar CSRF token al logout
+    invalidateCSRFToken();
+
     toggleElement('main-screen', false);
     toggleElement('login-container', true);
     document.getElementById('username').value = '';
@@ -2937,11 +3013,13 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
     if (!body) return;
 
     if (!asignaciones || asignaciones.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" class="text-center">No hay programas asignados.</td></tr>';
+        body.innerHTML = '';
+        body.appendChild(createTableMessage('No hay programas asignados.', 6));
         return;
     }
 
-    body.innerHTML = '<tr><td colspan="6" class="text-center">Cargando proyectos...</td></tr>';
+    body.innerHTML = '';
+    body.appendChild(createTableMessage('Cargando proyectos...', 6));
     if (progressBar) progressBar.classList.remove('hidden');
 
     // Cargar proyectos para todos los programas de la entidad
@@ -2967,7 +3045,8 @@ function renderProjectsTableAllPrograms(asignaciones, entidadNombre) {
                     if (progressBar) progressBar.classList.add('hidden');
 
                     if (todosLosProyectos.length === 0) {
-                        body.innerHTML = `<tr><td colspan="6" class="text-center">Sin proyectos asignados para "${entidadNombre}".</td></tr>`;
+                        body.innerHTML = '';
+                        body.appendChild(createTableMessage(`Sin proyectos asignados para "${escapeHTML(entidadNombre)}".`, 6));
                         return;
                     }
 
@@ -3129,7 +3208,8 @@ function renderProjectsTable(programa, entidadNombre) {
         `;
     }
 
-    body.innerHTML = `<tr><td colspan="6" class="text-center">Cargando proyectos para: ${entidadNombre} (${programa})...</td></tr>`;
+    body.innerHTML = ''; // Limpiar
+    body.appendChild(createTableMessage(`Cargando proyectos para: ${escapeHTML(entidadNombre)} (${escapeHTML(programa)})...`, 6));
 
     cloudGetProjects(programa, entidadNombre).then(proyectos => {
         // Ocultar barra de progreso
@@ -3137,26 +3217,30 @@ function renderProjectsTable(programa, entidadNombre) {
 
         if (!Array.isArray(proyectos) || proyectos.length === 0) {
             const cols = programa === 'DS49' ? '6' : '5';
-            body.innerHTML = `<tr><td colspan="${cols}" class="text-center">No se encontraron proyectos para "${entidadNombre}" en ${programa}.</td></tr>`;
+            body.innerHTML = '';
+            body.appendChild(createTableMessage(`No se encontraron proyectos para "${escapeHTML(entidadNombre)}" en ${escapeHTML(programa)}.`, cols));
             return;
         }
         // Para todos los programas: Código, Nombre, Comuna, Modalidad, Familias, Año
-        body.innerHTML = proyectos.map(p => `
-            <tr>
-                <td>${p.Código || p.codigo || p.Codigo || p['Codigo proyecto'] || p.codigo_proyecto || ''}</td>
-                <td>${p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || ''}</td>
-                <td>${p.Comuna || p.comuna || ''}</td>
-                <td>${p.Modalidad || p.modalidad || ''}</td>
-                <td>${p['N°familias'] || p.Nfamilias || p.familias || p.Familias || ''}</td>
-                <td>${p.Año || p.ano || p.anio || ''}</td>
-            </tr>
-        `).join('');
+        body.innerHTML = '';
+        proyectos.forEach(p => {
+            const row = createTableRow([
+                p.Código || p.codigo || p.Codigo || p['Codigo proyecto'] || p.codigo_proyecto || '',
+                p['Nombre Proyecto'] || p.nombre_proyecto || p.Nombre || '',
+                p.Comuna || p.comuna || '',
+                p.Modalidad || p.modalidad || '',
+                p['N°familias'] || p.Nfamilias || p.familias || p.Familias || '',
+                p.Año || p.ano || p.anio || ''
+            ]);
+            body.appendChild(row);
+        });
     }).catch(err => {
         console.error('Error cargando proyectos:', err);
         // Ocultar barra de progreso
         if (progressBar) progressBar.classList.add('hidden');
         const cols = programa === 'DS49' ? '6' : '5';
-        body.innerHTML = `<tr><td colspan="${cols}" class="text-center">Error al cargar proyectos. Intente nuevamente.</td></tr>`;
+        body.innerHTML = '';
+        body.appendChild(createTableMessage('Error al cargar proyectos. Intente nuevamente.', cols, true));
     });
 }
 
