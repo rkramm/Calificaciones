@@ -4799,10 +4799,23 @@ function exportEvaluatorPDF() {
     printContainer.id = 'pdf-print-container';
 
     let contentHtml = `
-        <div class="pdf-header">
-            <h1>📋 RESPALDO DE PRECALIFICACIONES</h1>
-            <p><strong>${currentUser.nombre}</strong> (${currentUser.rut})</p>
-            <p>Fecha: ${exportDate}</p>
+        <table style="width: 100%; margin-bottom: 20px; font-size: 0.75rem;">
+            <tr>
+                <td style="width: 40%; padding: 4px; border: 1px solid #000;"><strong>NOMBRE DE LA ENTIDAD:</strong></td>
+                <td style="width: 60%; padding: 4px; border: 1px solid #000; background: #F5F5F5;">VIGOITDIA</td>
+            </tr>
+            <tr>
+                <td style="width: 40%; padding: 4px; border: 1px solid #000;"><strong>RUT:</strong></td>
+                <td style="width: 60%; padding: 4px; border: 1px solid #000; background: #F5F5F5;"></td>
+            </tr>
+            <tr>
+                <td style="width: 40%; padding: 4px; border: 1px solid #000;"><strong>Evaluador:</strong> ${currentUser.nombre}</td>
+                <td style="width: 60%; padding: 4px; border: 1px solid #000; background: #F5F5F5;"><strong>Fecha de calificación:</strong> ${exportDate}</td>
+            </tr>
+        </table>
+
+        <div style="text-align: center; margin-bottom: 15px; font-weight: bold; font-size: 0.9rem;">
+            RESPALDO DE PRECALIFICACIONES POR ETAPA
         </div>
     `;
 
@@ -4821,15 +4834,23 @@ function exportEvaluatorPDF() {
             const stageItems = dbItems.filter(i => parseInt(i.stage, 10) === parseInt(stg, 10));
             let totalScore = 0, countScore = 0;
 
-            const rowsHtml = stageItems.map(item => {
+            const rowsHtml = stageItems.map((item, idx) => {
                 const rec = stageRecords.find(r => r.itemId === item.id);
                 const val = rec && rec.score !== undefined ? rec.score : "-";
                 if (val !== "-") { totalScore += parseInt(val, 10); countScore++; }
+
+                let cellColor = "#FFF";
+                if (val !== "-") {
+                    if (val >= 80) cellColor = "#D4EDDA"; // Verde BUENO
+                    else if (val >= 51) cellColor = "#FFF3CD"; // Amarillo ACEPTABLE
+                    else cellColor = "#F8D7DA"; // Rojo MALO
+                }
+
                 return `
                     <tr>
-                        <td style="width: 8%; text-align: center;">${item.id}</td>
-                        <td style="width: 77%;">${item.text}</td>
-                        <td class="pdf-score" style="width: 15%;">${val}</td>
+                        <td style="padding: 4px; border: 1px solid #000; width: 5%; text-align: center; font-size: 0.75rem; font-weight: bold;">${item.id}</td>
+                        <td style="padding: 4px; border: 1px solid #000; width: 85%; font-size: 0.75rem;">${item.text}</td>
+                        <td style="padding: 4px; border: 1px solid #000; width: 10%; text-align: center; font-weight: bold; background-color: ${cellColor}; font-size: 0.75rem;">${val}</td>
                     </tr>
                 `;
             }).join('');
@@ -4837,58 +4858,45 @@ function exportEvaluatorPDF() {
             const finalAvg = countScore > 0 ? Math.round(totalScore / countScore) : 0;
             const status = getStatusInfo(finalAvg);
             const statusText = countScore > 0 ? status.text : "---";
-            const statusClass = statusText === "BUENO" ? "pdf-status-bueno" : statusText === "ACEPTABLE" ? "pdf-status-aceptable" : "pdf-status-malo";
+            let headerBgColor = "#D4EDDA";
+            if (statusText === "ACEPTABLE") headerBgColor = "#FFF3CD";
+            else if (statusText === "MALO") headerBgColor = "#F8D7DA";
 
             const [programa, provincia] = asig.cobertura.split(' - ');
             const entidad = asig.entidadNombre || "No especificada";
 
             contentHtml += `
-                <div class="pdf-section">
-                    <div class="pdf-section-header">
-                        <div class="pdf-stage-title">${meta.title}</div>
-                    </div>
-
-                    <div class="pdf-info-grid">
-                        <div class="pdf-info-item">
-                            <div class="pdf-info-label">🏢 Entidad</div>
-                            <div class="pdf-info-value">${entidad}</div>
-                        </div>
-                        <div class="pdf-info-item">
-                            <div class="pdf-info-label">📊 Programa</div>
-                            <div class="pdf-info-value">${programa || "Sin asignar"}</div>
-                        </div>
-                        <div class="pdf-info-item">
-                            <div class="pdf-info-label">📍 Provincia</div>
-                            <div class="pdf-info-value">${provincia || "Sin asignar"}</div>
-                        </div>
-                        <div class="pdf-info-item">
-                            <div class="pdf-info-label">📅 Fecha Calificación</div>
-                            <div class="pdf-info-value">${lastEvalDate}</div>
-                        </div>
-                    </div>
-
-                    <table class="pdf-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 8%;">Ítem</th>
-                                <th style="width: 77%;">Criterio de Evaluación</th>
-                                <th style="width: 15%; text-align: center;">Nota</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHtml}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="2" style="text-align: right;">PROMEDIO ETAPA ${stg}:</td>
-                                <td class="pdf-score ${statusClass}">${countScore > 0 ? finalAvg : '-'}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="3" style="text-align: center; padding: 8px; font-weight: bold;">ESTADO: <span class="${statusClass}">${statusText}</span></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                <table style="width: 100%; margin-bottom: 15px; border-collapse: collapse; page-break-inside: avoid; font-size: 0.75rem;">
+                    <thead>
+                        <tr style="background-color: #25306B; color: white;">
+                            <th colspan="3" style="padding: 6px; border: 1px solid #000; text-align: left; font-weight: bold;">
+                                ETAPA ${stg}. ${meta.title}
+                            </th>
+                        </tr>
+                        <tr style="background-color: #F0F0F0;">
+                            <td style="padding: 4px; border: 1px solid #000; width: 25%;"><strong>Entidad:</strong> ${entidad}</td>
+                            <td style="padding: 4px; border: 1px solid #000; width: 35%;"><strong>Programa:</strong> ${programa || "Sin asignar"}</td>
+                            <td style="padding: 4px; border: 1px solid #000; width: 40%;"><strong>Provincia:</strong> ${provincia || "Sin asignar"}</td>
+                        </tr>
+                        <tr style="background-color: #F5F7FA;">
+                            <th style="padding: 4px; border: 1px solid #000; width: 5%; text-align: center;">Ítem</th>
+                            <th style="padding: 4px; border: 1px solid #000; width: 85%; text-align: left;">Criterio de Evaluación</th>
+                            <th style="padding: 4px; border: 1px solid #000; width: 10%; text-align: center;">Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: ${headerBgColor}; font-weight: bold;">
+                            <td colspan="2" style="padding: 6px; border: 1px solid #000; text-align: right;">PRECALIFICACIÓN ETAPA ${stg}:</td>
+                            <td style="padding: 6px; border: 1px solid #000; text-align: center;">${countScore > 0 ? finalAvg : '-'}</td>
+                        </tr>
+                        <tr style="background-color: ${headerBgColor}; font-weight: bold;">
+                            <td colspan="3" style="padding: 6px; border: 1px solid #000; text-align: center;">ESTADO: ${statusText}</td>
+                        </tr>
+                    </tfoot>
+                </table>
             `;
         });
     });
