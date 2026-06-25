@@ -4305,14 +4305,20 @@ function saveEvaluatorScores(callback, options = {}) {
                 };
             });
 
-        // Guardar DIRECTAMENTE en Google Sheets (no en IndexedDB)
+        // Guardar DIRECTAMENTE en Google Sheets - Mantener TODO, actualizar solo entidad actual
         // Primero descargar todos los scores actuales de Google Sheets
         cloudGet('scores').then(allGoogleScores => {
-            // Filtrar: mantener scores de OTROS evaluadores
+            // 1. Mantener scores de OTROS evaluadores
             const otherUsersScores = (allGoogleScores || []).filter(s => s.rutEvaluador !== currentUser.rut);
 
-            // Combinar: otros evaluadores + mis scores nuevos
-            const finalScores = [...otherUsersScores, ...recordsToSave];
+            // 2. Mantener scores del MISMO usuario pero de OTRAS entidades/coberturas
+            const otherEntitiesScores = (allGoogleScores || []).filter(s =>
+                s.rutEvaluador === currentUser.rut &&
+                !recordsToSave.some(n => n.entidad === s.entidad && n.cobertura === s.cobertura)
+            );
+
+            // 3. Combinar: otros usuarios + otras entidades del mismo usuario + nuevos scores
+            const finalScores = [...otherUsersScores, ...otherEntitiesScores, ...recordsToSave];
 
             // Guardar todo en Google Sheets (usar overwrite para reemplazar completamente)
             cloudSave('scores', finalScores, 'overwrite').then((success) => {
