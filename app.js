@@ -4265,71 +4265,89 @@ function saveAdminItems() {
 function saveEvaluatorScores(callback, options = {}) {
     const { silent = false } = options;
 
-    if (deadlineExpired) {
-        showToast('El plazo para evaluar ha expirado.', 'error');
-        if (callback) callback(false);
-        return;
-    }
+    // Verificar fecha límite actualizada (por si fue modificada después del login)
+    dbGetAll('configuracion', (config) => {
+        const req = config.find(c => c.clave === 'fecha_limite');
+        if (req && req.valor) {
+            const targetDate = parseSafeDate(req.valor);
+            if (targetDate && new Date() > targetDate) {
+                showToast('El plazo para evaluar ha expirado.', 'error');
+                if (callback) callback(false);
+                return;
+            }
+        }
 
-    if (!silent) {
-        showToast('Guardando...', 'info');
-    }
-
-    dbGetAll('scores', (allDbScores) => {
-        const tx = dbInstance.transaction(['scores'], 'readwrite');
-        const store = tx.objectStore('scores');
-        const horaEnvio = formatDateTime(new Date());
-
-        // 1. Borramos todas las calificaciones anteriores de TODAS las coberturas para el evaluador actual
-        const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut);
-        oldRecords.forEach(r => store.delete(r.idTx));
-
-        // 2. Insertamos la foto actualizada en memoria, que YA contiene las modificaciones de TODAS las etapas y coberturas
-        const memoryRecordsToSave = allMemoryScores.filter(r => r.rutEvaluador === currentUser.rut);
-        
-        memoryRecordsToSave.forEach(memScore => {
-            const stableId = `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
-            const activeAsig = allAsignacionesMapped.find(a =>
-                a.cobertura === memScore.cobertura && a.entidadNombre === memScore.entidad
-            ) || allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
-
-            store.put({
-                idTx: stableId,
-                timestampId: Date.now().toString(),
-                rutEvaluador: currentUser.rut,
-                nombreEvaluador: memScore.nombreEvaluador || currentUser.nombre,
-                programa: memScore.programa || activeAsig.programa || '',
-                provincia: memScore.provincia || activeAsig.provincia || '',
-                entidad: memScore.entidad || activeAsig.entidadNombre || '',
-                cobertura: memScore.cobertura,
-                stage: memScore.stage,
-                itemId: memScore.itemId,
-                score: memScore.score,
-                hora: horaEnvio
-            });
-        });
-
-        tx.oncomplete = () => {
-            hasUnsavedEvaluatorChanges = false;
-            // Una vez guardado localmente, sincronizar solo la tabla de scores (sin doble aviso).
-            syncSingleStoreToCloud('scores', (success) => {
-                dbGetAll('scores', (scores) => {
-                    allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
-                    loadScoresFromActiveContext();
-                    renderEvaluatorView();
-
-                    if (!silent) {
-                        if (success) {
-                            showToast('✅ Guardado correctamente', 'success');
-                        } else {
-                            showToast('⚠️ Guardado local (sin sincronización)', 'warning');
-                        }
-                    }
-                    if (callback) callback(success);
-                });
-            }, { skipWarning: true });
-        };
+        // Continuar con el guardado si la fecha es válida
+        _continueWithSave();
     });
+
+    function _continueWithSave() {
+        if (deadlineExpired) {
+            showToast('El plazo para evaluar ha expirado.', 'error');
+            if (callback) callback(false);
+            return;
+        }
+
+        if (!silent) {
+            showToast('Guardando...', 'info');
+        }
+
+        dbGetAll('scores', (allDbScores) => {
+            const tx = dbInstance.transaction(['scores'], 'readwrite');
+            const store = tx.objectStore('scores');
+            const horaEnvio = formatDateTime(new Date());
+
+            // 1. Borramos todas las calificaciones anteriores de TODAS las coberturas para el evaluador actual
+            const oldRecords = allDbScores.filter(r => r.rutEvaluador === currentUser.rut);
+            oldRecords.forEach(r => store.delete(r.idTx));
+
+            // 2. Insertamos la foto actualizada en memoria, que YA contiene las modificaciones de TODAS las etapas y coberturas
+            const memoryRecordsToSave = allMemoryScores.filter(r => r.rutEvaluador === currentUser.rut);
+
+            memoryRecordsToSave.forEach(memScore => {
+                const stableId = `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`;
+                const activeAsig = allAsignacionesMapped.find(a =>
+                    a.cobertura === memScore.cobertura && a.entidadNombre === memScore.entidad
+                ) || allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
+
+                store.put({
+                    idTx: stableId,
+                    timestampId: Date.now().toString(),
+                    rutEvaluador: currentUser.rut,
+                    nombreEvaluador: memScore.nombreEvaluador || currentUser.nombre,
+                    programa: memScore.programa || activeAsig.programa || '',
+                    provincia: memScore.provincia || activeAsig.provincia || '',
+                    entidad: memScore.entidad || activeAsig.entidadNombre || '',
+                    cobertura: memScore.cobertura,
+                    stage: memScore.stage,
+                    itemId: memScore.itemId,
+                    score: memScore.score,
+                    hora: horaEnvio
+                });
+            });
+
+            tx.oncomplete = () => {
+                hasUnsavedEvaluatorChanges = false;
+                // Una vez guardado localmente, sincronizar solo la tabla de scores (sin doble aviso).
+                syncSingleStoreToCloud('scores', (success) => {
+                    dbGetAll('scores', (scores) => {
+                        allMemoryScores = scores.filter(r => r.rutEvaluador === currentUser.rut);
+                        loadScoresFromActiveContext();
+                        renderEvaluatorView();
+
+                        if (!silent) {
+                            if (success) {
+                                showToast('✅ Guardado correctamente', 'success');
+                            } else {
+                                showToast('⚠️ Guardado local (sin sincronización)', 'warning');
+                            }
+                        }
+                        if (callback) callback(success);
+                    });
+                }, { skipWarning: true });
+            };
+        });
+    }
 }
 
 /**
