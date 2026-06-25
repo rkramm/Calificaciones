@@ -3,9 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="/Calificaciones/">
+    <script>
+        // Detectar si está en GitHub Pages o local
+        const isGitHub = window.location.hostname.includes('github.io');
+        const basePath = isGitHub ? '/Calificaciones/' : './';
+        // Crear base tag dinámicamente
+        const baseTag = document.createElement('base');
+        baseTag.href = basePath;
+        document.head.insertBefore(baseTag, document.head.firstChild);
+    </script>
     <title>Sistema de Precalificación e Inspección</title>
-    <link rel="stylesheet" href="/Calificaciones/styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <script>
@@ -619,13 +627,13 @@
     <input type="file" id="input-restore-backup" accept="application/json" style="display:none;">
 
     <!-- Librerías de seguridad -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js" integrity="sha512-5ShaYPRVmBl1GaHXxsHT0NW/8OlT3pFUIBNvEMpSVJMRKAkLSWU2xdDPeJqPu5gNpVsmI2f7TaXhpvPjGQVIw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!-- Configuración externa (seguridad) -->
     <script src="config.js"></script>
 
     <!-- Librería para generar PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-y+5DJXfPI3jcEk2bFTOwtcKaIkKX9O3p4FKMqLXSVRR2x89OYbrDVLF0yzbGX6gQp2BsqVECKkO0OkSN0JJ8A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!-- Panel de notificaciones lateral -->
     <div id="notification-panel" style="position: fixed; top: 20px; right: 20px; width: 320px; max-height: 80vh; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow-y: auto; z-index: 2000; display: none;">
@@ -641,11 +649,11 @@
     </div>
 
     <!-- Configuración y scripts -->
-    <script src="/Calificaciones/config.js"></script>
-    <script src="/Calificaciones/app.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
 
     <!-- Pruebas de seguridad (opcional, solo en desarrollo) -->
-    <script src="/Calificaciones/tests.security.js"></script>
-    <script src="/Calificaciones/tests.functional.js"></script>
+    <script src="tests.security.js"></script>
+    <script src="tests.functional.js"></script>
 </body>
 </html>
