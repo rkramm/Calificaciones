@@ -2951,10 +2951,10 @@ function renderCoverageTabs() {
                 const programa = cobertura ? cobertura.split(' - ')[0] : 'DS10';
                 badgeEl.textContent = programa;
             }
-            const conf = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-            currentStage = (conf && conf.etapas && conf.etapas.length > 0) ? conf.etapas[0] : 1;
             // Resetear entidad seleccionada para que se auto-seleccione la primera del nuevo programa
             window.currentSelectedEntity = null;
+            const conf = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+            currentStage = (conf && conf.etapas && conf.etapas.length > 0) ? conf.etapas[0] : 1;
             renderCoverageTabs();
         };
         container.appendChild(btn);
@@ -4495,7 +4495,9 @@ function calculateLiveScore() {
         if (existingIdx >= 0) {
             allMemoryScores[existingIdx].score = val;
         } else {
-            const activeAsig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage) || {};
+            const activeAsig = allAsignacionesMapped.find(a =>
+                a.cobertura === currentCoverage && a.entidadNombre === window.currentSelectedEntity
+            ) || {};
             allMemoryScores.push({
                 idTx: `pending_${currentUser.rut}_${currentCoverage.replace(/[\s-]+/g, '')}_${id}`,
                 timestampId: 'pending',
