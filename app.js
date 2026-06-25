@@ -3464,10 +3464,8 @@ window.changeStage = function(stageNum) {
         const tableCard = document.getElementById('table-card-container');
         if (tableCard) tableCard.style.backgroundColor = `var(--bg-stage-${currentStage})`;
 
-        // Actualizar scores desde el servidor en segundo plano (rápido y no bloquea)
-        if (CLOUD_MODE_ENABLED && currentUser) {
-            refreshScoresFromServer();
-        }
+        // NO actualizar desde servidor en cada cambio de etapa (ya se cargó en el login)
+        // Esto evita que la tabla se renderice vacía y luego se recargue
 
         loadScoresFromActiveContext();
 
