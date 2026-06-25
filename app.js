@@ -148,11 +148,12 @@ const notificationSystem = {
         if (!progressDiv) return;
 
         const percent = Math.min(100, Math.max(0, progress));
+        const displayPercent = Math.round(percent * 1000) / 1000; // Máximo 3 decimales
         progressDiv.innerHTML = `
             <div style="background: #E8EAED; height: 6px; border-radius: 3px; overflow: hidden;">
                 <div style="background: linear-gradient(90deg, #006BB9, #28A745); height: 100%; width: ${percent}%; transition: width 0.3s ease;"></div>
             </div>
-            <div style="font-size: 0.75rem; color: #666; margin-top: 4px; text-align: right;">${percent}%</div>
+            <div style="font-size: 0.75rem; color: #666; margin-top: 4px; text-align: right;">${displayPercent.toLocaleString('es-CL', {maximumFractionDigits: 3})}%</div>
         `;
     },
 
@@ -533,7 +534,8 @@ let syncCancelRequested = false;
 function requestSyncCancel() {
     syncCancelRequested = true;
     hideProgressBar();
-    alert('Sincronización cancelada por el usuario. No se perdieron datos locales.');
+    notificationSystem.show('sync-cancel', '⚠️ Sincronización cancelada por el usuario', 'warning');
+    setTimeout(() => notificationSystem.remove('sync-cancel'), 3000);
 }
 
 function downloadAutoBackupJSON() {
@@ -652,7 +654,6 @@ function syncSingleStoreToCloud(storeName, callback, options = {}) {
                     if (force) {
                         syncSingleStoreToCloud(storeName, callback, { ...options, forceVersion: true, skipWarning: true });
                     } else {
-                        alert('Sincronización cancelada. Se mantienen los datos locales.');
                         if (callback) callback(false);
                     }
                 });
@@ -1010,7 +1011,6 @@ function executeSyncAllToCloud(changes, storeNames) {
     );
     if (!confirmed) {
         hideProgressBar();
-        alert('Sincronización cancelada. No se realizaron cambios en el servidor.');
         return;
     }
 
@@ -1099,7 +1099,6 @@ function executeSyncAllToCloud(changes, storeNames) {
                                     if (!syncCancelRequested) syncNext(index + 1);
                                 });
                             } else {
-                                alert(`Sincronización de ${storeName} cancelada. Se continuará con las siguientes tablas.`);
                                 syncNext(index + 1);
                             }
                         });
@@ -1117,7 +1116,8 @@ function executeSyncAllToCloud(changes, storeNames) {
     }).catch(err => {
         hideProgressBar();
         console.error('Error creando respaldo en Google Sheets:', err);
-        alert('No se pudo crear el respaldo en Google Sheets. La sincronización se ha cancelado para proteger los datos.');
+        notificationSystem.show('backup-error', '❌ Error creando respaldo. Sincronización cancelada.', 'warning');
+        setTimeout(() => notificationSystem.remove('backup-error'), 4000);
     });
 }
 
