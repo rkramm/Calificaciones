@@ -4214,14 +4214,18 @@ function saveAdminItems() {
     tx.oncomplete = () => { alert("Textos guardados localmente. Recuerde Sincronizar a la Nube."); };
 }
 
-function saveEvaluatorScores(callback) {
+function saveEvaluatorScores(callback, options = {}) {
+    const { silent = false } = options;
+
     if (deadlineExpired) {
         showToast('El plazo para evaluar ha expirado.', 'error');
         if (callback) callback(false);
         return;
     }
 
-    showToast('Guardando...', 'info');
+    if (!silent) {
+        showToast('Guardando...', 'info');
+    }
 
     dbGetAll('scores', (allDbScores) => {
         const tx = dbInstance.transaction(['scores'], 'readwrite');
@@ -4264,10 +4268,12 @@ function saveEvaluatorScores(callback) {
                     loadScoresFromActiveContext();
                     renderEvaluatorView();
 
-                    if (success) {
-                        showToast('✅ Guardado correctamente', 'success');
-                    } else {
-                        showToast('⚠️ Guardado local (sin sincronización)', 'warning');
+                    if (!silent) {
+                        if (success) {
+                            showToast('✅ Guardado correctamente', 'success');
+                        } else {
+                            showToast('⚠️ Guardado local (sin sincronización)', 'warning');
+                        }
                     }
                     if (callback) callback(success);
                 });
@@ -5105,10 +5111,10 @@ function applyConflictResolution(added, removed, modified, remoteData) {
 
 /* ================= EXPORTACIÓN A PDF DEL EVALUADOR ================= */
 function exportEvaluatorPDF() {
-    // Guardar automáticamente antes de exportar
+    // Guardar automáticamente sin mostrar notificaciones (será silencioso)
     saveEvaluatorScores(() => {
         continuarExportPDF();
-    });
+    }, { silent: true });
 }
 
 function continuarExportPDF() {
