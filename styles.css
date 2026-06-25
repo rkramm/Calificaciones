@@ -21,6 +21,11 @@
 body { background-color: var(--bg-light); color: var(--text-dark); padding: 16px 12px; display: flex; justify-content: center; min-height: 100vh; align-items: flex-start; }
 html { scroll-behavior: smooth; }
 
+/* ================= VISIBILIDAD - PRIORIDAD ALTA ================= */
+.hidden, [class*="hidden"] { display: none !important; visibility: hidden !important; }
+#main-screen.hidden, #admin-view.hidden { display: none !important; }
+.modal-overlay.hidden, .modal.hidden { display: none !important; }
+
 /* ================= LOGIN MINIMALISTA ================= */
 .login-screen-center {
     position: absolute; top: 0; left: 0; width: 100vw; min-height: 100vh;
