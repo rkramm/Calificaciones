@@ -8,6 +8,21 @@
     <link rel="stylesheet" href="/Calificaciones/styles.css">
 </head>
 <body>
+    <script>
+        // OCULTAR PANELES AL INICIO (antes de que cargue CSS)
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainScreen = document.getElementById('main-screen');
+            const adminView = document.getElementById('admin-view');
+            if (mainScreen) {
+                mainScreen.classList.add('hidden');
+                mainScreen.style.display = 'none';
+            }
+            if (adminView) {
+                adminView.classList.add('hidden');
+                adminView.style.display = 'none';
+            }
+        });
+    </script>
 
     <div id="login-container" class="login-screen-center">
         <form id="login-screen" class="login-card" onsubmit="event.preventDefault();">
@@ -38,7 +53,7 @@
         </form>
     </div>
 
-    <div id="main-screen" class="container hidden">
+    <div id="main-screen" class="container hidden" style="display: none !important;">
         <header class="main-header" style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">
             <div style="flex: 0 1 auto;">
                 <div style="font-size: 0.65rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">📱 SISTEMA</div>
@@ -64,7 +79,7 @@
             </div>
         </header>
 
-        <div id="admin-view" class="hidden">
+        <div id="admin-view" class="hidden" style="display: none !important;">
             <div class="tabs-nav" style="margin-bottom: 15px;">
                 <button class="tab-button admin-main-tab active" data-target="panel-config">Configuración y Asignación</button>
                 <button class="tab-button admin-main-tab" data-target="panel-entidades">Entidades</button>

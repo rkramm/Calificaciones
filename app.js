@@ -328,7 +328,13 @@ function closeModal() {
 function toggleElement(id, show) {
     const el = document.getElementById(id);
     if (!el) return;
-    if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+    if (show) {
+        el.classList.remove('hidden');
+        el.style.display = '';  // Restaurar display original
+    } else {
+        el.classList.add('hidden');
+        el.style.display = 'none';  // Forzar display none
+    }
 }
 
 function clearFormInputs(ids) {
