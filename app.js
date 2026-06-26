@@ -1,7 +1,7 @@
 /* ================= CONFIGURACIÓN DE ENTORNO WEB (GITHUB + GOOGLE SCRIPTS) ================= */
 // Las URLs sensibles y secrets se cargan desde config.js (no versionado)
 const CLOUD_MODE_ENABLED = CONFIG?.CLOUD_MODE_ENABLED ?? true;
-const GOOGLE_SCRIPT_URL =  "https://script.google.com/macros/s/AKfycbwqwR87sGSaFbVHr0wi3tMUdYLMJsjwZEcJclOl1EmPgKMhYO5DvmDo5KiZH4rMsQ30Dw/exec";
+const GOOGLE_SCRIPT_URL = CONFIG?.GOOGLE_SCRIPT_URL ?? "https://script.google.com/macros/s/AKfycbwqwR87sGSaFbVHr0wi3tMUdYLMJsjwZEcJclOl1EmPgKMhYO5DvmDo5KiZH4rMsQ30Dw/exec";
 
 // Sistema de rate limiting para login
 let loginAttempts = {};
