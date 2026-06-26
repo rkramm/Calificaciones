@@ -4605,6 +4605,7 @@ function renderEvaluatorView() {
     });
 
     calculateLiveScore();
+    initializeDeadlineTimer();
 }
 
 function setEvaluationStatus(cell, score) {
@@ -4679,9 +4680,98 @@ function calculateLiveScore() {
         if (finalScoreCell) finalScoreCell.textContent = stageAverage;
         setEvaluationStatus(statusTextCell, stageAverage);
     } else {
-        if (finalScoreCell) finalScoreCell.textContent = "0"; 
+        if (finalScoreCell) finalScoreCell.textContent = "0";
         if (statusTextCell) { statusTextCell.textContent = "---"; statusTextCell.style.backgroundColor = "transparent"; }
     }
+}
+
+let deadlineTimerInterval = null;
+
+function initializeDeadlineTimer() {
+    // Limpiar intervalo previo si existe
+    if (deadlineTimerInterval) {
+        clearInterval(deadlineTimerInterval);
+        deadlineTimerInterval = null;
+    }
+
+    if (!savedDeadlineISO) {
+        console.log('⏱️ No hay deadline configurado');
+        const timerElement = document.getElementById('deadline-timer');
+        if (timerElement) timerElement.style.display = 'none';
+        return;
+    }
+
+    const timerElement = document.getElementById('deadline-timer');
+    if (!timerElement) {
+        console.error('❌ Elemento deadline-timer no encontrado');
+        return;
+    }
+
+    // Mostrar el cronómetro
+    timerElement.style.display = 'block';
+
+    // Actualizar inmediatamente
+    updateDeadlineDisplay();
+
+    // Actualizar cada segundo
+    deadlineTimerInterval = setInterval(updateDeadlineDisplay, 1000);
+}
+
+function updateDeadlineDisplay() {
+    const targetDate = parseSafeDate(savedDeadlineISO);
+    if (!targetDate) {
+        console.warn('⏱️ Deadline inválido:', savedDeadlineISO);
+        return;
+    }
+
+    const now = new Date();
+    const diff = targetDate - now;
+
+    const timerDisplay = document.getElementById('timer-display');
+    const timerElement = document.getElementById('deadline-timer');
+
+    if (diff <= 0) {
+        // Deadline expirado
+        if (!deadlineExpired) {
+            deadlineExpired = true;
+            console.warn('⏰ DEADLINE EXPIRADO - Congelando inputs');
+            freezeAllInputs();
+        }
+        if (timerDisplay) timerDisplay.textContent = '00-00:00';
+        if (timerElement) timerElement.style.color = '#D32F2F'; // Rojo
+        return;
+    }
+
+    // Calcular DD-HH:MM
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    const display = `${String(days).padStart(2, '0')}-${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    if (timerDisplay) timerDisplay.textContent = display;
+
+    // Cambiar color según tiempo restante
+    if (timerElement) {
+        if (diff < 3600000) { // Menos de 1 hora
+            timerElement.style.color = '#F57C00'; // Naranja
+        } else if (diff < 86400000) { // Menos de 1 día
+            timerElement.style.color = '#FBC02D'; // Amarillo
+        } else {
+            timerElement.style.color = 'var(--primary-dark)'; // Normal
+        }
+    }
+}
+
+function freezeAllInputs() {
+    // Deshabilitar todos los inputs de calificación
+    document.querySelectorAll('.score-input').forEach(input => {
+        input.disabled = true;
+        input.style.opacity = '0.6';
+        input.style.cursor = 'not-allowed';
+    });
+
+    // Mostrar mensaje de alerta
+    showToast('⏰ Tiempo de evaluación agotado - Formulario congelado', 'warning');
 }
 
 /* ================= MÓDULO DE CALIFICACIONES HISTÓRICAS ================= */
