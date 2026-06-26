@@ -815,8 +815,6 @@ button { font-family: 'Segoe UI', sans-serif; }
     margin: 0 !important;
     min-height: 40px !important;
     line-height: 1.4 !important;
-    display: flex !important;
-    align-items: center !important;
 }
 
 /* ================= OPTIMIZACIONES MÓVIL ================= */
