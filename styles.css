@@ -807,13 +807,16 @@ button { font-family: 'Segoe UI', sans-serif; }
 /* Reducir espacio vertical entre filas en un 40% */
 #evaluation-rows tr {
     height: auto !important;
+    min-height: 40px !important;
 }
 
 #evaluation-rows tr td {
-    padding: 0px 12px !important;
+    padding: 6px 12px !important;
     margin: 0 !important;
-    min-height: 0 !important;
-    line-height: 1.2 !important;
+    min-height: 40px !important;
+    line-height: 1.4 !important;
+    display: flex !important;
+    align-items: center !important;
 }
 
 /* ================= OPTIMIZACIONES MÓVIL ================= */
