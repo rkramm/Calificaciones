@@ -818,19 +818,39 @@ button { font-family: 'Segoe UI', sans-serif; }
 
 /* ================= OPTIMIZACIONES MÓVIL ================= */
 @media (max-width: 768px) {
-    /* Centrar botones de cobertura - 2 líneas, 3 botones cada una */
+    /* Centrar botones de cobertura y etapas inteligentemente */
+    #evaluador-coverage-tabs,
     #eval-stages-container {
         justify-content: center !important;
-        max-width: 300px !important;
+        margin: 0 auto !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+
+    /* Botones de cobertura y etapas - centrado dinámico */
+    #evaluador-coverage-tabs > button,
+    #evaluador-coverage-tabs > div,
+    #eval-stages-container > button,
+    #eval-stages-container > div {
+        flex-basis: calc(50% - 2px) !important;
+        min-width: 100px !important;
+    }
+
+    /* Para 3 elementos: última fila centrada */
+    #evaluador-coverage-tabs > button:nth-child(3):nth-last-child(1),
+    #eval-stages-container > div:nth-child(3):nth-last-child(1),
+    #eval-stages-container > button:nth-child(3):nth-last-child(1) {
+        flex-basis: calc(50% - 2px) !important;
         margin: 0 auto !important;
     }
 
-    #eval-stages-container > div {
-        flex-basis: calc(33.333% - 4px) !important;
-    }
-
-    #eval-stages-container > div:nth-child(n+4) {
-        margin-top: 4px !important;
+    /* Para 5 elementos: última fila centrada */
+    #evaluador-coverage-tabs > button:nth-child(5):nth-last-child(1),
+    #eval-stages-container > div:nth-child(5):nth-last-child(1),
+    #eval-stages-container > button:nth-child(5):nth-last-child(1) {
+        flex-basis: calc(50% - 2px) !important;
+        margin: 0 auto !important;
     }
 
     /* Colapsar proyectos por defecto en móvil */
