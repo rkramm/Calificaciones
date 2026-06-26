@@ -804,6 +804,11 @@ button { font-family: 'Segoe UI', sans-serif; }
     }
 }
 
+#evaluation-rows {
+    height: 80px;
+    overflow-y: auto;
+}
+
 /* Reducir espacio vertical entre filas en un 40% */
 #evaluation-rows tr {
     height: auto !important;
