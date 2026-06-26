@@ -68,7 +68,12 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     const tableName = payload.table;
     const dataArray = payload.data;
-    const mode = payload.mode || 'replace'; // 'replace' o 'incremental'
+    let mode = payload.mode || 'replace'; // 'replace', 'overwrite', o 'incremental'
+
+    // Normalizar 'overwrite' a 'replace'
+    if (mode === 'overwrite') {
+      mode = 'replace';
+    }
     
     // Si es solicitud de backup, crear hoja de respaldo y retornar
     if (tableName === '__backup__') {
@@ -98,24 +103,47 @@ function doPost(e) {
       sheet = spreadsheet.insertSheet(tableName);
     }
     
-    // Definir headers según tabla
-    let headers;
-    if (tableName === 'historicos') {
+    // Definir headers: SIEMPRE obtener de la hoja existente, NUNCA de dataArray
+    let headers = null;
+    const existingValues = sheet.getDataRange().getDisplayValues();
+
+    if (existingValues.length > 0) {
+      // Si la hoja tiene datos, usa los headers existentes
+      headers = existingValues[0];
+    } else if (tableName === 'historicos') {
+      // Si la hoja está vacía, usar headers predeterminados para tabla históricos
       headers = ['PROVINCIA','PROGRAMA','ENTIDAD','CALIFICADOR','AÑO','1.1','1.2','1.3','1.4','1.5','1.6','1.7','1.8','1.9','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8','2.9','3.1','3.2','3.3','3.4','3.5','3.6','3.7','4.1','4.2','4.3','4.4','4.5','4.6','4.7','4.8','4.9','4.10','5.1','5.2','5.3','5.4','5.5','5.6','5.7','6.1','6.2','6.3','6.4','6.5','6.6','6.7','6.8','6.9'];
     } else if (tableName === 'asigna_historico') {
+      // Si la hoja está vacía, usar headers predeterminados para tabla asigna_historico
       headers = ['idAsig','rut','programa','provincia','entidadId','entidadNombre','etapas'];
     } else if (dataArray && dataArray.length > 0) {
+      // ÚLTIMO RECURSO: obtener de dataArray solo si la hoja estaba vacía
       headers = Object.keys(dataArray[0]);
     }
     
     if (mode === 'replace') {
-      // Modo antiguo: reemplazar todo (solo para compatibilidad manual)
-      sheet.clearContents();
-      if (headers && dataArray && dataArray.length > 0) {
-        const rows = dataArray.map(obj => headers.map(h => obj[h] !== undefined ? obj[h] : ""));
-        sheet.appendRow(headers);
+      // Modo 'replace': LIMPIAR Y REEMPLAZAR DATOS (mantener headers)
+      const lastRow = sheet.getLastRow();
+
+      // Limpiar todas las filas de datos (desde fila 2 en adelante) usando clearContent
+      // Esto es más seguro que deleteRows y evita errores de filas protegidas
+      if (lastRow > 1) {
+        sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+      }
+
+      // Ahora insertar nuevos datos en fila 2
+      if (dataArray && dataArray.length > 0) {
+        const rows = dataArray.map(obj => headers.map(h => {
+          const val = obj[h] !== undefined ? obj[h] : "";
+          // Forzar itemId como TEXTO (anteponer apóstrofe para evitar interpretación como número decimal)
+          if (h === 'itemId' && val && typeof val === 'string') {
+            return "'" + val;  // Apóstrofe fuerza formato texto en Google Sheets
+          }
+          return val;
+        }));
         sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
       }
+      // Si dataArray está vacío, simplemente no agrega nada (los headers permanecen)
     } else {
       // Modo incremental: actualizar/agregar por clave primaria, NUNCA borrar
       const keyField = getKeyField(tableName);
@@ -131,17 +159,24 @@ function doPost(e) {
         const refreshedValues = sheet.getDataRange().getDisplayValues();
         const refreshedHeaders = refreshedValues.length > 0 ? refreshedValues[0] : headers;
         const refreshedKeyIndex = refreshedHeaders.indexOf(keyField);
-        
+
         // Construir mapa de filas existentes por clave primaria
         const rowMap = {};
         for (let i = 1; i < refreshedValues.length; i++) {
           const key = refreshedValues[i][refreshedKeyIndex];
           if (key !== undefined && key !== '') rowMap[key] = i;
         }
-        
+
         dataArray.forEach(obj => {
           const keyValue = obj[keyField];
-          const rowData = refreshedHeaders.map(h => obj[h] !== undefined ? obj[h] : "");
+          const rowData = refreshedHeaders.map(h => {
+            const val = obj[h] !== undefined ? obj[h] : "";
+            // Forzar itemId como TEXTO
+            if (h === 'itemId' && val && typeof val === 'string') {
+              return "'" + val;
+            }
+            return val;
+          });
           if (rowMap[keyValue] !== undefined) {
             // Actualizar fila existente
             sheet.getRange(rowMap[keyValue] + 1, 1, 1, rowData.length).setValues([rowData]);

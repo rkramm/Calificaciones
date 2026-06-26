@@ -1,7 +1,7 @@
 /* ================= CONFIGURACIÓN DE ENTORNO WEB (GITHUB + GOOGLE SCRIPTS) ================= */
 // Las URLs sensibles y secrets se cargan desde config.js (no versionado)
 const CLOUD_MODE_ENABLED = CONFIG?.CLOUD_MODE_ENABLED ?? true;
-const GOOGLE_SCRIPT_URL = CONFIG?.GOOGLE_SCRIPT_URL ?? "https://script.google.com/macros/s/undefined/exec";
+const GOOGLE_SCRIPT_URL =  "https://script.google.com/macros/s/AKfycbwqwR87sGSaFbVHr0wi3tMUdYLMJsjwZEcJclOl1EmPgKMhYO5DvmDo5KiZH4rMsQ30Dw/exec";
 
 // Sistema de rate limiting para login
 let loginAttempts = {};
@@ -2601,6 +2601,7 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
 
             userScoresFromCloud = cloudScores.filter(s => s.rutEvaluador === currentUser.rut).map(s => ({
                 ...s,
+                itemId: s.itemId ? s.itemId.toString().replace(/,/g, '.') : s.itemId,  // Reemplazar comas con puntos (locale)
                 stage: parseInt(s.stage, 10),  // Convertir stage a número
                 score: parseInt(s.score, 10)   // Convertir score a número
             }));
@@ -2804,6 +2805,7 @@ function backgroundSyncForEvaluator() {
                 // 🔧 CRÍTICO: Convertir stage y score a números (Google Sheets retorna strings)
                 const convertedServerScores = serverScores.map(s => ({
                     ...s,
+                    itemId: s.itemId ? s.itemId.toString().replace(/,/g, '.') : s.itemId,  // Reemplazar comas con puntos (locale)
                     stage: parseInt(s.stage, 10),
                     score: parseInt(s.score, 10)
                 }));
@@ -2937,7 +2939,7 @@ function renderCoverageTabs() {
                 const programa = cobertura ? cobertura.split(' - ')[0] : 'DS10';
                 badgeEl.textContent = programa;
             }
-            // Resetear entidad seleccionada para que se auto-seleccione la primera del nuevo programa
+            // Resetear entidad seleccionada
             window.currentSelectedEntity = null;
             const conf = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
             currentStage = (conf && conf.etapas && conf.etapas.length > 0) ? conf.etapas[0] : 1;
@@ -4279,19 +4281,83 @@ function saveEvaluatorScores(callback, options = {}) {
             showToast('Guardando...', 'info');
         }
 
+        // SINCRONIZAR: ejecutar calculateLiveScore() para que los inputs vacíos se reflejen en allMemoryScores
+        calculateLiveScore();
+
         // Google Sheets es la ÚNICA fuente de datos
         // Filtrar: solo guardar scores con valor > 0 (scores con 0 = no evaluado)
         const horaEnvio = formatDateTime(new Date());
+        console.log(`🔍 ANTES DE FILTRAR: allMemoryScores tiene ${allMemoryScores.length} registros totales`);
+        console.log(`   - Usuario actual: ${currentUser.rut}`);
+        console.log(`   - currentCoverage: "${currentCoverage}"`);
+        console.log(`   - Registros de DS27 en allMemoryScores:`, allMemoryScores.filter(r => r.cobertura && r.cobertura.includes('DS27')).length);
+
+        const ds27Records = allMemoryScores.filter(r => r.cobertura && r.cobertura.includes('DS27'));
+        if (ds27Records.length > 0) {
+            console.log(`   📌 Primer registro DS27:`, {
+                cobertura: ds27Records[0].cobertura,
+                entidad: ds27Records[0].entidad,
+                programa: ds27Records[0].programa,
+                provincia: ds27Records[0].provincia,
+                itemId: ds27Records[0].itemId,
+                score: ds27Records[0].score
+            });
+        }
+
+        // Obtener valores ACTUALES de los inputs (lo que realmente está visible en la pantalla)
+        const currentInputValues = {};
+        document.querySelectorAll('.score-input').forEach(input => {
+            const id = input.getAttribute('data-id');
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val) && val > 0) {
+                currentInputValues[id] = val;
+            }
+        });
+
+        // IMPORTANTE: Incluir TODOS los registros acumulados del usuario actual y cobertura actual
+        // No filtrar por currentInputValues, ya que otros registros están en otras etapas fuera del DOM
         const recordsToSave = allMemoryScores
-            .filter(r => r.rutEvaluador === currentUser.rut && parseInt(r.score, 10) > 0)
+            .filter(r => {
+                // Incluir si:
+                // 1. Es del usuario actual
+                // 2. Es de la cobertura actual
+                // 3. Tiene un valor > 0 (ya guardado en allMemoryScores)
+                const passes = r.rutEvaluador === currentUser.rut &&
+                               r.cobertura === currentCoverage &&
+                               r.score > 0;
+                return passes;
+            })
             .map(memScore => {
+                // Actualizar score SOLO si está visible en el DOM actual
+                const currentVal = currentInputValues[memScore.itemId];
+                if (currentVal !== undefined && currentVal > 0) {
+                    memScore.score = currentVal;
+                }
+                // Si no está en el DOM actual, mantener el score anterior
+                return memScore;
+            });
+
+        console.log('ITEMS A GUARDAR (recordsToSave):');
+        recordsToSave.forEach(r => console.log('  ', r.itemId, '= score:', r.score));
+
+        const recordsToSaveWithDetails = recordsToSave.map(memScore => {
+                console.log(`✅ Guardando: ${memScore.cobertura} - ${memScore.entidad} - ${memScore.itemId} = ${memScore.score}`);
+
                 const activeAsig = allAsignacionesMapped.find(a =>
                     a.cobertura === memScore.cobertura && a.entidadNombre === memScore.entidad
                 ) || allAsignacionesMapped.find(a => a.cobertura === memScore.cobertura) || {};
 
+                // Si el registro ya existía (no es "pending_"), mantener idTx y timestampId originales
+                // Si es nuevo ("pending_"), generar idTx definitivo pero mantener otros campos
+                const isNewRecord = !memScore.idTx || memScore.idTx.startsWith('pending_');
+                const newIdTx = isNewRecord ?
+                    `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}` :
+                    memScore.idTx;
+                const newTimestampId = isNewRecord ? Date.now().toString() : memScore.timestampId;
+
                 return {
-                    idTx: `${currentUser.rut}_${memScore.cobertura.replace(/[\s-]+/g, '')}_${memScore.itemId}`,
-                    timestampId: Date.now().toString(),
+                    idTx: newIdTx,
+                    timestampId: newTimestampId,
                     rutEvaluador: currentUser.rut,
                     nombreEvaluador: memScore.nombreEvaluador || currentUser.nombre,
                     programa: memScore.programa || activeAsig.programa || '',
@@ -4305,47 +4371,64 @@ function saveEvaluatorScores(callback, options = {}) {
                 };
             });
 
-        // Guardar DIRECTAMENTE en Google Sheets - Mantener TODO, actualizar solo entidad actual
+        console.log(`📊 recordsToSave tiene ${recordsToSave.length} registros para guardar`);
+
+        // Guardar DIRECTAMENTE en Google Sheets - Usar currentCoverage como clave maestra
         // Primero descargar todos los scores actuales de Google Sheets
         cloudGet('scores').then(allGoogleScores => {
             // 1. Mantener scores de OTROS evaluadores
             const otherUsersScores = (allGoogleScores || []).filter(s => s.rutEvaluador !== currentUser.rut);
 
-            // 2. Mantener scores del MISMO usuario pero de OTRAS entidades/coberturas
-            const otherEntitiesScores = (allGoogleScores || []).filter(s =>
-                s.rutEvaluador === currentUser.rut &&
-                !recordsToSave.some(n => n.entidad === s.entidad && n.cobertura === s.cobertura)
-            );
+            // 2. Mantener scores del MISMO usuario pero de OTRAS COBERTURAS
+            const otherCoverageScores = (allGoogleScores || []).filter(s => {
+                return s.rutEvaluador === currentUser.rut && s.cobertura !== currentCoverage;
+            });
 
-            // 3. Combinar: otros usuarios + otras entidades del mismo usuario + nuevos scores
-            const finalScores = [...otherUsersScores, ...otherEntitiesScores, ...recordsToSave];
+            console.log('ANTES DE GUARDAR');
+            console.log('Cobertura:', currentCoverage);
+            console.log('allGoogleScores TOTAL:', allGoogleScores ? allGoogleScores.length : 0);
+            const ds27InGoogle = allGoogleScores ? allGoogleScores.filter(s => s.programa === 'DS27').length : 0;
+            console.log('DS27 en Google Sheets AHORA:', ds27InGoogle);
+            console.log('recordsToSave cantidad:', recordsToSave.length);
+            console.log('otherCoverageScores cantidad:', otherCoverageScores.length);
+
+            // 3. Combinar: otros usuarios + otras coberturas + nuevos scores (score > 0)
+            const finalScores = [...otherUsersScores, ...otherCoverageScores, ...recordsToSave];
+            const ds27InFinal = finalScores.filter(s => s.programa === 'DS27').length;
+            console.log('DS27 en finalScores QUE SE GUARDARA:', ds27InFinal);
+            console.log('finalScores TOTAL:', finalScores.length);
 
             // Guardar todo en Google Sheets (usar overwrite para reemplazar completamente)
-            cloudSave('scores', finalScores, 'overwrite').then((success) => {
+            cloudSave('scores', finalScores, 'replace').then((success) => {
+                console.log('cloudSave completado. Success:', success);
                 hasUnsavedEvaluatorChanges = false;
 
                 if (!silent) {
                     if (success) {
-                        showToast('✅ Guardado correctamente', 'success');
+                        showToast('Guardado en Google Sheets', 'success');
                     } else {
-                        showToast('❌ Error al guardar', 'error');
+                        showToast('Error en cloudSave', 'error');
                     }
                 }
 
-                // Recargar desde Google Sheets (fuente de verdad)
-                cloudGet('scores').then(freshScores => {
-                    const myScores = (freshScores || []).filter(s => s.rutEvaluador === currentUser.rut).map(s => ({
-                        ...s,
-                        stage: parseInt(s.stage, 10),
-                        score: parseInt(s.score, 10)
-                    }));
-                    allMemoryScores = myScores;
+                // VERIFICAR que se guardó correctamente
+                cloudGet('scores').then(verifyScores => {
+                    const verifyCount = (verifyScores || []).length;
+                    const finalCount = finalScores.length;
+                    console.log('VERIF: finalScores=' + finalCount + ', GoogleSheets=' + verifyCount);
+
+                    if (verifyCount !== finalCount && finalCount === 0) {
+                        console.warn('ADVERTENCIA: Google Sheets NO se limpió, reintentando...');
+                        cloudSave('scores', finalScores, 'replace');
+                    }
+
                     loadScoresFromActiveContext();
                     renderEvaluatorView();
                     if (callback) callback(success);
-                }).catch(err => {
-                    console.error('Error recargando scores:', err);
-                    if (callback) callback(false);
+                }).catch(() => {
+                    loadScoresFromActiveContext();
+                    renderEvaluatorView();
+                    if (callback) callback(success);
                 });
             });
         }).catch(err => {
@@ -4533,12 +4616,21 @@ function calculateLiveScore() {
             parseInt(r.stage,10) === currentStage &&
             r.entidad === window.currentSelectedEntity
         );
-        
-        if (isNaN(val)) { 
-            delete dbScores[id]; 
+
+        // Si está vacío o es NaN, eliminar del registro (para que se borre en Google Sheets)
+        if (isNaN(val)) {
+            delete dbScores[id];
             if (existingIdx >= 0) allMemoryScores.splice(existingIdx, 1);
-            return; 
+            return;
         }
+
+        // Si es 0, también eliminar (usuario lo borró)
+        if (val === 0) {
+            delete dbScores[id];
+            if (existingIdx >= 0) allMemoryScores.splice(existingIdx, 1);
+            return;
+        }
+
         if (val < 0) { input.value = 0; val = 0; }
         if (val > 100) { input.value = 100; val = 100; }
         dbScores[id] = val;
@@ -4552,7 +4644,7 @@ function calculateLiveScore() {
             ) || {};
             allMemoryScores.push({
                 idTx: `pending_${currentUser.rut}_${currentCoverage.replace(/[\s-]+/g, '')}_${id}`,
-                timestampId: 'pending',
+                timestampId: Date.now().toString(),
                 rutEvaluador: currentUser.rut,
                 nombreEvaluador: currentUser.nombre,
                 programa: activeAsig.programa || '',
