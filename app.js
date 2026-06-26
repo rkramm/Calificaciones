@@ -1943,7 +1943,8 @@ function setupAdminTabs() {
             e.target.classList.add('active');
             const targetId = e.target.getAttribute('data-target');
             toggleElement(targetId, true);
-            if (targetId === 'panel-monitoreo' || targetId === 'panel-reportes') renderMonitoringTable();
+            if (targetId === 'panel-monitoreo') renderMonitoringTable();
+            if (targetId === 'panel-reportes') renderReportes();
             if (targetId === 'panel-historicos') renderHistoricoView();
         });
     });
