@@ -1444,7 +1444,25 @@ const DB_NAME = 'SistemaEvaluacionDB_v22';
 const DB_VERSION = 9; // Incrementado para forzar limpieza completa de IndexedDB corrupto
 
 document.addEventListener('DOMContentLoaded', () => {
-    initIndexedDB(() => { setupEventListeners(); setupAdminTabs(); setupMatrixLogisticsDrivers(); checkDeadlineStatus(); });
+    // Timeout fallback para móvil: si IndexedDB tarda más de 2s, actualizar indicador igualmente
+    const connectionTimeoutId = setTimeout(() => {
+        const dot = document.getElementById('conn-dot');
+        const txt = document.getElementById('conn-text');
+        if (dot && txt && txt.textContent === 'Verificando conexión...') {
+            dot.style.backgroundColor = '#92D050';
+            txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Modo Local';
+            txt.style.color = '#25306B';
+            txt.style.fontWeight = 'bold';
+        }
+    }, 2000);
+
+    initIndexedDB(() => {
+        clearTimeout(connectionTimeoutId);
+        setupEventListeners();
+        setupAdminTabs();
+        setupMatrixLogisticsDrivers();
+        checkDeadlineStatus();
+    });
 });
 
 // Sistema de tooltips visuales para etapas

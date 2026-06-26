@@ -147,7 +147,19 @@ input[type="number"] { -moz-appearance: textfield; }
 .btn-danger { background-color: var(--accent-red); color: var(--white); }
 .btn-danger:hover { background-color: #D0112A; }
 
-.table-scroll-container { max-height: calc(100vh - 290px); overflow-y: auto; }
+.table-scroll-container {
+    max-height: calc(100vh - 290px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-height: 700px) {
+    .table-scroll-container { max-height: calc(100vh - 200px); }
+}
+
+@media (max-width: 768px) {
+    .table-scroll-container { max-height: calc(100vh - 250px); }
+}
 .evaluation-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
 .evaluation-table th, .evaluation-table td { border: 1px solid #000; padding: 8px 12px; vertical-align: middle; min-height: 28px; }
 .title-etapa { text-align: left; font-weight: bold; color: var(--primary-dark); }
