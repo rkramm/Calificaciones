@@ -4706,6 +4706,36 @@ function calculateLiveScore() {
         if (finalScoreCell) finalScoreCell.textContent = "0";
         if (statusTextCell) { statusTextCell.textContent = "---"; statusTextCell.style.backgroundColor = "transparent"; }
     }
+
+    updateEntityAverage();
+}
+
+function updateEntityAverage() {
+    const avgBox = document.getElementById('entity-average-box');
+    if (!avgBox) return;
+
+    // Calcular promedio de cada etapa asignada
+    const stageAverages = {};
+    allMemoryScores
+        .filter(r => r.cobertura === currentCoverage && r.entidad === window.currentSelectedEntity)
+        .forEach(r => {
+            if (!stageAverages[r.stage]) {
+                stageAverages[r.stage] = { total: 0, count: 0 };
+            }
+            stageAverages[r.stage].total += r.score;
+            stageAverages[r.stage].count++;
+        });
+
+    // Calcular promedio de los promedios de etapas
+    const stageValues = Object.values(stageAverages);
+    if (stageValues.length === 0) {
+        avgBox.textContent = '0';
+        return;
+    }
+
+    const stageAverageValues = stageValues.map(s => Math.round(s.total / s.count));
+    const entityAverage = Math.round(stageAverageValues.reduce((a, b) => a + b, 0) / stageAverageValues.length);
+    avgBox.textContent = entityAverage;
 }
 
 let deadlineTimerInterval = null;
