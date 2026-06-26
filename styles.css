@@ -792,3 +792,44 @@ button { font-family: 'Segoe UI', sans-serif; }
     min-height: 0 !important;
     line-height: 1.2 !important;
 }
+
+/* ================= OPTIMIZACIONES MÓVIL ================= */
+@media (max-width: 768px) {
+    /* Centrar botones de cobertura */
+    #eval-stages-container {
+        justify-content: center !important;
+    }
+
+    /* Colapsar proyectos por defecto en móvil */
+    .projects-section {
+        display: none !important;
+    }
+
+    /* Reducir ancho de cell-index (número del item) */
+    .cell-index {
+        width: 3% !important;
+        min-width: 20px !important;
+        padding: 1px 4px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Reducir ancho de cell-score-input (nota) */
+    .cell-score-input {
+        width: 18% !important;
+        padding: 1px 4px !important;
+    }
+
+    .cell-score-input input {
+        width: 100% !important;
+        padding: 2px 4px !important;
+        font-size: 0.8rem !important;
+        height: 24px !important;
+    }
+
+    /* Aumentar ancho de cell-desc (descripción) */
+    .cell-desc {
+        width: 79% !important;
+        padding: 1px 8px !important;
+        font-size: 0.75rem !important;
+    }
+}
