@@ -2610,7 +2610,8 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
                 ...s,
                 itemId: s.itemId ? s.itemId.toString().replace(/,/g, '.') : s.itemId,  // Reemplazar comas con puntos (locale)
                 stage: parseInt(s.stage, 10),  // Convertir stage a número
-                score: parseInt(s.score, 10)   // Convertir score a número
+                score: parseInt(s.score, 10),   // Convertir score a número
+                modificado: false  // Flag para rastrear cambios locales
             }));
 
             console.log(`✅ Descargados ${userScoresFromCloud.length} scores para ${currentUser.rut}`);
@@ -4326,7 +4327,7 @@ function saveEvaluatorScores(callback, options = {}) {
             }
         });
 
-        // IMPORTANTE: Incluir TODOS los registros acumulados del usuario actual, cobertura actual Y entidad actual
+        // IMPORTANTE: Incluir SOLO registros que fueron modificados del usuario actual, cobertura actual Y entidad actual
         // No filtrar por currentInputValues, ya que otros registros están en otras etapas fuera del DOM
         const recordsToSave = allMemoryScores
             .filter(r => {
@@ -4335,10 +4336,12 @@ function saveEvaluatorScores(callback, options = {}) {
                 // 2. Es de la cobertura actual
                 // 3. Es de la entidad actual (CRÍTICO para evitar sobrescribir otras entidades)
                 // 4. Tiene un valor > 0 (ya guardado en allMemoryScores)
+                // 5. Fue modificado desde la última sincronización (OPTIMIZACIÓN)
                 const passes = r.rutEvaluador === currentUser.rut &&
                                r.cobertura === currentCoverage &&
                                r.entidad === window.currentSelectedEntity &&
-                               r.score > 0;
+                               r.score > 0 &&
+                               r.modificado === true;
                 return passes;
             })
             .map(memScore => {
@@ -4416,6 +4419,22 @@ function saveEvaluatorScores(callback, options = {}) {
             cloudSave('scores', finalScores, 'replace').then((success) => {
                 console.log('cloudSave completado. Success:', success);
                 hasUnsavedEvaluatorChanges = false;
+
+                // Marcar registros como sincronizados (no modificados) después de guardar exitosamente
+                if (success) {
+                    recordsToSave.forEach(saved => {
+                        const idx = allMemoryScores.findIndex(r =>
+                            r.rutEvaluador === saved.rutEvaluador &&
+                            r.cobertura === saved.cobertura &&
+                            r.entidad === saved.entidad &&
+                            r.itemId === saved.itemId &&
+                            r.stage === saved.stage
+                        );
+                        if (idx >= 0) {
+                            allMemoryScores[idx].modificado = false;
+                        }
+                    });
+                }
 
                 if (!silent) {
                     if (success) {
@@ -4653,6 +4672,7 @@ function calculateLiveScore() {
 
         if (existingIdx >= 0) {
             allMemoryScores[existingIdx].score = val;
+            allMemoryScores[existingIdx].modificado = true;  // Marcar como cambiado
         } else {
             const activeAsig = allAsignacionesMapped.find(a =>
                 a.cobertura === currentCoverage && a.entidadNombre === window.currentSelectedEntity
@@ -4669,7 +4689,8 @@ function calculateLiveScore() {
                 stage: currentStage,
                 itemId: id,
                 score: val,
-                hora: formatDateTime(new Date())
+                hora: formatDateTime(new Date()),
+                modificado: true  // Nuevos registros siempre marcados como cambiados
             });
         }
     });
