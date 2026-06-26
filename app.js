@@ -327,8 +327,22 @@ function formatDDMMYYYY(dateObj) {
     return `${d}-${m}-${y}`;
 }
 
+function formatFullDate(dateObj) {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const dayName = days[dateObj.getDay()];
+    const monthName = months[dateObj.getMonth()];
+    const day = dateObj.getDate();
+    const year = dateObj.getFullYear();
+    return `${dayName}, ${day} de ${monthName} de ${year}`;
+}
+
 function formatDateTime(dateObj) {
     return formatDDMMYYYY(dateObj) + " " + dateObj.toLocaleTimeString('es-CL', {hour: '2-digit', minute:'2-digit'});
+}
+
+function formatTimeOnly(dateObj) {
+    return dateObj.toLocaleTimeString('es-CL', {hour: '2-digit', minute:'2-digit', hour12: false});
 }
 
 function parseAnyDate(dateStr) {
@@ -2141,7 +2155,8 @@ function startCountdownClock() {
 
     const updateTime = () => {
         const now = new Date();
-        if (todayLabel) todayLabel.textContent = formatDateTime(now);
+        if (todayLabel) todayLabel.textContent = formatFullDate(now);
+        if (clock) clock.textContent = formatTimeOnly(now);
     };
     updateTime();
 

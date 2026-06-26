@@ -832,4 +832,29 @@ button { font-family: 'Segoe UI', sans-serif; }
         padding: 1px 8px !important;
         font-size: 0.75rem !important;
     }
+
+    /* Botones de acciones flotantes en móvil */
+    .main-header > div:last-child {
+        position: fixed !important;
+        bottom: 16px !important;
+        right: 16px !important;
+        background: white !important;
+        padding: 12px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+        z-index: 100 !important;
+        flex-direction: column !important;
+        max-width: 120px !important;
+    }
+
+    .main-header > div:last-child > div:last-child {
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+
+    .main-header > div:last-child button {
+        padding: 6px 10px !important;
+        font-size: 0.75rem !important;
+        width: 100% !important;
+    }
 }
