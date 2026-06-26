@@ -383,6 +383,10 @@ button { font-family: 'Segoe UI', sans-serif; }
     .evaluation-table { font-size: 0.75rem; }
     .evaluation-table th, .evaluation-table td { padding: 4px 6px; }
     .table-scroll-container { max-height: calc(100vh - 250px); }
+
+    /* En móvil, reducir altura de proyectos para dar más espacio a la tabla */
+    #eval-projects-section { height: 120px !important; }
+    #table-card-container { min-height: 300px !important; }
 }
 
 @media (max-width: 480px) {
@@ -419,6 +423,10 @@ button { font-family: 'Segoe UI', sans-serif; }
 
     .login-card { padding: 30px 20px; max-width: 90%; }
     .login-header h2 { font-size: 1.4rem; }
+
+    /* En móvil muy pequeño, minimizar proyectos para tabla */
+    #eval-projects-section { height: 80px !important; }
+    #table-card-container { min-height: 400px !important; }
 }
 
 /* ================= PANEL COLAPSABLE SUPERIOR ================= */
