@@ -6,10 +6,17 @@
     <title>Redirigiendo...</title>
     <script>
         // Redirigir 404 a index.html en GitHub Pages subdirectorio
-        // Esto permite que rutas como /Calificaciones/path funcionen correctamente
+        // Maneja mayúsculas/minúsculas y rutas internas
 
         function getRedirectPath() {
             let path = window.location.pathname;
+
+            // Manejar /calificaciones (minúscula) → /Calificaciones (mayúscula)
+            if (path.includes('/calificaciones')) {
+                path = path.replace(/\/calificaciones/i, '/Calificaciones');
+                window.location.href = window.location.protocol + '//' + window.location.host + path + window.location.search + window.location.hash;
+                return;
+            }
 
             // Si no termina con .html y no es un archivo, redirigir a index.html
             if (!path.endsWith('.html') && !path.endsWith('/') && !path.includes('.')) {
