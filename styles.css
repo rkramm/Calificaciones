@@ -387,6 +387,19 @@ button { font-family: 'Segoe UI', sans-serif; }
     /* En móvil, reducir altura de proyectos para dar más espacio a la tabla */
     #eval-projects-section { height: 120px !important; }
     #table-card-container { min-height: 300px !important; }
+
+    /* Móvil: Aumentar altura de filas y reajustar columnas */
+    .evaluation-table td, .evaluation-table th {
+        padding: 12px 8px !important;
+        min-height: 50px !important;
+    }
+
+    /* Reajustar anchos de columna en móvil: más espacio para texto, menos para calificación */
+    .evaluation-table colgroup col:nth-child(1) { width: 1% !important; }
+    .evaluation-table colgroup col:nth-child(2) { width: 85% !important; }
+    .evaluation-table colgroup col:nth-child(3) { width: 4.67% !important; }
+    .evaluation-table colgroup col:nth-child(4) { width: 4.67% !important; }
+    .evaluation-table colgroup col:nth-child(5) { width: 4.66% !important; }
 }
 
 @media (max-width: 480px) {
@@ -427,6 +440,19 @@ button { font-family: 'Segoe UI', sans-serif; }
     /* En móvil muy pequeño, minimizar proyectos para tabla */
     #eval-projects-section { height: 80px !important; }
     #table-card-container { min-height: 400px !important; }
+
+    /* Móvil muy pequeño: Aumentar más altura de filas y reajustar columnas */
+    .evaluation-table td, .evaluation-table th {
+        padding: 14px 6px !important;
+        min-height: 60px !important;
+    }
+
+    /* Reajustar anchos de columna en móvil muy pequeño */
+    .evaluation-table colgroup col:nth-child(1) { width: 1% !important; }
+    .evaluation-table colgroup col:nth-child(2) { width: 82% !important; }
+    .evaluation-table colgroup col:nth-child(3) { width: 5.67% !important; }
+    .evaluation-table colgroup col:nth-child(4) { width: 5.67% !important; }
+    .evaluation-table colgroup col:nth-child(5) { width: 5.66% !important; }
 }
 
 /* ================= PANEL COLAPSABLE SUPERIOR ================= */
