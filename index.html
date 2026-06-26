@@ -11,6 +11,13 @@
         const baseTag = document.createElement('base');
         baseTag.href = basePath;
         document.head.insertBefore(baseTag, document.head.firstChild);
+
+        // Información de autoría - visible en consola (F12)
+        console.log('%c🔐 SISTEMA DE PRECALIFICACIÓN E INSPECCIÓN', 'color: #25306B; font-size: 16px; font-weight: bold;');
+        console.log('%cDesarrollado por: Rodrigo Kramm (rkramm@gmail.com)', 'color: #006BB9; font-size: 12px;');
+        console.log('%cÁrea: Asistencia Técnica - Serviu Región de los Lagos', 'color: #28A745; font-size: 12px;');
+        console.log('%cAño: 2026', 'color: #666; font-size: 12px;');
+        console.log('%c© Todos los derechos reservados', 'color: #999; font-size: 11px; font-style: italic;');
     </script>
     <title>Sistema de Precalificación e Inspección</title>
     <link rel="stylesheet" href="styles.css">
@@ -61,6 +68,12 @@
                 <span id="conn-text" style="font-size: 0.85rem; color: #25306B; font-weight: bold;">Conectado</span>
             </div>
         </form>
+
+        <div style="margin-top: 32px; text-align: center; padding-top: 20px; border-top: 1px solid #E8EAED;">
+            <p style="font-size: 0.75rem; color: #999; font-style: italic; margin: 0; line-height: 1.4;">
+                Creado por Área Asistencia Técnica<br>Serviu Región de los Lagos - 2026
+            </p>
+        </div>
     </div>
 
     <div id="main-screen" class="container hidden" style="display: none !important;">
