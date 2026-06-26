@@ -1444,7 +1444,7 @@ const DB_NAME = 'SistemaEvaluacionDB_v22';
 const DB_VERSION = 9; // Incrementado para forzar limpieza completa de IndexedDB corrupto
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Timeout fallback para móvil: si IndexedDB tarda, actualizar indicador rápido
+    // Timeout fallback para móvil: si IndexedDB tarda, actualizar indicador
     let connectionUpdated = false;
 
     function updateConnectionStatus() {
@@ -1457,14 +1457,26 @@ document.addEventListener('DOMContentLoaded', () => {
             txt.textContent = CLOUD_MODE_ENABLED ? 'Conectado a la Nube' : 'Modo Local';
             txt.style.color = '#25306B';
             txt.style.fontWeight = 'bold';
+            console.log('✅ Indicador de conexión actualizado');
         }
     }
 
-    // Intentar actualizar después de 800ms (móvil espera rápido)
-    const connectionTimeoutId = setTimeout(updateConnectionStatus, 800);
+    // Timeout 1: Fallback rápido para móvil (1.5 segundos)
+    const connectionTimeoutId = setTimeout(() => {
+        console.log('⏱️ Timeout de conexión (1.5s) ejecutado');
+        updateConnectionStatus();
+    }, 1500);
+
+    // Timeout 2: Fallback agresivo (3 segundos) en caso de que IndexedDB esté muy lento
+    const aggressiveTimeoutId = setTimeout(() => {
+        console.log('⚠️ Timeout agresivo (3s) ejecutado');
+        updateConnectionStatus();
+    }, 3000);
 
     initIndexedDB(() => {
+        console.log('✅ initIndexedDB completado');
         clearTimeout(connectionTimeoutId);
+        clearTimeout(aggressiveTimeoutId);
         updateConnectionStatus();
         setupEventListeners();
         setupAdminTabs();
