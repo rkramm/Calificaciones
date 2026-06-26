@@ -888,6 +888,16 @@ button { font-family: 'Segoe UI', sans-serif; }
         text-align: center !important;
     }
 
+    /* Ocultar texto de headers (MALO, ACEPTABLE, BUENO) en móvil, mostrar solo números */
+    .range-header {
+        font-size: 0 !important;
+    }
+
+    .range-header small {
+        font-size: 0.55rem !important;
+        display: block !important;
+    }
+
     /* Header sticky en móvil - ocupa ancho completo */
     .main-header {
         position: sticky !important;
