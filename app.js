@@ -2241,6 +2241,38 @@ function renderAdminProgramsColumn() {
     renderAdminEntidadesColumn();
 }
 
+function renderEvaluadoresColumnWithSearch(evaluadores, colEvaluadores) {
+    if (evaluadores.length === 0) {
+        colEvaluadores.innerHTML = '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>';
+        return;
+    }
+
+    // Ordenar alfabéticamente por nombre
+    const sortedEvaluadores = [...evaluadores].sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    colEvaluadores.innerHTML = `
+        <div style="background:#FFC000; color:var(--primary-dark); padding:4px 6px; margin-bottom:6px; border-radius:3px; font-size:0.75rem; font-weight:bold; text-transform:uppercase; text-align:center;">[ Seleccionar Evaluador ]</div>
+        <input type="text" id="search-evaluadores-col" placeholder="Buscar..." style="width:100%; padding:6px 8px; margin-bottom:6px; border:1px solid #ccc; border-radius:3px; font-size:0.75rem;" oninput="filterEvaluadoresColumn()">
+    ` +
+    sortedEvaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+}
+
+function filterEvaluadoresColumn() {
+    const searchTerm = document.getElementById('search-evaluadores-col')?.value.toLowerCase() || '';
+    const checkboxes = document.querySelectorAll('.asig-evaluador-chk');
+
+    checkboxes.forEach(checkbox => {
+        const label = checkbox.parentElement;
+        const nombre = checkbox.getAttribute('data-name').toLowerCase();
+
+        if (nombre.includes(searchTerm)) {
+            label.parentElement.style.display = 'block';
+        } else {
+            label.parentElement.style.display = 'none';
+        }
+    });
+}
+
 function renderAdminEntidadesColumn() {
     const col = document.getElementById('col-entidades-dinamicas');
     if (!col) return;
@@ -2272,11 +2304,11 @@ function renderAdminEntidadesColumn() {
         return;
     }
 
-    // Agregar botón "Seleccionar todas" y lista de entidades
+    // Agregar botón "Seleccionar todas" y lista de entidades con estilo normalizado
     col.innerHTML = `
-        <div style="font-size:0.75rem; font-weight:bold; color:var(--primary-blue); margin-bottom:8px; text-transform:uppercase;">Seleccionar Entidad:</div>
-        <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = true)" style="background:#0066BB; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:6px; cursor:pointer; font-weight:bold;">✓ Seleccionar todas</button>
-        <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = false)" style="background:#999; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:6px; cursor:pointer; font-weight:bold;">✗ Deseleccionar todas</button>
+        <div style="background:#FFC000; color:var(--primary-dark); padding:4px 6px; margin-bottom:6px; border-radius:3px; font-size:0.75rem; font-weight:bold; text-transform:uppercase; text-align:center;">[ Seleccionar Entidad ]</div>
+        <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = true)" style="background:#0066BB; color:white; border:none; padding:6px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:4px; cursor:pointer; font-weight:bold;">✓ Seleccionar todas</button>
+        <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = false)" style="background:#999; color:white; border:none; padding:6px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:6px; cursor:pointer; font-weight:bold;">✗ Deseleccionar todas</button>
     ` +
         filteredEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.nombre}"> ${ent.nombre}</label></div>`).join('');
 }
@@ -4274,7 +4306,7 @@ async function populateAdminMatrix() {
                     getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
                         const colEvaluadores = document.getElementById('col-evaluadores');
                         if (colEvaluadores) {
-                            colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+                            renderEvaluadoresColumnWithSearch(evaluadores, colEvaluadores);
                         }
 
                         renderEvaluadoresTable(evaluadores);
@@ -4307,7 +4339,7 @@ async function populateAdminMatrix() {
                 getMultipleStores(['evaluadores', 'entidades'], ([evaluadores, entidades]) => {
                     const colEvaluadores = document.getElementById('col-evaluadores');
                     if (colEvaluadores) {
-                        colEvaluadores.innerHTML = evaluadores.length === 0 ? '<span style="color:#999;font-size:0.8rem;">Sin evaluadores.</span>' : evaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+                        renderEvaluadoresColumnWithSearch(evaluadores, colEvaluadores);
                     }
 
                     renderEvaluadoresTable(evaluadores);
