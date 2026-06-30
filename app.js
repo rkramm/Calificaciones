@@ -2294,23 +2294,6 @@ function renderAdminEntidadesColumn() {
         return;
     }
 
-    // DEBUG
-    console.log('🔍 renderAdminEntidadesColumn DEBUG:');
-    console.log('  adminSelectedProvincia:', adminSelectedProvincia);
-    console.log('  savedPrograms:', savedPrograms);
-    console.log('  totalEntidades:', adminTemporaryEntidades.length);
-    if (adminTemporaryEntidades.length > 0) {
-        const primera = adminTemporaryEntidades[0];
-        console.log('  primera entidad COMPLETA:', primera);
-        console.log('  campos de entidad:', Object.keys(primera));
-        console.log('  ¿tiene .Programa?', primera.Programa);
-        console.log('  ¿tiene .programa?', primera.programa);
-        // Mostrar todos los valores
-        Object.keys(primera).forEach(key => {
-            console.log(`    ${key}: ${primera[key]}`);
-        });
-    }
-
     // Filtrar por programa Y provincia (campos con mayúscula inicial)
     const normalizadaProvincia = adminSelectedProvincia.toUpperCase();
     let filteredEntidades = adminTemporaryEntidades.filter(ent => {
@@ -2318,9 +2301,6 @@ function renderAdminEntidadesColumn() {
         const matchProvincia = ent.Provincia.toUpperCase() === normalizadaProvincia;
         return matchPrograma && matchProvincia;
     });
-
-    console.log('  📊 Entidades después de filtro por programa:', filteredEntidades.length);
-    console.log('  primeras 3 entidades filtradas:', filteredEntidades.slice(0, 3));
 
     // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
     const uniqueEntidades = {};
@@ -2330,8 +2310,6 @@ function renderAdminEntidadesColumn() {
         }
     });
     filteredEntidades = Object.values(uniqueEntidades);
-
-    console.log('  📊 Entidades después de deduplicación:', filteredEntidades.length);
 
     if (filteredEntidades.length === 0) {
         col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Sin entidades para los programas seleccionados</span>`;
