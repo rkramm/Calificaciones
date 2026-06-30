@@ -1,7 +1,7 @@
 /* ================= CONFIGURACIÓN DE ENTORNO WEB (GITHUB + GOOGLE SCRIPTS) ================= */
 // Las URLs sensibles y secrets se cargan desde config.js (no versionado)
 const CLOUD_MODE_ENABLED = CONFIG?.CLOUD_MODE_ENABLED ?? true;
-const GOOGLE_SCRIPT_URL = CONFIG?.GOOGLE_SCRIPT_URL ?? "https://script.google.com/macros/s/AKfycbwqwR87sGSaFbVHr0wi3tMUdYLMJsjwZEcJclOl1EmPgKMhYO5DvmDo5KiZH4rMsQ30Dw/exec";
+const GOOGLE_SCRIPT_URL = CONFIG?.GOOGLE_SCRIPT_URL ?? "https://script.google.com/macros/s/AKfycbxGd3gLWkOdYvC6Z7OVhfEtNPCK4zoXXUEnPl76NgTLbpDAqSeCIaB3zbBZ4LxyHiVbNw/exec";
 
 // Sistema de rate limiting para login
 let loginAttempts = {};
@@ -2295,7 +2295,7 @@ function renderAdminEntidadesColumn() {
     }
 
     let filteredEntidades = adminTemporaryEntidades.filter(ent =>
-        savedPrograms.includes(ent.programa) && ent.Provincia === adminSelectedProvincia
+        savedPrograms.includes(ent.programa)
     );
 
     // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
