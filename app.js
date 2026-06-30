@@ -3698,8 +3698,25 @@ function executeCommitAsignacion() {
 }
 
 function renderMonitoringTable() {
-    // SIEMPRE sincronizar desde Google Sheets (forceCloud = true) - la nube es la fuente de verdad
-    getMultipleStores(['asignaciones', 'evaluadores', 'scores'], ([asignaciones, evaluadores, scores]) => {
+    // SIEMPRE sincronizar desde Google Sheets - la nube es la fuente de verdad
+    Promise.all([
+        cloudGet('asignaciones'),
+        cloudGet('evaluadores'),
+        cloudGet('scores')
+    ]).then(([asignaciones, evaluadores, scores]) => {
+        asignaciones = asignaciones || [];
+        evaluadores = evaluadores || [];
+        scores = scores || [];
+        _renderMonitoringTableData(asignaciones, evaluadores, scores);
+    }).catch(err => {
+        console.warn('Error descargando desde Google Sheets, usando caché local:', err);
+        getMultipleStores(['asignaciones', 'evaluadores', 'scores'], ([asignaciones, evaluadores, scores]) => {
+            _renderMonitoringTableData(asignaciones, evaluadores, scores);
+        });
+    });
+}
+
+function _renderMonitoringTableData(asignaciones, evaluadores, scores) {
         const tbody = document.getElementById('admin-monitoring-rows');
         if (asignaciones.length === 0) { 
             if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-center">No hay registros.</td></tr>`; 
@@ -3740,7 +3757,6 @@ function renderMonitoringTable() {
             });
         });
         setupMonitoringHeaders(); drawMonitoringTable(); renderMonitoringCharts(); renderReportes();
-    }, true);
 }
 
 function setupMonitoringHeaders() {
