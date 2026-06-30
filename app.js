@@ -2288,13 +2288,15 @@ function renderAdminEntidadesColumn() {
     }
 
     const savedPrograms = adminSelectedProvincia ? (adminTemporaryLogisticaMap[adminSelectedProvincia] || []) : [];
-    
+
     if (savedPrograms.length === 0) {
         col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Seleccione un programa</span>`;
         return;
     }
 
-    let filteredEntidades = adminTemporaryEntidades.filter(ent => savedPrograms.includes(ent.programa));
+    let filteredEntidades = adminTemporaryEntidades.filter(ent =>
+        savedPrograms.includes(ent.programa) && ent.provincia === adminSelectedProvincia
+    );
 
     // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
     const uniqueEntidades = {};
