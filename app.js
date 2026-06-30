@@ -2256,14 +2256,28 @@ function renderAdminEntidadesColumn() {
         return;
     }
 
-    const filteredEntidades = adminTemporaryEntidades.filter(ent => savedPrograms.includes(ent.programa));
+    let filteredEntidades = adminTemporaryEntidades.filter(ent => savedPrograms.includes(ent.programa));
+
+    // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
+    const uniqueEntidades = {};
+    filteredEntidades.forEach(ent => {
+        if (!uniqueEntidades[ent.nombre]) {
+            uniqueEntidades[ent.nombre] = ent;
+        }
+    });
+    filteredEntidades = Object.values(uniqueEntidades);
 
     if (filteredEntidades.length === 0) {
         col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Sin entidades para los programas seleccionados</span>`;
         return;
     }
 
-    col.innerHTML = `<div style="font-size:0.75rem; font-weight:bold; color:var(--primary-blue); margin-bottom:5px; text-transform:uppercase;">Seleccionar Entidad:</div>` + 
+    // Agregar botón "Seleccionar todas" y lista de entidades
+    col.innerHTML = `
+        <div style="font-size:0.75rem; font-weight:bold; color:var(--primary-blue); margin-bottom:8px; text-transform:uppercase;">Seleccionar Entidad:</div>
+        <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = true)" style="background:#0066BB; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:6px; cursor:pointer; font-weight:bold;">✓ Seleccionar todas</button>
+        <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = false)" style="background:#999; color:white; border:none; padding:4px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:6px; cursor:pointer; font-weight:bold;">✗ Deseleccionar todas</button>
+    ` +
         filteredEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.nombre}"> ${ent.nombre}</label></div>`).join('');
 }
 
