@@ -2299,8 +2299,17 @@ function renderAdminEntidadesColumn() {
     console.log('  adminSelectedProvincia:', adminSelectedProvincia);
     console.log('  savedPrograms:', savedPrograms);
     console.log('  totalEntidades:', adminTemporaryEntidades.length);
-    console.log('  primera entidad:', adminTemporaryEntidades[0]);
-    console.log('  campos de entidad:', adminTemporaryEntidades[0] ? Object.keys(adminTemporaryEntidades[0]) : 'N/A');
+    if (adminTemporaryEntidades.length > 0) {
+        const primera = adminTemporaryEntidades[0];
+        console.log('  primera entidad COMPLETA:', primera);
+        console.log('  campos de entidad:', Object.keys(primera));
+        console.log('  ¿tiene .Programa?', primera.Programa);
+        console.log('  ¿tiene .programa?', primera.programa);
+        // Mostrar todos los valores
+        Object.keys(primera).forEach(key => {
+            console.log(`    ${key}: ${primera[key]}`);
+        });
+    }
 
     // Filtrar por programa Y provincia (campos con mayúscula inicial)
     const normalizadaProvincia = adminSelectedProvincia.toUpperCase();
