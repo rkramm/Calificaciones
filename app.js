@@ -4278,7 +4278,7 @@ async function populateAdminMatrix() {
             Promise.all([
                 cloudGet('asignaciones'),
                 cloudGet('evaluadores'),
-                cloudGet('entidades')
+                cloudGet('entidades') // Nota: entidades se descargan completas aquí para la tabla directorio
             ]).then(([cloudAsignaciones, cloudEvaluadores, cloudEntidades]) => {
                 console.log('✅ Datos desde cloud:', {
                     asignaciones: cloudAsignaciones?.length || 0,
