@@ -2305,8 +2305,8 @@ function renderAdminEntidadesColumn() {
     // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
     const uniqueEntidades = {};
     filteredEntidades.forEach(ent => {
-        if (!uniqueEntidades[ent.nombre]) {
-            uniqueEntidades[ent.nombre] = ent;
+        if (!uniqueEntidades[ent.Nombre]) {
+            uniqueEntidades[ent.Nombre] = ent;
         }
     });
     filteredEntidades = Object.values(uniqueEntidades);
@@ -2322,7 +2322,7 @@ function renderAdminEntidadesColumn() {
             <input type="checkbox" id="chk-marcar-todas-entidades" onchange="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = this.checked)"> [ Marcar Todas ]
         </label>
     ` +
-        filteredEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.nombre}"> ${ent.nombre}</label></div>`).join('');
+        filteredEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.Nombre}"> ${ent.Nombre}</label></div>`).join('');
 }
 
 /* FIX CRÍTICO DE INGRESO: CONTROL DE EXCEPCIÓN CUANDO LA MUESTRA ESTÁ VACÍA V16 */
