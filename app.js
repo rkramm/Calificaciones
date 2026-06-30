@@ -2311,6 +2311,7 @@ function renderAdminEntidadesColumn() {
     });
 
     console.log('  📊 Entidades después de filtro por programa:', filteredEntidades.length);
+    console.log('  primeras 3 entidades filtradas:', filteredEntidades.slice(0, 3));
 
     // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
     const uniqueEntidades = {};
@@ -2320,6 +2321,8 @@ function renderAdminEntidadesColumn() {
         }
     });
     filteredEntidades = Object.values(uniqueEntidades);
+
+    console.log('  📊 Entidades después de deduplicación:', filteredEntidades.length);
 
     if (filteredEntidades.length === 0) {
         col.innerHTML = `<span style="color:#999; font-size:0.8rem; padding:5px; text-align:center;">Sin entidades para los programas seleccionados</span>`;
