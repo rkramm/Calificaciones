@@ -45,16 +45,16 @@
 
     <div id="login-container" class="login-screen-center">
         <form id="login-screen" class="login-card" onsubmit="event.preventDefault();">
-            <div class="login-header text-center" style="padding-bottom: 8px;">
-                <div style="display: flex; justify-content: center; margin-bottom: 32px;">
-                    <img src="logo_serviu.JPG" alt="SERVIU10 Logo" style="height: 120px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(37, 48, 107, 0.15)) drop-shadow(0 8px 16px rgba(37, 48, 107, 0.2)) drop-shadow(0 16px 32px rgba(37, 48, 107, 0.15));">
+            <div class="login-header text-center" style="padding-bottom: 4px;">
+                <div style="display: flex; justify-content: center; margin-bottom: 16px;">
+                    <img src="logo_serviu.JPG" alt="SERVIU10 Logo" style="height: 80px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(37, 48, 107, 0.18));">
                 </div>
-                <h2 style="margin: 0 0 12px 0; font-size: 1.8rem; font-weight: 700; color: var(--primary-dark); letter-spacing: -0.5px;">Bienvenido</h2>
-                <p style="color: var(--primary-dark); font-size: 1rem; margin: 0; font-weight: 600; line-height: 1.6;">Piloto sistema de calificación<br>entidades patrocinantes</p>
-                <div style="height: 1px; background: linear-gradient(90deg, transparent, #D0D0D0, transparent); margin: 20px 0;"></div>
+                <h2 style="margin: 0 0 6px 0; font-size: 1.5rem; font-weight: 700; color: var(--primary-dark); letter-spacing: -0.5px;">Bienvenido</h2>
+                <p style="color: var(--primary-dark); font-size: 0.9rem; margin: 0; font-weight: 600; line-height: 1.4;">Piloto sistema de calificación<br>entidades patrocinantes</p>
+                <div style="height: 1px; background: linear-gradient(90deg, transparent, #D0D0D0, transparent); margin: 12px 0;"></div>
             </div>
 
-            <div style="margin-top: 32px;">
+            <div style="margin-top: 16px;">
                 <div class="form-group">
                     <label for="username" style="display: block; font-size: 0.9rem; font-weight: 600; color: var(--primary-dark); margin-bottom: 10px; text-transform: none; letter-spacing: normal;">Ingrese su RUT</label>
                     <input type="text" id="username" placeholder="Ej: 12345678-9" class="modern-input" style="padding: 14px 16px; font-size: 1rem;">
@@ -65,14 +65,14 @@
                 </div>
             </div>
 
-            <button type="button" id="btn-login" class="btn btn-primary btn-login-modern" style="margin-top: 28px; padding: 16px; font-size: 1.05rem; font-weight: 600; border-radius: 8px; letter-spacing: 0.3px;">Ingresar</button>
+            <button type="button" id="btn-login" class="btn btn-primary btn-login-modern" style="margin-top: 14px; padding: 12px; font-size: 0.95rem; font-weight: 600; border-radius: 6px; letter-spacing: 0.3px;">Ingresar</button>
 
-            <div id="connection-status" class="login-status-indicator" style="margin-top: 28px;">
+            <div id="connection-status" class="login-status-indicator" style="margin-top: 12px;">
                 <span id="conn-dot" class="status-dot" style="background-color: #92D050;"></span>
-                <span id="conn-text" style="font-size: 0.85rem; color: #25306B; font-weight: bold;">Conectado</span>
+                <span id="conn-text" style="font-size: 0.8rem; color: #25306B; font-weight: bold;">Conectado</span>
             </div>
 
-            <div style="margin-top: 32px; text-align: center; padding-top: 20px; border-top: 1px solid #E8EAED;">
+            <div style="margin-top: 16px; text-align: center; padding-top: 12px; border-top: 1px solid #D2D7E0;">
                 <p style="font-size: 0.75rem; color: #999; font-style: italic; margin: 0; line-height: 1.4;">
                     Creado por Área Asistencia Técnica<br>Serviu Región de los Lagos - 2026
                 </p>
@@ -83,23 +83,22 @@
     <div id="main-screen" class="container hidden" style="display: none !important;">
         <header class="main-header">
             <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 20px;">
-                <div style="flex: 0 1 auto;">
-                    <div style="font-size: 0.65rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">📱 SISTEMA</div>
+                <div style="order: 2; flex: 0 1 auto; text-align: center;">
                     <h1 id="app-title">Panel de Control</h1>
-                    <p id="user-profile" style="margin: 4px 0 0 0; font-size: 0.85rem; color: rgba(255, 255, 255, 0.75);"></p>
+                    <p style="margin: 6px 0 0 0; font-size: 1rem; font-weight: 600; color: rgba(255, 255, 255, 0.95);"><span>Bienvenido</span> <span id="user-profile"></span></p>
                 </div>
 
-                <div style="text-align: center; display: flex; flex-direction: column; gap: 2px;">
+                <div style="order: 1; flex: 1 1 0; text-align: left; display: flex; flex-direction: column; gap: 2px;">
                     <div style="font-size: 0.9rem; font-weight: 600; color: rgba(255, 255, 255, 0.95);"><span id="header-date-today">--</span></div>
                     <div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.85); font-weight: 600;"><span id="header-countdown">--:--</span></div>
                 </div>
 
-                <div style="display: flex; gap: 8px; align-items: center; flex: 0 1 auto;">
-                    <button id="btn-eval-pdf" class="btn btn-primary hidden" style="background-color: #333; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;" title="Exportar calificaciones a formato PDF para respaldo">🖨️ PDF</button>
+                <div style="order: 3; display: flex; gap: 8px; align-items: center; flex: 1 1 0; justify-content: flex-end;">
+                    <button id="btn-eval-pdf" class="btn btn-primary hidden" style="background-color: #3C4350; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;" title="Exportar calificaciones a formato PDF para respaldo">🖨️ PDF</button>
                     <button id="btn-save-scores" class="btn btn-primary hidden" style="background-color: #0A3A6B; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;">💾 Guardar</button>
-                    <button id="btn-sync-cloud" class="btn btn-primary" style="background-color: #28A745; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;">☁️ Sincronizar</button>
-                    <button id="btn-download-cloud" class="btn btn-primary" style="background-color: #17A2B8; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;" title="Descargar asignaciones desde la nube">⬇️ Descargar</button>
-                    <button id="btn-logout" class="btn btn-danger" style="background-color: #DC3545; color: white; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">🚪 Salir</button>
+                    <button id="btn-sync-cloud" class="btn btn-primary" style="background-color: #2E8B57; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;">☁️ Sincronizar</button>
+                    <button id="btn-download-cloud" class="btn btn-primary" style="background-color: #2B7A99; color: white; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); padding: 8px 12px; font-size: 0.85rem;" title="Descargar asignaciones desde la nube">⬇️ Descargar</button>
+                    <button id="btn-logout" class="btn btn-danger" style="background-color: #C0392B; color: white; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">🚪 Salir</button>
                 </div>
             </div>
             <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent); margin-top: 12px; width: 100%;"></div>
@@ -120,7 +119,7 @@
                 <div class="card compact-card" style="margin-bottom: 15px; max-width: 500px;" title="Tarjeta de Fechas Límite">
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                         <h3 style="margin: 0;">Fechas Límite de Evaluación</h3>
-                        <span style="background: #1E90FF; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">DEADLINE</span>
+                        <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">DEADLINE</span>
                     </div>
                     <div class="form-group" style="margin-top:5px; margin-bottom:5px;">
                         <label for="cfg-deadline">Fecha y Hora Límite:</label>
@@ -132,17 +131,17 @@
                 <div class="card compact-card" style="margin-bottom: 15px;" title="Tarjeta de Respaldo de Datos">
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                         <h3 style="margin: 0;">Respaldo y Security de Datos</h3>
-                        <span style="background: #28A745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">BACKUP</span>
+                        <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">BACKUP</span>
                     </div>
                     <p style="margin-bottom: 10px; font-size: 0.85rem; color: #666;">Descargue un archivo JSON con absolutamente toda la información del sistema (Entidades, Evaluadores, Asignaciones, Notas, etc.) para mantener una copia de seguridad segura.</p>
-                    <button id="btn-export-backup" class="btn btn-primary" style="background-color: #17A2B8; border-color: #17A2B8; color: #FFF;" title="Descargar archivo JSON de respaldo">💾 Descargar Respaldo Completo (JSON)</button>
+                    <button id="btn-export-backup" class="btn btn-primary" style="background-color: #2B7A99; border-color: #17A2B8; color: #FFF;" title="Descargar archivo JSON de respaldo">💾 Descargar Respaldo Completo (JSON)</button>
                 </div>
 
                 <div class="card compact-card" title="Tarjeta de Asignación Rápida">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <h3 style="margin:0;">Asignación Rápida de Cobertura y Privilegios</h3>
-                            <span style="background: #FF6B35; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">ASIG-RÁPIDA</span>
+                            <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">ASIG-RÁPIDA</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px;">
                             <label style="display:flex; align-items:center; gap:6px; font-weight:bold; color:var(--primary-dark); cursor:pointer; font-size:0.9rem;">
@@ -153,15 +152,15 @@
                     </div>
                     <p style="margin-bottom: 10px; font-size: 0.85rem; color: #666;">Configura la asignación por bloques geográficos y de programas:</p>
 
-                    <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">🔲 MATRIZ-ASIGNACIÓN</div>
+                    <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">MATRIZ-ASIGNACIÓN</div>
                     <div class="matrix-grid-layout" title="Matriz de asignación de privilegios">
                         <div class="matrix-col" title="Control de Evaluadores">
-                            <div class="matrix-header">1. Evaluador(es) <span style="display: block; font-size: 0.65rem; font-weight: bold; color: #1E90FF; margin-top: 2px;">COL-EVALUADORES</span></div>
+                            <div class="matrix-header">1. Evaluador(es) <span style="display: block; font-size: 0.65rem; font-weight: bold; color: #7A8294; margin-top: 2px;">COL-EVALUADORES</span></div>
                             <div class="matrix-body tall-body clean-checkbox-list" id="col-evaluadores"></div>
                         </div>
 
                         <div class="matrix-col" title="Control de Provincia">
-                            <label for="asig-provincia-listbox" class="matrix-header" style="display:block; width:100%; margin:0; cursor:pointer;">2. Provincia<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #FF9800; margin-top: 2px;">COL-PROVINCIA</span></label>
+                            <label for="asig-provincia-listbox" class="matrix-header" style="display:block; width:100%; margin:0; cursor:pointer;">2. Provincia<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #7A8294; margin-top: 2px;">COL-PROVINCIA</span></label>
                             <div class="matrix-body tall-body" style="padding: 0; display: flex; flex-direction: column;">
                                 <select id="asig-provincia-listbox" size="4" style="height: 100%; width:100%; border: none; outline: none; padding: 8px;" title="Lista de Provincias">
                                     <option value="Osorno">Osorno</option>
@@ -173,19 +172,19 @@
                         </div>
 
                         <div class="matrix-col" title="Control de Programas">
-                            <div class="matrix-header">3. Programa<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #4CAF50; margin-top: 2px;">COL-PROGRAMA</span></div>
+                            <div class="matrix-header">3. Programa<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #7A8294; margin-top: 2px;">COL-PROGRAMA</span></div>
                             <div class="matrix-body tall-body clean-checkbox-list" id="col-programas-dinamicos" style="background: #FAFBFD;">
                                 <span style="color:#999; font-size:0.8rem; display:block; text-align:center; margin-top:20px;">Seleccione una provincia</span>
                             </div>
                         </div>
                         <div class="matrix-col" title="Control de Entidades">
-                            <div class="matrix-header">3.5 ENTIDADES<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #9C27B0; margin-top: 2px;">COL-ENTIDADES</span></div>
+                            <div class="matrix-header">3.5 ENTIDADES<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #7A8294; margin-top: 2px;">COL-ENTIDADES</span></div>
                             <div class="matrix-body" id="col-entidades-dinamicas">
                                 </div>
                         </div>
 
                         <div class="matrix-col" title="Control de Etapas">
-                            <div class="matrix-header">4. Etapa<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #E91E63; margin-top: 2px;">COL-ETAPAS</span></div>
+                            <div class="matrix-header">4. Etapa<span style="display: block; font-size: 0.65rem; font-weight: bold; color: #7A8294; margin-top: 2px;">COL-ETAPAS</span></div>
                             <div class="matrix-body tall-body clean-checkbox-list">
                                 <label class="all-stages-label">
                                     <input type="checkbox" id="chk-toggle-all-stages"> [ Marcar Todas ]
@@ -203,7 +202,7 @@
                     <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
                         <button id="btn-save-partial" class="btn" style="background-color:#6C757D; color:#FFF;" title="ID: btn-save-partial">Guardar Parcial e Intercambiar Cobertura</button>
                         <button id="btn-save-asignacion" class="btn btn-primary" title="ID: btn-save-asignacion">Finalizar y Confirmar Asignación</button>
-                        <button id="btn-save-asignacion-historica" class="btn btn-primary hidden" style="background-color:#17A2B8;" title="ID: btn-save-asignacion-historica">Guardar Asignación Histórica</button>
+                        <button id="btn-save-asignacion-historica" class="btn btn-primary hidden" style="background-color:#2B7A99;" title="ID: btn-save-asignacion-historica">Guardar Asignación Histórica</button>
                     </div>
                 </div>
             </div>
@@ -213,7 +212,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <h3 style="color:var(--primary-dark); font-size:1.1rem; margin:0;">Directorio de Entidades</h3>
-                            <span style="background: #9C27B0; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">ENTIDADES</span>
+                            <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">ENTIDADES</span>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center; flex-grow: 1; justify-content: flex-end; flex-wrap: wrap;">
                             <label for="search-entidades" style="font-size: 0.85rem; font-weight: bold; color: var(--text-dark);">Buscar:</label>
@@ -222,7 +221,7 @@
                         </div>
                     </div>
                     <div class="table-responsive" style="margin-top: 15px;">
-                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">📊 TABLA-ENTIDADES</div>
+                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">TABLA-ENTIDADES</div>
                         <table class="evaluation-table" style="font-size: 0.8rem;" title="Tabla de Entidades">
                             <thead>
                                 <tr style="background-color: var(--primary-dark); color: #FFF;">
@@ -248,7 +247,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px; margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <h3 style="color:var(--primary-dark); font-size:1.1rem; margin:0;">Directorio de Evaluadores</h3>
-                            <span style="background: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">EVALUADORES</span>
+                            <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">EVALUADORES</span>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center; flex-grow: 1; justify-content: flex-end; flex-wrap: wrap;">
                             <label for="search-evaluadores" style="font-size: 0.85rem; font-weight: bold; color: var(--text-dark);">Buscar:</label>
@@ -257,7 +256,7 @@
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">📊 TABLA-EVALUADORES</div>
+                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">TABLA-EVALUADORES</div>
                         <table class="evaluation-table" style="font-size: 0.8rem;" title="Tabla de Evaluadores">
                             <thead>
                                 <tr style="background-color: var(--primary-dark); color: #FFF;">
@@ -280,7 +279,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <h3 style="margin: 0;">Monitoreo de Precalificaciones Realizadas</h3>
-                            <span style="background: #E91E63; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">MONITOREO</span>
+                            <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">MONITOREO</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
                             <label for="search-monitoreo" style="font-size: 0.85rem; font-weight: bold; color: var(--text-dark);">Filtrar:</label>
@@ -288,7 +287,7 @@
                         </div>
                     </div>
                     <div class="table-responsive table-scroll-container">
-                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">📊 TABLA-MONITOREO</div>
+                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">TABLA-MONITOREO</div>
                         <table class="evaluation-table" style="font-size:0.85rem;" title="Tabla de Monitoreo">
                             <thead>
                                 <tr style="background-color: var(--primary-dark); color:#FFF;">
@@ -311,13 +310,13 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom: 10px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <h3 style="margin:0;">Informe Consolidado por Entidad</h3>
-                            <span style="background: #00BCD4; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">REPORTES</span>
+                            <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">REPORTES</span>
                         </div>
                         <button id="btn-export-reportes" class="btn btn-primary" style="background-color: #217346; border-color: #217346;" title="Exportar reportes a Excel">📥 Exportar a Excel</button>
                     </div>
                     <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">Este reporte agrupa todas las precalificaciones realizadas a una Entidad. <strong>Haga clic en una fila</strong> para desagrupar y ver el detalle de notas por Programa, Provincia y Evaluador.</p>
                     <div class="table-responsive table-scroll-container">
-                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">📊 TABLA-REPORTES</div>
+                        <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">TABLA-REPORTES</div>
                         <table class="evaluation-table" style="font-size:0.85rem;" title="Tabla de Reportes Consolidados">
                             <thead>
                                 <tr style="background-color: var(--primary-dark); color:#FFF;">
@@ -343,7 +342,7 @@
                 <div class="card compact-card">
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                         <h3 style="margin: 0;">Edición Normativa de Textos</h3>
-                        <span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">TEXTOS</span>
+                        <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">TEXTOS</span>
                     </div>
                     <div class="tabs-nav" id="admin-tabs" style="margin-top:5px;"></div>
                     <div id="admin-items-container" style="margin-top: 10px; max-height:40vh; overflow-y:auto; padding-right:5px;"></div>
@@ -356,12 +355,12 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px; border-bottom:2px solid var(--primary-dark); padding-bottom:4px;">
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <h3 style="color:var(--primary-dark); font-size:1.1rem; margin:0;">Calificación Histórica</h3>
-                            <span style="background: #673AB7; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">HISTÓRICOS</span>
+                            <span style="background:#5C6580;color:#fff;padding:3px 9px;border-radius:4px;font-size:0.66rem;font-weight:700;letter-spacing:0.03em;">HISTÓRICOS</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                             <label for="sel-historico-anio" style="font-size:0.85rem; font-weight:bold;">Año:</label>
                             <select id="sel-historico-anio" style="width:auto; min-width:90px; padding:4px 8px; font-size:0.85rem;"></select>
-                            <button id="btn-guardar-historico" class="btn btn-primary" style="background-color:#28A745;">Guardar Calificación Histórica</button>
+                            <button id="btn-guardar-historico" class="btn btn-primary" style="background-color:#2E8B57;">Guardar Calificación Histórica</button>
                         </div>
                     </div>
 
@@ -374,7 +373,7 @@
                     <div style="display:flex; gap:10px; align-items:flex-start;">
                         <div id="historico-tabs" class="historico-tabs-vertical" style="display:flex; flex-direction:column; gap:4px; min-width:90px;"></div>
                         <div class="table-responsive card table-scroll-container" id="historico-table-card" style="flex:1; padding:15px;">
-                            <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">📊 TABLA-HISTÓRICOS</div>
+                            <div style="font-size: 0.7rem; color: #666; margin-bottom: 8px; font-weight: bold;">TABLA-HISTÓRICOS</div>
                             <table class="evaluation-table" title="Tabla de Calificaciones Históricas">
                                 <colgroup>
                                     <col style="width: 2%;">
@@ -415,7 +414,7 @@
         <div id="evaluador-view" class="hidden" style="display: flex; flex-direction: column; height: 100vh; gap: 0;">
             
             <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: transparent; flex-shrink: 0; height: auto; flex-wrap: wrap;">
-                <span style="font-size: 0.7rem; font-weight: 700; color: #555; white-space: nowrap;">🔷 COBERTURA / PROGRAMA:</span>
+                <span style="font-size: 0.7rem; font-weight: 700; color: #555; white-space: nowrap;">COBERTURA / PROGRAMA:</span>
                 <div id="evaluador-coverage-tabs" style="display: flex; gap: 6px; align-items: center; margin: 0; flex-wrap: wrap;"></div>
             </div>
 
@@ -425,11 +424,11 @@
 
             <div id="eval-progress-bar" class="hidden" style="background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary-blue) 50%, var(--primary-dark) 100%); background-size: 200% 100%; animation: progress-animation 1.5s ease-in-out infinite; margin: 0; padding: 0;"></div>
 
-            <div id="eval-top-panel" class="eval-top-panel-expanded" style="display: flex; gap: 0; flex-shrink: 0; padding: 0; background: white; border-bottom: 1px solid #E8EAED; max-height: 45%; overflow-y: auto; margin: 0; position: relative; transition: max-height 0.3s ease, overflow 0.3s ease;">
+            <div id="eval-top-panel" class="eval-top-panel-expanded" style="display: flex; gap: 0; flex-shrink: 0; padding: 0; background: white; border-bottom: 1px solid #D2D7E0; max-height: 45%; overflow-y: auto; margin: 0; position: relative; transition: max-height 0.3s ease, overflow 0.3s ease;">
 
                 <div id="eval-entities-header" style="width: 220px; background: var(--primary-dark); border-right: 2px solid var(--primary-dark); display: flex; flex-direction: column; padding: 0; flex-shrink: 0; overflow-y: auto; position: relative;">
-                    <div style="padding: 0 8px; background: var(--primary-dark); color: #FFF; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; text-align: center; border-bottom: 1px solid #E8EAED; flex-shrink: 0; height: 5.2rem; display: flex; align-items: center; justify-content: center;">
-                        📋 ENTIDADES
+                    <div style="padding: 0 8px; background: var(--primary-dark); color: #FFF; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; text-align: center; border-bottom: 1px solid #D2D7E0; flex-shrink: 0; height: 5.2rem; display: flex; align-items: center; justify-content: center;">
+                        ENTIDADES
                     </div>
                     <button id="btn-toggle-top-panel" style="position: absolute; right: 8px; top: 8px; background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; padding: 0; z-index: 100;" title="Colapsar/expandir panel">▲</button>
                     <div id="eval-entity-tabs-container" style="display: flex; flex-direction: column; gap: 3px; padding: 6px; overflow: hidden; flex: 1;">
@@ -437,7 +436,7 @@
                 </div>
 
                 <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 4px 8px;">
-                    <div id="eval-info-card" style="background: white; border: 1px solid #E8EAED; border-radius: 4px; padding: 8px; font-size: 0.7rem; line-height: 1.3; flex-shrink: 0; display: flex; gap: 12px; align-items: center; min-height: 4rem;">
+                    <div id="eval-info-card" style="background: white; border: 1px solid #D2D7E0; border-radius: 4px; padding: 8px; font-size: 0.7rem; line-height: 1.3; flex-shrink: 0; display: flex; gap: 12px; align-items: center; min-height: 4rem;">
                         <div style="flex: 1; min-width: 0;">
                             <div style="font-size: 0.65rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 2px; text-transform: uppercase;">Nombre:</div>
                             <div id="eval-entity-name" style="color: var(--primary-dark); font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</div>
@@ -449,18 +448,18 @@
                         <div id="eval-programa-badge" style="background: #28A745; color: white; font-size: 1.25rem; font-weight: 700; padding: 12px 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; min-width: 70px; text-align: center; flex-shrink: 0;">DS10</div>
                     </div>
 
-                    <div id="eval-projects-section" style="background: white; border: 1px solid #E8EAED; border-radius: 6px; padding: 0; flex-shrink: 0; height: 200px; overflow: hidden; display: flex; flex-direction: column;">
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--primary-dark); padding: 8px 12px; background: #FAFBFC; border-bottom: 1px solid #E8EAED; flex-shrink: 0;">🏗️ Proyectos</div>
+                    <div id="eval-projects-section" style="background: white; border: 1px solid #D2D7E0; border-radius: 6px; padding: 0; flex-shrink: 0; height: 200px; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--primary-dark); padding: 8px 12px; background: #FAFBFC; border-bottom: 1px solid #D2D7E0; flex-shrink: 0;">Proyectos</div>
                         <div class="table-responsive" style="overflow-y: auto; flex: 1; background: white;">
                             <table style="margin: 0; width: 100%; border-collapse: collapse; table-layout: fixed;">
                                 <thead id="eval-projects-head">
                                     <tr>
-                                        <th style="width: 90px;">📋 Código</th>
-                                        <th style="width: 280px;">🏢 Nombre</th>
-                                        <th style="width: 140px;">📍 Comuna</th>
-                                        <th style="width: 160px;">🏘️ Tipología</th>
-                                        <th style="width: 70px;">👥 Fam.</th>
-                                        <th style="width: 70px;">📅 Año</th>
+                                        <th style="width: 90px;">Código</th>
+                                        <th style="width: 280px;">Nombre</th>
+                                        <th style="width: 140px;">Comuna</th>
+                                        <th style="width: 160px;">Tipología</th>
+                                        <th style="width: 70px;">Fam.</th>
+                                        <th style="width: 70px;">Año</th>
                                     </tr>
                                 </thead>
                                 <tbody id="eval-projects-body">
@@ -473,18 +472,18 @@
             </div>
 
             <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px; overflow-y: auto;">
-                <div style="background: white; border: 1px solid #E8EAED; border-radius: 4px; padding: 6px; flex-shrink: 0;">
-                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; text-transform: uppercase;">📊 Etapas a Calificar</div>
+                <div style="background: white; border: 1px solid #D2D7E0; border-radius: 4px; padding: 6px; flex-shrink: 0;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; text-transform: uppercase;">Etapas a Calificar</div>
                     <div id="eval-stages-container" style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: space-between;">
                         </div>
-                    <div style="height: 1px; background: linear-gradient(90deg, transparent, #E8EAED, transparent); margin: 12px 0;"></div>
+                    <div style="height: 1px; background: linear-gradient(90deg, transparent, #D2D7E0, transparent); margin: 12px 0;"></div>
                     <div id="deadline-timer" style="padding: 8px 0; text-align: center; font-size: 1rem; font-weight: 600; color: var(--primary-dark); display: none;">
                         ⏱️ Tiempo disponible: <span id="timer-display" style="font-family: 'Courier New', monospace; color: #006BB9;">00-00:00</span>
                     </div>
                 </div>
 
-                <div class="table-responsive card table-scroll-container" id="table-card-container" style="flex: 1; padding:0; background-color: white; border-radius: 4px; border: 1px solid #E8EAED; margin: 0; overflow-y: auto;">
-                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); padding: 6px 8px; background: #F5F7FA; border-bottom: 1px solid #E8EAED; position: sticky; top: 0; z-index: 5;">📋 TABLA DE CALIFICACIÓN</div>
+                <div class="table-responsive card table-scroll-container" id="table-card-container" style="flex: 1; padding:0; background-color: white; border-radius: 4px; border: 1px solid #D2D7E0; margin: 0; overflow-y: auto;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--primary-dark); padding: 6px 8px; background: #F5F7FA; border-bottom: 1px solid #D2D7E0; position: sticky; top: 0; z-index: 5;">TABLA DE CALIFICACIÓN</div>
                     <table class="evaluation-table" title="Tabla de Calificaciones" style="background-color: white; font-size: 0.95rem;">
                         <colgroup>
                             <col style="width: 2%;">
@@ -494,14 +493,14 @@
                             <col style="width: 1.34%;">
                         </colgroup>
                         <thead>
-                            <tr class="header-top" style="background-color: #F5F7FA; border-bottom: 1px solid #E8EAED;">
-                                <th colspan="2" class="title-etapa" id="table-stage-title" style="font-size:0.8rem; padding:6px; font-weight: 600; color: var(--primary-dark); text-align: left; border-right: 1px solid #E8EAED;">ETAPA 1...</th>
+                            <tr class="header-top" style="background-color: #F5F7FA; border-bottom: 1px solid #D2D7E0;">
+                                <th colspan="2" class="title-etapa" id="table-stage-title" style="font-size:1rem; padding:9px 12px; font-weight: 700; color: var(--primary-dark); text-align: left; border-right: 1px solid #D2D7E0; border-left: 4px solid var(--primary-blue); background: #EAF1FA; letter-spacing: 0.1px;">ETAPA 1...</th>
                                 <th colspan="3" class="detail-header" style="padding: 6px; text-align: center;">
                                     <div class="detalle-calificacion-title" style="padding: 0; font-size: 0.7rem; font-weight: 600; color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.2px;">Evaluación</div>
                                 </th>
                             </tr>
-                            <tr class="header-sub" style="background-color: #F5F7FA; border-bottom: 1px solid #E8EAED;">
-                                <th colspan="2" class="description-block" id="table-stage-desc" style="font-size:0.7rem; padding:6px; color: var(--primary-dark); font-weight: 500; text-align: left; border-right: 1px solid #E8EAED;">Criterios</th>
+                            <tr class="header-sub" style="background-color: #F5F7FA; border-bottom: 1px solid #D2D7E0;">
+                                <th colspan="2" class="description-block" id="table-stage-desc" style="font-size:0.7rem; padding:6px; color: var(--primary-dark); font-weight: 500; text-align: left; border-right: 1px solid #D2D7E0;">Criterios</th>
                                 <th class="range-header text-center" style="padding: 6px; font-weight: 500; color: #D32F2F; font-size: 0.65rem;">MALO<br><small>(0-50)</small></th>
                                 <th class="range-header text-center" style="padding: 6px; font-weight: 500; color: #F57C00; font-size: 0.65rem;">ACEPTABLE<br><small>(51-79)</small></th>
                                 <th class="range-header text-center" style="padding: 6px; font-weight: 500; color: #388E3C; font-size: 0.65rem;">BUENO<br><small>(80-100)</small></th>
@@ -509,8 +508,8 @@
                         </thead>
                         <tbody id="evaluation-rows"></tbody>
                         <tfoot>
-                            <tr class="footer-result" style="background-color: #F5F7FA; border-top: 1px solid #E8EAED;">
-                                <td colspan="2" class="text-uppercase bold-text cell-etapa-final" id="table-stage-footer-label" style="font-size:0.75rem; padding:6px; color: var(--primary-dark); font-weight: 600; border-right: 1px solid #E8EAED;">Resultado</td>
+                            <tr class="footer-result" style="background-color: #F5F7FA; border-top: 1px solid #D2D7E0;">
+                                <td colspan="2" class="text-uppercase bold-text cell-etapa-final" id="table-stage-footer-label" style="font-size:0.75rem; padding:6px; color: var(--primary-dark); font-weight: 600; border-right: 1px solid #D2D7E0;">Resultado</td>
                                 <td colspan="2" id="cell-status-text" class="text-center bold-text status-badge" style="font-size:0.75rem; padding: 6px; font-weight: 600;">---</td>
                                 <td id="cell-final-score" class="text-center bold-text score-final" style="font-size:0.9rem; padding: 6px; font-weight: 700; color: var(--primary-blue);">0</td>
                             </tr>
@@ -557,7 +556,7 @@
             </div>
             <div id="modal-action-footer" class="hidden" style="margin-top:15px; text-align:right; gap:10px; display:flex; justify-content:flex-end;">
                 <button id="btn-modal-cancel" class="btn" style="background-color:#6C757D; color:#FFF; padding:6px 12px;">Cancelar</button>
-                <button id="btn-modal-confirm" class="btn" style="background-color:#28A745; color:#FFF; padding:6px 12px; font-weight:bold;">Confirmar Operación</button>
+                <button id="btn-modal-confirm" class="btn" style="background-color:#2E8B57; color:#FFF; padding:6px 12px; font-weight:bold;">Confirmar Operación</button>
             </div>
         </div>
     </div>
@@ -662,9 +661,9 @@
 
     <!-- Panel de notificaciones lateral -->
     <div id="notification-panel" style="position: fixed; top: 20px; right: 20px; width: 320px; max-height: 80vh; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow-y: auto; z-index: 2000; display: none;">
-        <div style="padding: 16px; border-bottom: 2px solid #E8EAED;">
+        <div style="padding: 16px; border-bottom: 2px solid #D2D7E0;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                <h3 style="margin: 0; color: var(--primary-dark); font-size: 0.95rem;">🔄 Sincronización</h3>
+                <h3 style="margin: 0; color: var(--primary-dark); font-size: 0.95rem;">Sincronización</h3>
                 <button id="btn-close-notifications" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999;">✕</button>
             </div>
         </div>
