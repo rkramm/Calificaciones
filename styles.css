@@ -89,6 +89,15 @@ html { scroll-behavior: smooth; }
     }
 }
 
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.loading-blink {
+    animation: blink 1s infinite;
+}
+
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 input, select { width: 100%; padding: 8px; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 0.9rem; background: var(--white); transition: border-color 0.2s ease; }
 input:focus, select:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(0, 107, 185, 0.08); }

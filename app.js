@@ -2251,10 +2251,16 @@ function renderEvaluadoresColumnWithSearch(evaluadores, colEvaluadores) {
     const sortedEvaluadores = [...evaluadores].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     colEvaluadores.innerHTML = `
-        <div style="background:#FFC000; color:var(--primary-dark); padding:4px 6px; margin-bottom:6px; border-radius:3px; font-size:0.75rem; font-weight:bold; text-transform:uppercase; text-align:center;">[ Seleccionar Evaluador ]</div>
+        <label style="display:flex; align-items:center; gap:6px; font-weight:bold; color:var(--primary-dark); cursor:pointer; font-size:0.75rem; margin-bottom:6px;">
+            <input type="checkbox"> [ Seleccionar Evaluador ]
+        </label>
         <input type="text" id="search-evaluadores-col" placeholder="Buscar..." style="width:100%; padding:6px 8px; margin-bottom:6px; border:1px solid #ccc; border-radius:3px; font-size:0.75rem;" oninput="filterEvaluadoresColumn()">
     ` +
     sortedEvaluadores.map(ev => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-evaluador-chk" value="${ev.rut}" data-name="${ev.nombre}"> ${ev.nombre}</label></div>`).join('');
+
+    // Remover titileo cuando termina de cargar
+    const header = document.querySelector('.matrix-col:has(#col-evaluadores) .matrix-header');
+    if (header) header.classList.remove('loading-blink');
 }
 
 function filterEvaluadoresColumn() {
@@ -2306,7 +2312,9 @@ function renderAdminEntidadesColumn() {
 
     // Agregar botón "Seleccionar todas" y lista de entidades con estilo normalizado
     col.innerHTML = `
-        <div style="background:#FFC000; color:var(--primary-dark); padding:4px 6px; margin-bottom:6px; border-radius:3px; font-size:0.75rem; font-weight:bold; text-transform:uppercase; text-align:center;">[ Seleccionar Entidad ]</div>
+        <label style="display:flex; align-items:center; gap:6px; font-weight:bold; color:var(--primary-dark); cursor:pointer; font-size:0.75rem; margin-bottom:6px;">
+            <input type="checkbox"> [ Seleccionar Entidad ]
+        </label>
         <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = true)" style="background:#0066BB; color:white; border:none; padding:6px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:4px; cursor:pointer; font-weight:bold;">✓ Seleccionar todas</button>
         <button type="button" onclick="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = false)" style="background:#999; color:white; border:none; padding:6px 8px; border-radius:3px; font-size:0.7rem; width:100%; margin-bottom:6px; cursor:pointer; font-weight:bold;">✗ Deseleccionar todas</button>
     ` +
@@ -4258,6 +4266,10 @@ function openAuditModal(rut, nombre, cobertura, stageNum) {
 
 async function populateAdminMatrix() {
     pendingAsignacionesStaging = []; adminTemporaryEntidades = [];
+
+    // Agregar titileo mientras carga evaluadores
+    const headerEvaluadores = document.querySelector('.matrix-col:has(#col-evaluadores) .matrix-header');
+    if (headerEvaluadores) headerEvaluadores.classList.add('loading-blink');
 
     return new Promise((resolve) => {
         try {
