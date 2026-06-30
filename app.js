@@ -2294,19 +2294,12 @@ function renderAdminEntidadesColumn() {
         return;
     }
 
-    // DEBUG: Mostrar todas las entidades de Palena y sus provincias
-    const pálenaAll = adminTemporaryEntidades.filter(e => e.Provincia === 'Palena' || e.Provincia === 'PALENA' || e.Provincia === 'palena');
-    console.log('📊 TODAS entidades con Provincia=Palena:', pálenaAll.length);
-    console.log('Provincias únicas en datos:', [...new Set(adminTemporaryEntidades.map(e => e.Provincia))]);
-    console.log('Primeras 5 provincias:', adminTemporaryEntidades.slice(0, 5).map(e => `"${e.Provincia}"` ));
+    // Normalizar provincia a mayúsculas para comparación
+    const normalizadaProvincia = adminSelectedProvincia.toUpperCase();
 
     let filteredEntidades = adminTemporaryEntidades.filter(ent =>
-        savedPrograms.includes(ent.programa)
+        savedPrograms.includes(ent.programa) && ent.Provincia.toUpperCase() === normalizadaProvincia
     );
-
-    console.log('📍 adminSelectedProvincia:', adminSelectedProvincia);
-    console.log('📍 savedPrograms:', savedPrograms);
-    console.log('📊 Entidades filtradas por programa:', filteredEntidades.length);
 
     // Deduplicar entidades por nombre - mostrar cada entidad solo una vez
     const uniqueEntidades = {};
