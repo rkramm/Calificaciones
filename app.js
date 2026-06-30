@@ -2302,10 +2302,12 @@ function renderAdminEntidadesColumn() {
     console.log('  primera entidad:', adminTemporaryEntidades[0]);
     console.log('  campos de entidad:', adminTemporaryEntidades[0] ? Object.keys(adminTemporaryEntidades[0]) : 'N/A');
 
-    // Solo filtrar por programa (sin provincia por ahora)
+    // Filtrar por programa Y provincia (campos con mayúscula inicial)
+    const normalizadaProvincia = adminSelectedProvincia.toUpperCase();
     let filteredEntidades = adminTemporaryEntidades.filter(ent => {
-        const match = savedPrograms.includes(ent.programa);
-        return match;
+        const matchPrograma = savedPrograms.includes(ent.Programa);
+        const matchProvincia = ent.Provincia.toUpperCase() === normalizadaProvincia;
+        return matchPrograma && matchProvincia;
     });
 
     console.log('  📊 Entidades después de filtro por programa:', filteredEntidades.length);
