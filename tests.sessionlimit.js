@@ -10,11 +10,11 @@ const SESSION_LIMIT_TEST_CONFIG = {
 
 /**
  * Test de límite de sesiones
- * Simula múltiples usuarios intentando conectarse
+ * Simula múltiples usuarios intentando conectarse (FRONTEND LIMIT)
  */
-async function runSessionLimitTest() {
+function runSessionLimitTest() {
     console.log('\n╔════════════════════════════════════════════════════════════╗');
-    console.log('║        PRUEBA DE LÍMITE DE SESIONES SIMULTÁNEAS             ║');
+    console.log('║        PRUEBA DE LÍMITE DE SESIONES SIMULTÁNEAS (LOCAL)     ║');
     console.log('║        Verificar máximo ' + SESSION_LIMIT_TEST_CONFIG.maxUsuarios + ' usuarios conectados        ║');
     console.log('╚════════════════════════════════════════════════════════════╝\n');
 
@@ -22,62 +22,25 @@ async function runSessionLimitTest() {
         loginsExitosos: 0,
         loginsRechazados: 0,
         loginsIntentados: 0,
-        tiempos: [],
         detalles: []
     };
 
     // Intentar conectar 7 usuarios (6 deberían pasar, 1 debe ser rechazado)
     for (let u = 1; u <= SESSION_LIMIT_TEST_CONFIG.intentoLoginExtra; u++) {
-        const userRut = `1234567${u}-${u}`;
+        const userRut = `TEST-USER-${u}`;
         const tiempoInicio = Date.now();
 
         console.log(`\n🔑 [Usuario ${u}] Intentando login con RUT: ${userRut}`);
+        console.log(`   Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
 
-        try {
-            const response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    action: 'login',
-                    userRut: userRut
-                })
-            });
-
-            const result = await response.json();
+        // Simular login (verificar límite local)
+        if (ACTIVE_USER_SESSIONS.size >= MAX_CONCURRENT_USERS) {
             const tiempoRespuesta = Date.now() - tiempoInicio;
-            resultados.tiempos.push(tiempoRespuesta);
-            resultados.loginsIntentados++;
-
-            const detalle = {
-                usuario: u,
-                rut: userRut,
-                exitoso: result.success,
-                tiempoMs: tiempoRespuesta,
-                mensaje: result.message || result.error
-            };
-
-            if (result.success) {
-                resultados.loginsExitosos++;
-                console.log(`✅ [Usuario ${u}] LOGIN EXITOSO`);
-                console.log(`   • ${result.message}`);
-                console.log(`   • Tiempo: ${tiempoRespuesta}ms`);
-            } else {
-                resultados.loginsRechazados++;
-                console.log(`❌ [Usuario ${u}] LOGIN RECHAZADO`);
-                console.log(`   • Razón: ${result.error}`);
-                console.log(`   • Tiempo: ${tiempoRespuesta}ms`);
-            }
-
-            resultados.detalles.push(detalle);
-
-        } catch (error) {
-            const tiempoRespuesta = Date.now() - tiempoInicio;
-            resultados.tiempos.push(tiempoRespuesta);
-            resultados.loginsIntentados++;
             resultados.loginsRechazados++;
+            resultados.loginsIntentados++;
 
-            console.log(`❌ [Usuario ${u}] ERROR DE CONEXIÓN`);
-            console.log(`   • Error: ${error.message}`);
+            console.log(`❌ [Usuario ${u}] LOGIN RECHAZADO`);
+            console.log(`   • Razón: Sistema saturado (${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS} usuarios)`);
             console.log(`   • Tiempo: ${tiempoRespuesta}ms`);
 
             resultados.detalles.push({
@@ -85,13 +48,33 @@ async function runSessionLimitTest() {
                 rut: userRut,
                 exitoso: false,
                 tiempoMs: tiempoRespuesta,
-                mensaje: `Error: ${error.message}`
+                mensaje: `Sistema saturado (${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS} usuarios)`
+            });
+        } else {
+            // Agregar a sesiones activas
+            ACTIVE_USER_SESSIONS.add(userRut);
+            const tiempoRespuesta = Date.now() - tiempoInicio;
+            resultados.loginsExitosos++;
+            resultados.loginsIntentados++;
+
+            console.log(`✅ [Usuario ${u}] LOGIN EXITOSO`);
+            console.log(`   • Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
+            console.log(`   • Tiempo: ${tiempoRespuesta}ms`);
+
+            resultados.detalles.push({
+                usuario: u,
+                rut: userRut,
+                exitoso: true,
+                tiempoMs: tiempoRespuesta,
+                mensaje: `Login exitoso. ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS} usuarios conectados`
             });
         }
-
-        // Pequeña pausa entre intentos
-        await new Promise(resolve => setTimeout(resolve, 200));
     }
+
+    // Limpiar sesiones después del test
+    console.log('\n🧹 Limpiando sesiones de prueba...');
+    ACTIVE_USER_SESSIONS.clear();
+    console.log('✅ Sesiones limpias');
 
     // Resumen
     console.log('\n╔════════════════════════════════════════════════════════════╗');

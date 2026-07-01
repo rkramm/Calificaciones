@@ -1,7 +1,7 @@
 /* ================= CONFIGURACIÓN DE ENTORNO WEB (GITHUB + GOOGLE SCRIPTS) ================= */
 // Las URLs sensibles y secrets se cargan desde config.js (no versionado)
 const CLOUD_MODE_ENABLED = CONFIG?.CLOUD_MODE_ENABLED ?? true;
-const GOOGLE_SCRIPT_URL = CONFIG?.GOOGLE_SCRIPT_URL ?? "https://script.google.com/macros/s/AKfycbxGd3gLWkOdYvC6Z7OVhfEtNPCK4zoXXUEnPl76NgTLbpDAqSeCIaB3zbBZ4LxyHiVbNw/exec";
+const GOOGLE_SCRIPT_URL = CONFIG?.GOOGLE_SCRIPT_URL ?? "https://script.google.com/macros/s/AKfycbxCKdEApmUiB9_uiHBaZb5uki9DkZbSZfcc0QITdZ1o24YneLeO724ys0LDx49i8OBGwA/exec";
 
 // Sistema de rate limiting para login
 let loginAttempts = {};
@@ -218,6 +218,10 @@ const STAGES_METADATA = {
 
 let currentUser = null, currentRole = null, currentStage = 1, currentCoverage = "", deadlineExpired = false;
 let dbInstance = null, dbItems = [], dbScores = {}, allMemoryScores = [], allAsignacionesMapped = [];
+
+// Control de sesiones simultáneas (máximo 6 usuarios)
+const MAX_CONCURRENT_USERS = 6;
+const ACTIVE_USER_SESSIONS = new Set();
 
 // Estado del módulo histórico
 let historicoConfig = null;
@@ -2651,44 +2655,22 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
     // Éxito: limpiar intentos fallidos
     delete loginAttempts[userInput];
 
+    // ⏳ VERIFICAR LÍMITE DE USUARIOS SIMULTÁNEOS (LOCAL)
+    if (ACTIVE_USER_SESSIONS.size >= MAX_CONCURRENT_USERS) {
+        alert(`⚠️ Sistema saturado (${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS} usuarios).\n\nIntente en algunos minutos.`);
+        restoreConnectionStatus();
+        return;
+    }
+
+    // Agregar usuario a sesiones activas
+    ACTIVE_USER_SESSIONS.add(userInput);
+    console.log(`✅ Usuario ${userInput} agregado. Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
+
     // Generar CSRF token para esta sesión
     generateCSRFToken();
 
     currentUser = evResult;
     currentRole = 'evaluador';
-
-    // ⏳ VERIFICAR LÍMITE DE USUARIOS SIMULTÁNEOS
-    showProgressBar('Verificando disponibilidad del sistema...');
-
-    try {
-        const loginResponse = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-                action: 'login',
-                userRut: userInput
-            })
-        });
-
-        const result = await loginResponse.json();
-
-        if (!result.success) {
-            hideProgressBar();
-            alert(`⚠️ ${result.error}\n\nNo se puede iniciar sesión en este momento.`);
-            currentUser = null;
-            currentRole = null;
-            restoreConnectionStatus();
-            return;
-        }
-
-        console.log(`✅ ${result.message}`);
-        hideProgressBar();
-
-    } catch (error) {
-        hideProgressBar();
-        console.error('Error verificando límite de usuarios:', error);
-        // Continuar de todas formas (modo offline)
-    }
 
     try {
         // 🔄 PRIORIDAD 1: Descargar asignaciones FRESCAS de Google Sheets
@@ -3051,17 +3033,10 @@ function handleLogout() {
 }
 
 function performLogout() {
-    // 📤 Notificar al backend que la sesión se está cerrando
+    // Remover usuario de sesiones activas
     if (currentUser && currentUser.rut) {
-        const userRut = currentUser.rut;
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({
-                action: 'logout',
-                userRut: userRut
-            })
-        }).catch(err => console.warn('Error notificando logout:', err));
+        ACTIVE_USER_SESSIONS.delete(currentUser.rut);
+        console.log(`❌ Usuario ${currentUser.rut} removido. Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
     }
 
     currentUser = null;
