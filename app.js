@@ -219,6 +219,9 @@ const STAGES_METADATA = {
 let currentUser = null, currentRole = null, currentStage = 1, currentCoverage = "", deadlineExpired = false;
 let dbInstance = null, dbItems = [], dbScores = {}, allMemoryScores = [], allAsignacionesMapped = [];
 let DEADLINE = null; // Fecha límite cargada desde configuración
+let sessionStartTime = null; // Hora de inicio de sesión
+let sessionCountdownInterval = null; // Interval para el countdown de sesión
+const SESSION_DURATION_MS = 10 * 60 * 1000; // 10 minutos
 
 // Control de sesiones simultáneas (máximo 6 usuarios)
 const MAX_CONCURRENT_USERS = 6;
@@ -901,6 +904,106 @@ function loadDeadlineToInput() {
         const minutes = String(DEADLINE.getMinutes()).padStart(2, '0');
 
         cfgInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+}
+
+/**
+ * Iniciar countdown de sesión de 10 minutos
+ */
+function startSessionCountdown() {
+    if (!currentUser || currentRole === 'admin') return;
+
+    sessionStartTime = Date.now();
+
+    // Limpiar interval anterior si existe
+    if (sessionCountdownInterval) {
+        clearInterval(sessionCountdownInterval);
+    }
+
+    // Mostrar contenedor de countdown
+    const container = document.getElementById('session-countdown-container');
+    if (container) {
+        container.style.display = 'block';
+    }
+
+    // Actualizar cada segundo
+    sessionCountdownInterval = setInterval(() => {
+        updateSessionCountdown();
+    }, 1000);
+
+    // Actualizar inmediatamente
+    updateSessionCountdown();
+
+    console.log(`⏱️ Session countdown iniciado. Cierre automático en ${SESSION_DURATION_MS / 1000}s`);
+}
+
+/**
+ * Actualizar display del countdown de sesión
+ */
+function updateSessionCountdown() {
+    if (!sessionStartTime) return;
+
+    const display = document.getElementById('session-countdown');
+    if (!display) return;
+
+    const elapsed = Date.now() - sessionStartTime;
+    const remaining = Math.max(0, SESSION_DURATION_MS - elapsed);
+
+    // Convertir a minutos y segundos
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+
+    display.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+    // Cambiar color según urgencia
+    if (remaining < 60000) {
+        display.style.color = '#FF6B6B'; // Rojo si queda menos de 1 minuto
+    } else if (remaining < 300000) {
+        display.style.color = '#FFD93D'; // Amarillo si queda menos de 5 minutos
+    } else {
+        display.style.color = 'rgba(255, 255, 255, 0.8)';
+    }
+
+    // Si llegó a 00:00, cerrar sesión
+    if (remaining <= 0) {
+        stopSessionCountdown();
+        closeSessionDueToTimeout();
+    }
+}
+
+/**
+ * Detener countdown de sesión
+ */
+function stopSessionCountdown() {
+    if (sessionCountdownInterval) {
+        clearInterval(sessionCountdownInterval);
+        sessionCountdownInterval = null;
+    }
+
+    const container = document.getElementById('session-countdown-container');
+    if (container) {
+        container.style.display = 'none';
+    }
+
+    sessionStartTime = null;
+}
+
+/**
+ * Cerrar sesión automáticamente por timeout
+ */
+function closeSessionDueToTimeout() {
+    console.warn('⏱️ Sesión cerrada automáticamente por inactividad (10 minutos)');
+
+    // Intentar guardar cambios pendientes
+    if (currentRole === 'evaluador' && hasUnsavedEvaluatorChanges) {
+        console.log('💾 Guardando cambios antes de cerrar...');
+        saveEvaluatorScores(() => {
+            performLogout();
+            alert('⏱️ Su sesión ha expirado por timeout (10 minutos).\n\nSus cambios fueron guardados automáticamente.');
+        });
+    } else {
+        performLogout();
+        alert('⏱️ Su sesión ha expirado por timeout (10 minutos).');
     }
 }
 
@@ -3372,6 +3475,9 @@ function performLogout() {
         }).catch(err => console.warn('⚠️ Error al logout en backend:', err));
     }
 
+    // Detener countdown de sesión
+    stopSessionCountdown();
+
     currentUser = null;
     currentRole = null;
     hasUnsavedEvaluatorChanges = false;
@@ -3416,6 +3522,7 @@ function showPanel(titleText) {
         toggleElement('btn-eval-pdf', true);
         checkDeadlineStatus();
         startCountdownClock();
+        startSessionCountdown(); // Iniciar countdown de 10 minutos para cerrar sesión
         renderCoverageTabs();
 
         // Sincronizar datos en background sin bloquear UI
