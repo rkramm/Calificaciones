@@ -113,6 +113,15 @@ async function runLoad8UsersSheetsTest() {
     console.log(`   • Total de scores: ${LOAD_SHEETS_CONFIG.numUsuarios * LOAD_SHEETS_CONFIG.scoresPerUser}`);
     console.log(`   • Tabla destino: "scores" en Google Sheets\n`);
 
+    // PASO 1: Sincronizar versión del cliente con el servidor
+    console.log(`⏳ Sincronizando versión del cliente con el servidor...`);
+    try {
+        await cloudGet('scores');
+        console.log(`✅ Versión sincronizada\n`);
+    } catch (error) {
+        console.log(`⚠️  Error sincronizando versión: ${error.message}\n`);
+    }
+
     console.log(`⏳ Iniciando guardado simultáneo de scores en Sheets...\n`);
 
     const resultados = {
