@@ -34,6 +34,7 @@ function generarCalificacionSheets(usuarioIndex, scoreIndex) {
 
 /**
  * Simula un usuario guardando directamente en Sheets
+ * Con retraso escalonado para evitar que todos choquen
  */
 async function usuarioGuardaEnSheets(usuarioIndex) {
     const userRut = `SHEETS-USER-${usuarioIndex}`;
@@ -44,8 +45,18 @@ async function usuarioGuardaEnSheets(usuarioIndex) {
         scoresExitosos: 0,
         scoresFallidos: 0,
         tiempoMs: 0,
-        errores: []
+        errores: [],
+        retrasoBefore: 0
     };
+
+    // Retraso escalonado: Usuario 1 empieza ya, Usuario 2 espera 500ms, Usuario 3 espera 1000ms, etc.
+    const retrasoMs = (usuarioIndex - 1) * 500;
+    resultado.retrasoBefore = retrasoMs;
+
+    if (retrasoMs > 0) {
+        console.log(`\n⏳ [Usuario ${usuarioIndex}] Esperando ${retrasoMs}ms antes de guardar (desfase escalonado)...`);
+        await new Promise(resolve => setTimeout(resolve, retrasoMs));
+    }
 
     console.log(`\n📤 [Usuario ${usuarioIndex}] Intentando guardar ${LOAD_SHEETS_CONFIG.scoresPerUser} scores en Sheets...`);
 
@@ -153,17 +164,17 @@ async function runLoad8UsersSheetsTest() {
 
     // Tabla de detalles
     console.log('📝 TABLA DE USUARIOS:\n');
-    console.log('Usuario │ RUT            │ Guardados │ Fallidos │ Tasa Éxito │ Tiempo');
-    console.log('────────┼────────────────┼───────────┼──────────┼────────────┼────────');
+    console.log('Usuario │ Desfase │ Guardados │ Fallidos │ Tasa Éxito │ Tiempo');
+    console.log('────────┼─────────┼───────────┼──────────┼────────────┼────────');
 
     resultados.detallesUsuarios.forEach(d => {
         const usuario = `${d.usuario}`.padEnd(6, ' ');
-        const rut = d.rut.padEnd(14, ' ');
+        const desfase = `${d.retrasoBefore}ms`.padEnd(7, ' ');
         const guardados = `${d.scoresExitosos}/${d.scoresIntentados}`.padEnd(9, ' ');
         const fallidos = d.scoresFallidos.toString().padEnd(8, ' ');
         const tasa = `${Math.round((d.scoresExitosos / d.scoresIntentados) * 100)}%`.padEnd(10, ' ');
         const tiempo = `${d.tiempoMs}ms`;
-        console.log(`${usuario} │ ${rut} │ ${guardados} │ ${fallidos} │ ${tasa} │ ${tiempo}`);
+        console.log(`${usuario} │ ${desfase} │ ${guardados} │ ${fallidos} │ ${tasa} │ ${tiempo}`);
 
         if (d.errores.length > 0) {
             console.log(`         │ Errores: ${d.errores.join(', ')}`);
