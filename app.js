@@ -218,6 +218,7 @@ const STAGES_METADATA = {
 
 let currentUser = null, currentRole = null, currentStage = 1, currentCoverage = "", deadlineExpired = false;
 let dbInstance = null, dbItems = [], dbScores = {}, allMemoryScores = [], allAsignacionesMapped = [];
+let DEADLINE = null; // Fecha límite cargada desde configuración
 
 // Control de sesiones simultáneas (máximo 6 usuarios)
 const MAX_CONCURRENT_USERS = 6;
@@ -785,6 +786,98 @@ function getEntityName(entity) {
     if (!entity) return 'Sin Nombre';
     return entity.Nombre || entity.nombre || entity.name || entity.NOMBRE || 'Sin Nombre';
 }
+
+/**
+ * Cargar configuración desde Google Sheets (pestaña: configuracion)
+ * Busca fecha_limite en columna A y obtiene valor de columna B
+ */
+function loadConfigurationFromSheets() {
+    return cloudGet('configuracion').then(config => {
+        if (!config || !Array.isArray(config)) {
+            console.warn('⚠️ Configuración vacía');
+            return;
+        }
+
+        // Buscar entrada con clave 'fecha_limite'
+        const deadlineEntry = config.find(entry => {
+            const clave = entry.clave || entry.Clave || entry.CLAVE || '';
+            return clave.toLowerCase().trim() === 'fecha_limite';
+        });
+
+        if (deadlineEntry) {
+            const value = deadlineEntry.valor || deadlineEntry.Valor || deadlineEntry.VALOR || deadlineEntry.value;
+            if (value) {
+                DEADLINE = new Date(value);
+                console.log(`📅 Deadline cargado: ${DEADLINE.toLocaleString('es-CL')}`);
+                checkDeadlineStatus(); // Verificar si el deadline ya pasó
+                return DEADLINE;
+            }
+        } else {
+            console.warn('⚠️ No se encontró fecha_limite en configuración');
+        }
+    }).catch(err => {
+        console.warn('⚠️ Error cargando configuración:', err);
+    });
+}
+
+/**
+ * Verificar si el deadline ha pasado
+ */
+function checkDeadlineStatus() {
+    if (!DEADLINE) return;
+
+    const ahora = new Date();
+    deadlineExpired = ahora > DEADLINE;
+
+    if (deadlineExpired) {
+        console.warn(`⏰ DEADLINE EXPIRADO: ${DEADLINE.toLocaleString('es-CL')}`);
+        updateDeadlineDisplay();
+    } else {
+        const tiempoRestante = DEADLINE - ahora;
+        const diasRestantes = Math.floor(tiempoRestante / (1000 * 60 * 60 * 24));
+        const horasRestantes = Math.floor((tiempoRestante % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        console.log(`✅ Tiempo restante: ${diasRestantes}d ${horasRestantes}h`);
+        updateDeadlineDisplay();
+    }
+}
+
+/**
+ * Actualizar display del deadline en el header
+ */
+function updateDeadlineDisplay() {
+    if (!DEADLINE) return;
+
+    const display = document.getElementById('deadline-display');
+    if (!display) return;
+
+    const ahora = new Date();
+
+    if (deadlineExpired) {
+        display.textContent = `⛔ Plazo vencido (${DEADLINE.toLocaleDateString('es-CL')})`;
+        display.style.color = '#FF6B6B';
+    } else {
+        const tiempoRestante = DEADLINE - ahora;
+        const dias = Math.floor(tiempoRestante / (1000 * 60 * 60 * 24));
+        const horas = Math.floor((tiempoRestante % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutos = Math.floor((tiempoRestante % (1000 * 60 * 60)) / (1000 * 60));
+
+        let color = 'rgba(255, 255, 255, 0.8)';
+        if (dias === 0 && horas < 24) {
+            color = '#FFD93D'; // Amarillo si queda menos de 1 día
+        }
+        if (dias === 0 && horas < 6) {
+            color = '#FF6B6B'; // Rojo si queda menos de 6 horas
+        }
+
+        display.textContent = `Vence en: ${dias}d ${horas}h ${minutos}m`;
+        display.style.color = color;
+    }
+}
+
+/**
+ * Actualizar deadline cada minuto
+ */
+setInterval(updateDeadlineDisplay, 60000);
 
 /**
  * Inicializa la UI del evaluador después de cargar asignaciones
@@ -1679,6 +1772,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMatrixLogisticsDrivers();
         checkDeadlineStatus();
         initSaveStatusMonitor(); // Monitorear estado de guardado
+
+        // Cargar configuración (incluyendo deadline) desde Google Sheets
+        loadConfigurationFromSheets();
     });
 });
 
