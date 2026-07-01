@@ -219,8 +219,8 @@ const STAGES_METADATA = {
 let currentUser = null, currentRole = null, currentStage = 1, currentCoverage = "", deadlineExpired = false;
 let dbInstance = null, dbItems = [], dbScores = {}, allMemoryScores = [], allAsignacionesMapped = [];
 
-// Control de sesiones simultáneas (máximo 6 usuarios)
-const MAX_CONCURRENT_USERS = 6;
+// Control de sesiones simultáneas (máximo 7 usuarios)
+const MAX_CONCURRENT_USERS = 7;
 const ACTIVE_USER_SESSIONS = new Set();
 
 // Estado del módulo histórico
