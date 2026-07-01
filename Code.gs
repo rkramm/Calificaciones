@@ -125,28 +125,39 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({ success: true, backupName: backupName })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Control de versión optimista por tabla (una sola lectura de __version__ por request)
-    const versionData = getVersionMap();
-    const clientVersion = parseInt(payload.clientVersion, 10) || 0;
-    const serverVersion = versionData.map[tableName] || 1;
-    const forceVersion = payload.forceVersion === true;
-    if (clientVersion < serverVersion && !forceVersion) {
+    // Solo procesar versión si tableName es válido
+    if (tableName) {
+      // Control de versión optimista por tabla (una sola lectura de __version__ por request)
+      const versionData = getVersionMap();
+      const clientVersion = parseInt(payload.clientVersion, 10) || 0;
+      const serverVersion = versionData.map[tableName] || 1;
+      const forceVersion = payload.forceVersion === true;
+      if (clientVersion < serverVersion && !forceVersion) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          versionConflict: true,
+          serverVersion: serverVersion,
+          clientVersion: clientVersion,
+          error: 'La versión del cliente es anterior a la versión del servidor. Sincronice antes de guardar.'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // Si no hay tableName, retornar error
+    if (!tableName) {
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
-        versionConflict: true,
-        serverVersion: serverVersion,
-        clientVersion: clientVersion,
-        error: 'La versión del cliente es anterior a la versión del servidor. Sincronice antes de guardar.'
+        error: 'Nombre de tabla no especificado'
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     let sheet = spreadsheet.getSheetByName(tableName);
-    
+
     if (!sheet) {
       sheet = spreadsheet.insertSheet(tableName);
     }
-    
+
     // Definir headers: SIEMPRE obtener de la hoja existente, NUNCA de dataArray
     let headers = null;
     const existingValues = sheet.getDataRange().getDisplayValues();
