@@ -810,6 +810,8 @@ function loadConfigurationFromSheets() {
                 DEADLINE = new Date(value);
                 console.log(`📅 Deadline cargado: ${DEADLINE.toLocaleString('es-CL')}`);
                 checkDeadlineStatus(); // Verificar si el deadline ya pasó
+                updateDeadlineDisplay(); // Actualizar display en header
+                loadDeadlineToInput(); // Cargar en el input de admin
                 return DEADLINE;
             }
         } else {
@@ -878,6 +880,25 @@ function updateDeadlineDisplay() {
  * Actualizar deadline cada minuto
  */
 setInterval(updateDeadlineDisplay, 60000);
+
+/**
+ * Cargar deadline actual en el input de configuración
+ */
+function loadDeadlineToInput() {
+    const cfgInput = document.getElementById('cfg-deadline');
+    if (!cfgInput) return;
+
+    if (DEADLINE) {
+        // Convertir a formato datetime-local (YYYY-MM-DDTHH:MM)
+        const year = DEADLINE.getFullYear();
+        const month = String(DEADLINE.getMonth() + 1).padStart(2, '0');
+        const day = String(DEADLINE.getDate()).padStart(2, '0');
+        const hours = String(DEADLINE.getHours()).padStart(2, '0');
+        const minutes = String(DEADLINE.getMinutes()).padStart(2, '0');
+
+        cfgInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+}
 
 /**
  * Inicializa la UI del evaluador después de cargar asignaciones
@@ -2502,12 +2523,45 @@ function startCountdownClock() {
 
 function saveConfigDeadline() {
     const cfgInput = document.getElementById('cfg-deadline');
-    if (!cfgInput) return;
+    if (!cfgInput || !cfgInput.value) {
+        alert('❌ Por favor ingrese una fecha y hora válida');
+        return;
+    }
+
+    const deadlineValue = cfgInput.value;
+
+    // 1. Guardar en IndexedDB local
     const tx = dbInstance.transaction(['configuracion'], 'readwrite');
-    tx.objectStore('configuracion').put({ clave: 'fecha_limite', valor: cfgInput.value });
+    tx.objectStore('configuracion').put({ clave: 'fecha_limite', valor: deadlineValue });
+
     tx.oncomplete = () => {
-        savedDeadlineISO = cfgInput.value;
-        checkDeadlineStatus();
+        console.log('✅ Deadline guardado en IndexedDB');
+
+        // 2. Guardar en Google Sheets (configuracion sheet)
+        cloudSave('configuracion', [{ clave: 'fecha_limite', valor: deadlineValue }], 'incremental').then(result => {
+            if (result && result.success) {
+                console.log('✅ Deadline guardado en Google Sheets');
+
+                // 3. Actualizar variable DEADLINE
+                DEADLINE = new Date(deadlineValue);
+                checkDeadlineStatus();
+                updateDeadlineDisplay();
+
+                // 4. Mostrar feedback al usuario
+                alert(`✅ Deadline guardado correctamente\n\n📅 Vence: ${DEADLINE.toLocaleString('es-CL')}`);
+                console.log(`📅 Nuevo deadline: ${DEADLINE.toLocaleString('es-CL')}`);
+            } else {
+                console.warn('⚠️ Error al guardar en Google Sheets');
+                alert('⚠️ Deadline guardado localmente pero hubo error al guardar en la nube');
+            }
+        }).catch(err => {
+            console.error('❌ Error guardando en Google Sheets:', err);
+            alert('⚠️ Deadline guardado localmente pero no se pudo guardar en la nube');
+        });
+    };
+
+    tx.onerror = () => {
+        alert('❌ Error al guardar deadline localmente');
     };
 }
 
