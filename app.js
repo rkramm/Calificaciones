@@ -2809,12 +2809,17 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
         if (!Array.isArray(parsedEtapas) || parsedEtapas.length === 0) {
             parsedEtapas = [1];
         }
+        // Asegurar que entidadNombre no esté vacío
+        let entidadNombre = a.entidadNombre;
+        if (!entidadNombre || entidadNombre === 'undefined' || (typeof entidadNombre === 'string' && entidadNombre.trim() === '')) {
+            entidadNombre = 'Sin Entidad';
+        }
         return {
             cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
             etapas: parsedEtapas.sort((x, y) => x - y),
             programa: a.programa,
             provincia: a.provincia,
-            entidadNombre: a.entidadNombre
+            entidadNombre: entidadNombre
         };
     }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
 
@@ -2968,12 +2973,17 @@ function syncAsignacionesFromCloud() {
                         if (!Array.isArray(parsedEtapas) || parsedEtapas.length === 0) {
                             parsedEtapas = [1];
                         }
+                        // Asegurar que entidadNombre no esté vacío
+                        let entidadNombre = a.entidadNombre;
+                        if (!entidadNombre || entidadNombre === 'undefined' || (typeof entidadNombre === 'string' && entidadNombre.trim() === '')) {
+                            entidadNombre = 'Sin Entidad';
+                        }
                         return {
                             cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
                             etapas: parsedEtapas.sort((x, y) => x - y),
                             programa: a.programa,
                             provincia: a.provincia,
-                            entidadNombre: a.entidadNombre
+                            entidadNombre: entidadNombre
                         };
                     }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
 
@@ -3263,7 +3273,12 @@ function renderEvaluatorHeaderInfo() {
 
     // Si no hay entidad seleccionada, usar la primera
     if (!window.currentSelectedEntity) {
-        window.currentSelectedEntity = allCoverageAsigs[0].entidadNombre;
+        // Asegurar que entidadNombre no esté vacío
+        let entityName = allCoverageAsigs[0].entidadNombre;
+        if (!entityName || entityName === 'undefined' || entityName.trim() === '') {
+            entityName = 'Sin Entidad';
+        }
+        window.currentSelectedEntity = entityName;
     }
 
     // Renderizar pestañas de entidades SIEMPRE
