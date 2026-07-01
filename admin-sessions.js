@@ -4,6 +4,40 @@
  */
 
 /**
+ * Cargar sesiones activas desde el backend
+ */
+function loadActiveSessions() {
+    fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            action: 'getSessions',
+            userRut: currentUser?.rut || 'admin'
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.sessions) {
+            // Limpiar sesiones locales y cargar desde backend
+            ACTIVE_USER_SESSIONS.clear();
+            data.sessions.forEach(session => {
+                ACTIVE_USER_SESSIONS.set(session.rut, {
+                    loginTime: session.loginTime,
+                    lastActivity: session.lastActivity,
+                    nombre: session.nombre || session.rut
+                });
+            });
+            console.log(`📥 Loaded ${ACTIVE_USER_SESSIONS.size} sessions from backend`);
+        }
+        showActiveSessions();
+    })
+    .catch(err => {
+        console.warn('Error loading sessions:', err);
+        showActiveSessions(); // Show anyway with local data
+    });
+}
+
+/**
  * Mostrar panel de sesiones activas
  */
 function showActiveSessions() {
@@ -113,10 +147,10 @@ function inicializarActualizadorSesiones() {
         return; // No está en página admin
     }
 
-    showActiveSessions(); // Mostrar inicial
+    loadActiveSessions(); // Cargar inicial desde backend
 
     setInterval(() => {
-        showActiveSessions(); // Actualizar cada 5 segundos
+        loadActiveSessions(); // Actualizar desde backend cada 5 segundos
     }, 5000);
 }
 

@@ -2811,13 +2811,26 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
 
     // Agregar usuario a sesiones activas con metadata
     const ahora = Date.now();
+    const userName = evResult.nombre || userInput;
     ACTIVE_USER_SESSIONS.set(userInput, {
         loginTime: ahora,
         lastActivity: ahora,
         lastWrite: ahora,
-        nombre: evResult.nombre || userInput
+        nombre: userName
     });
     console.log(`✅ Usuario ${userInput} agregado. Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
+
+    // Registrar sesión en backend (Code.gs)
+    fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            action: 'login',
+            userRut: userInput,
+            userName: userName,
+            csrfToken: csrfToken
+        })
+    }).catch(err => console.warn('⚠️ Error registrando sesión en backend:', err));
 
     // Configurar timeout de inactividad (10 minutos)
     if (userInactivityTimers[userInput]) {
@@ -3182,15 +3195,27 @@ function updateLastWriteTime() {
 function performLogout() {
     // Remover usuario de sesiones activas
     if (currentUser && currentUser.rut) {
-        ACTIVE_USER_SESSIONS.delete(currentUser.rut);
+        const userRut = currentUser.rut;
+        ACTIVE_USER_SESSIONS.delete(userRut);
 
         // Limpiar timer de inactividad
-        if (userInactivityTimers[currentUser.rut]) {
-            clearTimeout(userInactivityTimers[currentUser.rut]);
-            delete userInactivityTimers[currentUser.rut];
+        if (userInactivityTimers[userRut]) {
+            clearTimeout(userInactivityTimers[userRut]);
+            delete userInactivityTimers[userRut];
         }
 
-        console.log(`❌ Usuario ${currentUser.rut} removido. Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
+        console.log(`❌ Usuario ${userRut} removido. Sesiones activas: ${ACTIVE_USER_SESSIONS.size}/${MAX_CONCURRENT_USERS}`);
+
+        // Registrar logout en backend
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'logout',
+                userRut: userRut,
+                csrfToken: csrfToken
+            })
+        }).catch(err => console.warn('⚠️ Error al logout en backend:', err));
     }
 
     currentUser = null;

@@ -87,10 +87,11 @@ function doPost(e) {
         })).setMimeType(ContentService.MimeType.JSON);
       }
 
-      // Registrar sesión
+      // Registrar sesión con nombre del usuario
       ACTIVE_SESSIONS[userRut] = {
         loginTime: new Date().getTime(),
-        lastActivity: new Date().getTime()
+        lastActivity: new Date().getTime(),
+        nombre: payload.userName || userRut  // Guardar nombre si viene en payload
       };
 
       // Guardar sesiones actualizadas
@@ -116,6 +117,29 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
         message: 'Logout completado'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Obtener sesiones activas (para admin panel)
+    if (action === 'getSessions') {
+      const sessionsJson = PROPERTIES.getProperty('ACTIVE_SESSIONS') || '{}';
+      const ACTIVE_SESSIONS = JSON.parse(sessionsJson);
+
+      // Convertir a array para retornar
+      const sessionsArray = [];
+      for (const [rut, session] of Object.entries(ACTIVE_SESSIONS)) {
+        sessionsArray.push({
+          rut: rut,
+          loginTime: session.loginTime,
+          lastActivity: session.lastActivity,
+          nombre: rut  // El backend no guarda nombre, usar RUT como fallback
+        });
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        sessions: sessionsArray,
+        count: sessionsArray.length
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
