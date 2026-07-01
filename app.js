@@ -2438,7 +2438,11 @@ function renderAdminEntidadesColumn() {
             <input type="checkbox" id="chk-marcar-todas-entidades" onchange="document.querySelectorAll('.asig-entidad-chk').forEach(c => c.checked = this.checked)"> [ Marcar Todas ]
         </label>
     ` +
-        filteredEntidades.map(ent => `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${ent.Nombre}"> ${ent.Nombre}</label></div>`).join('');
+        filteredEntidades.map(ent => {
+            // Buscar nombre de entidad con fallback a diferentes campos posibles
+            const entityName = ent.Nombre || ent.nombre || ent.name || ent.NOMBRE || 'Sin Nombre';
+            return `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${entityName}" data-id="${ent.idEntidad}"> ${entityName}</label></div>`;
+        }).join('');
 }
 
 /* FIX CRÍTICO DE INGRESO: CONTROL DE EXCEPCIÓN CUANDO LA MUESTRA ESTÁ VACÍA V16 */
@@ -3871,12 +3875,9 @@ function processAsignacionStaging(isPartialSave) {
         if (selectedEntidades.length > 0) {
             let matched = false;
             selectedEntidades.forEach(ent => {
-                const entityData = adminTemporaryEntidades.find(e => e.idEntidad === ent.id);
-                // Asegurar que la entidad que se asigna pertenece al programa de este ciclo
-                if (entityData && entityData.programa === t.programa) {
-                    combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: ent.id, entidadNombre: ent.name });
-                    matched = true;
-                }
+                // No validar programa, permitir asignación directa por entidad seleccionada
+                combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: ent.id, entidadNombre: ent.name });
+                matched = true;
             });
             if (!matched) combinedCoverages.push({ provincia: t.provincia, programa: t.programa, entidadId: null, entidadNombre: 'Sin Entidad' });
         } else {
