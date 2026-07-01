@@ -688,7 +688,8 @@ async function cloudSave(table, dataArray, mode = 'incremental', options = {}) {
                 mode,
                 clientVersion,
                 csrfToken: csrfToken,
-                sessionId: currentUser?.rut || 'guest'
+                sessionId: currentUser?.rut || 'guest',
+                userRut: currentUser?.rut // Para registrar actividad en backend
             };
             if (options.forceVersion) {
                 body.forceVersion = true;
@@ -2656,6 +2657,39 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
     currentUser = evResult;
     currentRole = 'evaluador';
 
+    // ⏳ VERIFICAR LÍMITE DE USUARIOS SIMULTÁNEOS
+    showProgressBar('Verificando disponibilidad del sistema...');
+
+    try {
+        const loginResponse = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'login',
+                userRut: userInput
+            })
+        });
+
+        const result = await loginResponse.json();
+
+        if (!result.success) {
+            hideProgressBar();
+            alert(`⚠️ ${result.error}\n\nNo se puede iniciar sesión en este momento.`);
+            currentUser = null;
+            currentRole = null;
+            restoreConnectionStatus();
+            return;
+        }
+
+        console.log(`✅ ${result.message}`);
+        hideProgressBar();
+
+    } catch (error) {
+        hideProgressBar();
+        console.error('Error verificando límite de usuarios:', error);
+        // Continuar de todas formas (modo offline)
+    }
+
     try {
         // 🔄 PRIORIDAD 1: Descargar asignaciones FRESCAS de Google Sheets
         cloudGet('asignaciones').then(cloudAsignaciones => {
@@ -3017,6 +3051,19 @@ function handleLogout() {
 }
 
 function performLogout() {
+    // 📤 Notificar al backend que la sesión se está cerrando
+    if (currentUser && currentUser.rut) {
+        const userRut = currentUser.rut;
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+                action: 'logout',
+                userRut: userRut
+            })
+        }).catch(err => console.warn('Error notificando logout:', err));
+    }
+
     currentUser = null;
     currentRole = null;
     hasUnsavedEvaluatorChanges = false;

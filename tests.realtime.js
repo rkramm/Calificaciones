@@ -119,6 +119,11 @@ async function runRealtimeTest() {
     console.log(`   • Desfase aleatorio: ${REALTIME_TEST_CONFIG.desfaseMin}-${REALTIME_TEST_CONFIG.desfaseMax}ms`);
     console.log(`   • Total de peticiones: ${REALTIME_TEST_CONFIG.numUsuarios * REALTIME_TEST_CONFIG.calificacionesPorUsuario}\n`);
 
+    // PASO 1: Descargar versión actual de la tabla scores
+    console.log('⏳ Descargando versión actual de la tabla scores...');
+    await cloudGet('scores');
+    console.log('✅ Versión de scores sincronizada\n');
+
     const inicioTotal = Date.now();
     const promesasUsuarios = [];
 

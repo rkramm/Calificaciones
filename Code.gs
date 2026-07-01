@@ -1,6 +1,10 @@
 const SPREADSHEET_ID = '1apPfP7Y3ancW166QGEvh07kESYjuV8sP-Wd14cnQjjo';
 const VERSION_SHEET_NAME = '__version__';
 
+// Control de sesiones concurrentes
+const MAX_CONCURRENT_USERS = 6;
+let ACTIVE_SESSIONS = {};
+
 // Manejar CORS preflight requests (Chrome y navegadores modernos)
 function doOptions(e) {
   return ContentService.createTextOutput('')
@@ -66,6 +70,46 @@ function bumpTableVersion(tableName, versionData) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+    const action = payload.action;
+    const userRut = payload.userRut;
+
+    // Manejar login
+    if (action === 'login') {
+      const activeSessions = Object.keys(ACTIVE_SESSIONS).length;
+
+      if (activeSessions >= MAX_CONCURRENT_USERS) {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: `Sistema saturado (${activeSessions}/${MAX_CONCURRENT_USERS} usuarios). Intente en 5 minutos.`
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      // Registrar sesión
+      ACTIVE_SESSIONS[userRut] = {
+        loginTime: new Date().getTime(),
+        lastActivity: new Date().getTime()
+      };
+
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: `Login exitoso. ${activeSessions + 1}/${MAX_CONCURRENT_USERS} usuarios conectados.`
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Manejar logout
+    if (action === 'logout') {
+      delete ACTIVE_SESSIONS[userRut];
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Logout completado'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Registrar actividad (para timeout de inactividad después)
+    if (userRut && ACTIVE_SESSIONS[userRut]) {
+      ACTIVE_SESSIONS[userRut].lastActivity = new Date().getTime();
+    }
+
     const tableName = payload.table;
     const dataArray = payload.data;
     let mode = payload.mode || 'replace'; // 'replace', 'overwrite', o 'incremental'
@@ -74,7 +118,7 @@ function doPost(e) {
     if (mode === 'overwrite') {
       mode = 'replace';
     }
-    
+
     // Si es solicitud de backup, crear hoja de respaldo y retornar
     if (tableName === '__backup__') {
       const backupName = createBackupSheet();
