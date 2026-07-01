@@ -351,6 +351,9 @@ function doGet(e) {
     // Permitir CORS para cualquier origen
     const output = {};
     const action = e.parameter.action;
+
+    // Cache de versiones para toda la request (evita múltiples lecturas de __version__)
+    const versionData = getVersionMap();
     if (action === 'getProjects') {
       const rawPrograma = e.parameter.programa || '';
       const entidad = e.parameter.entidad || '';
@@ -454,12 +457,12 @@ function doGet(e) {
     const sheet = spreadsheet.getSheetByName(tableName);
 
     if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify({ data: [], serverVersion: getTableVersion(tableName) })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ data: [], serverVersion: versionData.map[tableName] || 1 })).setMimeType(ContentService.MimeType.JSON);
     }
 
     const values = sheet.getDataRange().getDisplayValues();
     if (values.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({ data: [], serverVersion: getTableVersion(tableName) })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ data: [], serverVersion: versionData.map[tableName] || 1 })).setMimeType(ContentService.MimeType.JSON);
     }
 
     const headers = values[0];
@@ -485,7 +488,7 @@ function doGet(e) {
 
     return ContentService.createTextOutput(JSON.stringify({
       data: data,
-      serverVersion: getTableVersion(tableName)
+      serverVersion: versionData.map[tableName] || 1
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {

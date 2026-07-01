@@ -719,6 +719,105 @@ function initSaveStatusMonitor() {
 }
 
 /**
+ * HELPER FUNCTIONS - Eliminan duplicación de código
+ */
+
+/**
+ * Parsea y normaliza etapas de una asignación
+ * @param {string|array} etapas - Etapas como string "1,2,3" o array [1,2,3]
+ * @returns {array} Array de números [1,2,3] siempre válido, mínimo [1]
+ */
+function parseAsignacionEtapas(etapas) {
+    let parsedEtapas = etapas;
+    if (typeof parsedEtapas === 'string') {
+        parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+    } else if (!Array.isArray(parsedEtapas)) {
+        parsedEtapas = [1];
+    }
+    if (!Array.isArray(parsedEtapas) || parsedEtapas.length === 0) {
+        parsedEtapas = [1];
+    }
+    return parsedEtapas.sort((x, y) => x - y);
+}
+
+/**
+ * Filtra asignaciones por RUT del usuario actual
+ * @param {array} asignacionArray - Array de asignaciones
+ * @returns {array} Asignaciones del usuario actual
+ */
+function getUserAsignaciones(asignacionArray) {
+    if (!Array.isArray(asignacionArray)) return [];
+    return asignacionArray.filter(a => a && a.rut === currentUser?.rut);
+}
+
+/**
+ * Mapea asignaciones para mostrar en UI
+ * @param {array} userAsignaciones - Array de asignaciones del usuario
+ * @returns {array} Array mapeado con formato para UI
+ */
+function mapAsignacionesForDisplay(userAsignaciones) {
+    if (!Array.isArray(userAsignaciones)) return [];
+
+    return userAsignaciones.map(a => {
+        const parsedEtapas = parseAsignacionEtapas(a.etapas);
+
+        let entidadNombre = a.entidadNombre;
+        if (!entidadNombre || entidadNombre === 'undefined' || (typeof entidadNombre === 'string' && entidadNombre.trim() === '')) {
+            entidadNombre = 'Sin Entidad';
+        }
+
+        return {
+            cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
+            etapas: parsedEtapas,
+            programa: a.programa,
+            provincia: a.provincia,
+            entidadNombre: entidadNombre
+        };
+    }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+}
+
+/**
+ * Obtiene nombre de entidad con fallbacks
+ * @param {object} entity - Objeto entidad
+ * @returns {string} Nombre de entidad o "Sin Nombre"
+ */
+function getEntityName(entity) {
+    if (!entity) return 'Sin Nombre';
+    return entity.Nombre || entity.nombre || entity.name || entity.NOMBRE || 'Sin Nombre';
+}
+
+/**
+ * Inicializa la UI del evaluador después de cargar asignaciones
+ * Válido para usar si allAsignacionesMapped ya está poblado
+ */
+function initializeEvaluatorUI() {
+    if (!allAsignacionesMapped || allAsignacionesMapped.length === 0) {
+        console.warn('⚠️ No hay asignaciones disponibles');
+        alert('No se encontraron asignaciones para este evaluador.');
+        return false;
+    }
+
+    currentCoverage = allAsignacionesMapped[0].cobertura;
+    const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
+    currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
+
+    restoreConnectionStatus();
+    showPanel('Sistema de Precalificación Técnica');
+
+    setTimeout(() => {
+        renderCoverageTabs();
+    }, 100);
+
+    if (CLOUD_MODE_ENABLED) {
+        setTimeout(() => {
+            syncAsignacionesFromCloud();
+        }, 500);
+    }
+
+    return true;
+}
+
+/**
  * Guarda datos con reintentos ligeros y sync adaptativo
  * Optimizado para múltiples usuarios simultáneos
  */
@@ -2439,8 +2538,7 @@ function renderAdminEntidadesColumn() {
         </label>
     ` +
         filteredEntidades.map(ent => {
-            // Buscar nombre de entidad con fallback a diferentes campos posibles
-            const entityName = ent.Nombre || ent.nombre || ent.name || ent.NOMBRE || 'Sin Nombre';
+            const entityName = getEntityName(ent);
             return `<div class="checkbox-block-item"><label><input type="checkbox" class="asig-entidad-chk" value="${ent.idEntidad}" data-name="${entityName}" data-id="${ent.idEntidad}"> ${entityName}</label></div>`;
         }).join('');
 }
@@ -2801,31 +2899,8 @@ async function attemptEvaluatorLogin(evaluadores, userInput, passInput) {
  * Carga rápido el panel del evaluador sin esperar proyectos
  */
 function loadEvaluatorWithAsignaciones(userAsignaciones) {
-    // Mapear asignaciones rápidamente
-    allAsignacionesMapped = userAsignaciones.map(a => {
-        let parsedEtapas = a.etapas;
-        if (typeof parsedEtapas === 'string') {
-            parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-        } else if (!Array.isArray(parsedEtapas)) {
-            parsedEtapas = [1];
-        }
-        // Garantizar que siempre haya al menos una etapa válida
-        if (!Array.isArray(parsedEtapas) || parsedEtapas.length === 0) {
-            parsedEtapas = [1];
-        }
-        // Asegurar que entidadNombre no esté vacío
-        let entidadNombre = a.entidadNombre;
-        if (!entidadNombre || entidadNombre === 'undefined' || (typeof entidadNombre === 'string' && entidadNombre.trim() === '')) {
-            entidadNombre = 'Sin Entidad';
-        }
-        return {
-            cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
-            etapas: parsedEtapas.sort((x, y) => x - y),
-            programa: a.programa,
-            provincia: a.provincia,
-            entidadNombre: entidadNombre
-        };
-    }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
+    // Mapear asignaciones rápidamente usando función helper
+    allAsignacionesMapped = mapAsignacionesForDisplay(userAsignaciones);
 
     // 🔄 PRIORIDAD 1: DESCARGAR SCORES DE GOOGLE SHEETS
     console.log(`📥 Intentando descargar scores para ${currentUser.rut} desde Google Sheets...`);
@@ -2870,42 +2945,15 @@ function loadEvaluatorWithAsignaciones(userAsignaciones) {
             currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
 
             // 🚀 MOSTRAR LA UI CON SCORES CARGADOS
-            restoreConnectionStatus();
-            showPanel('Sistema de Precalificación Técnica');
-
-            // 🔄 CARGAR PROYECTOS EN SEGUNDO PLANO
-            setTimeout(() => {
-                renderCoverageTabs();
-            }, 100);
-
-            // 📥 SINCRONIZAR ASIGNACIONES EN BACKGROUND
-            if (CLOUD_MODE_ENABLED) {
-                setTimeout(() => {
-                    syncAsignacionesFromCloud();
-                }, 500);
-            }
+            initializeEvaluatorUI();
         }
     }).catch(err => {
         console.error('❌ Error descargando scores desde Google Sheets:', err);
         // Sin fallback a IndexedDB - Google Sheets es la única fuente
         allMemoryScores = [];
 
-        currentCoverage = allAsignacionesMapped[0].cobertura;
-        const matchingConfig = allAsignacionesMapped.find(a => a.cobertura === currentCoverage);
-        currentStage = (matchingConfig && matchingConfig.etapas && matchingConfig.etapas.length > 0) ? matchingConfig.etapas[0] : 1;
-
-        restoreConnectionStatus();
-        showPanel('Sistema de Precalificación Técnica');
-
-        setTimeout(() => {
-            renderCoverageTabs();
-        }, 100);
-
-        if (CLOUD_MODE_ENABLED) {
-            setTimeout(() => {
-                syncAsignacionesFromCloud();
-            }, 500);
-        }
+        // Inicializar UI con asignaciones disponibles
+        initializeEvaluatorUI();
     });
 }
 
@@ -2965,33 +3013,9 @@ function syncAsignacionesFromCloud() {
                 statusText.textContent = '✅ Sincronización completa';
 
                 // 🔄 ACTUALIZAR allAsignacionesMapped con datos frescos
-                const userAsignaciones = cloudAsignaciones.filter(a => a.rut === currentUser.rut);
+                const userAsignaciones = getUserAsignaciones(cloudAsignaciones);
                 if (userAsignaciones.length > 0) {
-                    allAsignacionesMapped = userAsignaciones.map(a => {
-                        let parsedEtapas = a.etapas;
-                        if (typeof parsedEtapas === 'string') {
-                            parsedEtapas = parsedEtapas.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                        } else if (!Array.isArray(parsedEtapas)) {
-                            parsedEtapas = [1];
-                        }
-                        if (!Array.isArray(parsedEtapas) || parsedEtapas.length === 0) {
-                            parsedEtapas = [1];
-                        }
-                        // Asegurar que entidadNombre no esté vacío
-                        let entidadNombre = a.entidadNombre;
-                        if (!entidadNombre || entidadNombre === 'undefined' || (typeof entidadNombre === 'string' && entidadNombre.trim() === '')) {
-                            entidadNombre = 'Sin Entidad';
-                        }
-                        return {
-                            cobertura: `${a.programa} - ${a.provincia.toUpperCase()}`,
-                            etapas: parsedEtapas.sort((x, y) => x - y),
-                            programa: a.programa,
-                            provincia: a.provincia,
-                            entidadNombre: entidadNombre
-                        };
-                    }).sort((a, b) => a.cobertura.localeCompare(b.cobertura));
-
-                    // Re-renderizar las pestañas de cobertura con datos actualizados
+                    allAsignacionesMapped = mapAsignacionesForDisplay(userAsignaciones);
                     renderCoverageTabs();
                 }
 
