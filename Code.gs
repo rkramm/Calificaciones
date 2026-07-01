@@ -372,8 +372,9 @@ function doGet(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Comportamiento por defecto: leer tabla genérica
+    // Comportamiento por defecto: leer tabla genérica (con filtro opcional por provincia)
     const tableName = e.parameter.table;
+    const filterProvincia = e.parameter.provincia; // Filtro opcional por provincia
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = spreadsheet.getSheetByName(tableName);
 
@@ -389,10 +390,20 @@ function doGet(e) {
     const headers = values[0];
     const data = [];
 
+    // Encontrar índice de la columna "Provincia" si existe (para filtrado)
+    const provinciaIndex = headers.indexOf('Provincia');
+
     for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+
+      // Si hay filtro de provincia y la tabla tiene columna Provincia, filtrar
+      if (filterProvincia && provinciaIndex >= 0 && row[provinciaIndex] !== filterProvincia) {
+        continue;
+      }
+
       const obj = {};
       for (let j = 0; j < headers.length; j++) {
-        obj[headers[j]] = values[i][j];
+        obj[headers[j]] = row[j];
       }
       data.push(obj);
     }

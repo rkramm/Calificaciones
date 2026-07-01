@@ -635,12 +635,49 @@ async function cloudGetProjects(programa, entidad = '') {
 }
 
 /**
- * Guarda datos con reintentos automáticos y backoff exponencial
- * Maneja conflictos de versión de forma silenciosa sin afectar la UX
+ * SYNC ADAPTATIVO - Ajusta frecuencia según cantidad de datos pendientes
+ * Optimizado para soportar múltiples usuarios sin sobrecargar Google Sheets
+ */
+const SYNC_MANAGER = {
+    pendingByTable: {},
+    syncTimeoutByTable: {},
+    syncInProgressByTable: {},
+
+    getAdaptiveInterval(pendingCount) {
+        if (pendingCount < 10) return 30000;    // 30s - ahorro batería
+        if (pendingCount < 50) return 5000;     // 5s - normal
+        return 1000;                             // 1s - urgente
+    },
+
+    registerPending(table, count) {
+        this.pendingByTable[table] = count;
+        if (count > 0) this.scheduleSyncIfNeeded(table);
+    },
+
+    scheduleSyncIfNeeded(table) {
+        if (this.syncInProgressByTable[table]) return;
+        if (!this.pendingByTable[table] || this.pendingByTable[table] === 0) return;
+
+        if (this.syncTimeoutByTable[table]) {
+            clearTimeout(this.syncTimeoutByTable[table]);
+        }
+
+        const interval = this.getAdaptiveInterval(this.pendingByTable[table]);
+        this.syncTimeoutByTable[table] = setTimeout(() => {
+            this.pendingByTable[table] = 0; // Marcar como sincronizado
+        }, interval);
+
+        console.log(`⏰ Sync ${table} en ${interval}ms (${this.pendingByTable[table]} pendientes)`);
+    }
+};
+
+/**
+ * Guarda datos con reintentos ligeros y sync adaptativo
+ * Optimizado para múltiples usuarios simultáneos
  */
 async function cloudSave(table, dataArray, mode = 'incremental', options = {}) {
-    const MAX_REINTENTOS = 3;
-    const DELAY_INICIAL = 300; // ms
+    const MAX_REINTENTOS = 1; // Solo 1 reintento rápido
+    const DELAY_INICIAL = 80; // ms mínimo
 
     for (let intento = 0; intento <= MAX_REINTENTOS; intento++) {
         try {
@@ -664,40 +701,34 @@ async function cloudSave(table, dataArray, mode = 'incremental', options = {}) {
             });
             const result = await response.json();
 
-            // Actualizar versión si fue exitoso
             if (result?.success && typeof result.serverVersion === 'number') {
                 serverVersions[table] = result.serverVersion;
+                SYNC_MANAGER.registerPending(table, 0);
                 return result;
             }
 
-            // Manejar conflicto de versión: reintentar con backoff exponencial
             if (result?.versionConflict && intento < MAX_REINTENTOS) {
-                const delayMs = DELAY_INICIAL * Math.pow(2, intento); // 300ms, 600ms, 1200ms
-                console.warn(`⏳ Conflicto de versión en ${table}. Reintentando en ${delayMs}ms (intento ${intento + 1}/${MAX_REINTENTOS})...`);
-                await new Promise(resolve => setTimeout(resolve, delayMs));
-                continue; // Reintentar con nueva versión
+                console.warn(`⏳ Versión desactualizada. Reintentando...`);
+                await new Promise(resolve => setTimeout(resolve, DELAY_INICIAL));
+                continue;
             }
 
-            // Si no es conflicto o fue el último intento, retornar resultado
             if (result?.versionConflict) {
-                console.error(`❌ Conflicto de versión persistente en ${table} después de ${MAX_REINTENTOS} reintentos`);
+                SYNC_MANAGER.registerPending(table, 1);
             }
             return result || { success: false, error: 'Sin respuesta del servidor' };
 
         } catch (error) {
-            // Error de red/conexión
             if (intento < MAX_REINTENTOS) {
-                const delayMs = DELAY_INICIAL * Math.pow(2, intento);
-                console.warn(`⏳ Error de conexión. Reintentando en ${delayMs}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delayMs));
+                await new Promise(resolve => setTimeout(resolve, DELAY_INICIAL));
                 continue;
             }
-            console.error(`❌ Error guardando en tabla ${table} después de ${MAX_REINTENTOS} reintentos:`, error.message);
+            console.error(`Error guardando en ${table}:`, error.message);
             return { success: false, error: error.message };
         }
     }
 
-    return { success: false, error: 'Máximo de reintentos excedido' };
+    return { success: false, error: 'No se pudo guardar' };
 }
 
 /**
